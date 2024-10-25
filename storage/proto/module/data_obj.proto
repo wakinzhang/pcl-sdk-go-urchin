@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+option go_package = "pcl-sdk-go-urchin/storage/proto/module";
+
+package module;
+
+message DataObj {
+  // @inject_tag: json:"id" xorm:"pk autoincr"
+  int32 id = 1[json_name="id"];
+  // @inject_tag: json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象唯一标识')"
+  string uuid = 2[json_name="uuid"];
+  // @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象名称')"
+  string name = 3[json_name="name"];
+  // @inject_tag: json:"type" xorm:"INT notnull default(0) comment('数据对象类型，1：文件；2：文件夹')"
+  int32 type = 4[json_name="type"];
+  // @inject_tag: json:"desc" xorm:"TEXT comment('数据对象描述信息')"
+  string desc = 5[json_name="desc"];
+  // @inject_tag: json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"
+  int32 size = 6[json_name="size"];
+  // @inject_tag: json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：正常状态；2：操作中；3：已删除')"
+  int32 status = 7[json_name="status"];
+  // @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象关联用户id')"
+  string user_id = 8[json_name="user_id"];
+  // @inject_tag: json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"
+  int32 version = 9[json_name="version"];
+  // @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
+  string create_time = 10[json_name="create_time"];
+  // @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
+  string update_time = 11[json_name="update_time"];
+  // @inject_tag: json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"
+  string delete_time = 12[json_name="delete_time"];
+}

@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option go_package = "pcl-sdk-go-urchin/storage/proto/module";
+
+package module;
+
+message StorageNode {
+  // @inject_tag: json:"id" xorm:"pk autoincr"
+  int32 id = 1[json_name="id"];
+  // @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('分中心名称')"
+  string name = 2[json_name="name"];
+  // @inject_tag: json:"desc" xorm:"TEXT comment('分中心描述')"
+  string desc = 3[json_name="desc"];
+  // @inject_tag: json:"type" xorm:"INT notnull default(0) comment('分中心存储类型，1：ipfs；2：obs；3：minio；...')"
+  int32 type = 4[json_name="type"];
+  // @inject_tag: json:"property" xorm:"INT notnull default(0) comment('分中心属性，按位标识，置位1则带有该属性，从右向左，第一位标识是否为缓存中心，第二位标识是否为持久化中心')"
+  int32 property = 5[json_name="property"];
+  // @inject_tag: json:"status" xorm:"INT notnull default(0) comment('分中心状态，1：在线；2：离线')"
+  int32 status = 6[json_name="status"];
+  // @inject_tag: json:"config" xorm:"TEXT comment('分中心配置信息')"
+  string config = 7[json_name="config"];
+  // @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
+  string create_time = 8[json_name="create_time"];
+  // @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
+  string update_time = 9[json_name="update_time"];
+  // @inject_tag: json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"
+  string delete_time = 10[json_name="delete_time"];
+}

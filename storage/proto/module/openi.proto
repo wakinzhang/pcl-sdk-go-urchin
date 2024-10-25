@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+option go_package = "pcl-sdk-go-urchin/storage/proto/module";
+
+package module;
+
+message OpenIGetTokenReq {
+  // @inject_tag: json:"client_id"
+  string client_id = 1[json_name="client_id"];
+  // @inject_tag: json:"client_secret"
+  string client_secret = 2[json_name="client_secret"];
+  // @inject_tag: json:"code"
+  string code = 3[json_name="code"];
+  // @inject_tag: json:"grant_type"
+  string grant_type = 4[json_name="grant_type"];
+  // @inject_tag: json:"redirect_uri"
+  string redirect_uri = 5[json_name="redirect_uri"];
+}
+
+message OpenIGetTokenResp {
+  // @inject_tag: json:"access_token"
+  string access_token = 1[json_name="access_token"];
+  // @inject_tag: json:"token_type"
+  string token_type = 2[json_name="token_type"];
+  // @inject_tag: json:"expires_in"
+  int32 expires_in = 3[json_name="expires_in"];
+  // @inject_tag: json:"refresh_token"
+  string refresh_token = 4[json_name="refresh_token"];
+}
+
+message OpenIRefreshTokenReq {
+  // @inject_tag: json:"grant_type"
+  string grant_type = 1[json_name="grant_type"];
+  // @inject_tag: json:"refresh_token"
+  string refresh_token = 2[json_name="refresh_token"];
+}
+
+message OpenIRefreshTokenResp {
+  // @inject_tag: json:"access_token"
+  string access_token = 1[json_name="access_token"];
+  // @inject_tag: json:"token_type"
+  string token_type = 2[json_name="token_type"];
+  // @inject_tag: json:"expires_in"
+  int32 expires_in = 3[json_name="expires_in"];
+  // @inject_tag: json:"refresh_token"
+  string refresh_token = 4[json_name="refresh_token"];
+}
+
+message OpenIGetUserReq {
+  // @inject_tag: json:"access_token"
+  string access_token = 1[json_name="access_token"];
+}
+
+message OpenIGetUserResp {
+  // @inject_tag: json:"id"
+  int32 id = 1[json_name="id"];
+  // @inject_tag: json:"login"
+  string login = 2[json_name="login"];
+  // @inject_tag: json:"email"
+  string email = 3[json_name="email"];
+  // @inject_tag: json:"username"
+  string username = 4[json_name="username"];
+  // @inject_tag: json:"avatar_url"
+  string avatar_url = 5[json_name="avatar_url"];
+}

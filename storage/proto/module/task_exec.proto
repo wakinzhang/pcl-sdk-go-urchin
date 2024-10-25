@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option go_package = "pcl-sdk-go-urchin/storage/proto/module";
+
+package module;
+
+message TaskExec {
+  // @inject_tag: json:"id" xorm:"pk autoincr"
+  int32 id = 1[json_name="id"];
+  // @inject_tag: json:"task_id" xorm:"INT notnull default(0) comment('任务id')"
+  int32 task_id = 2[json_name="task_id"];
+  // @inject_tag: json:"context" xorm:"TEXT comment('执行上下文')"
+  string context = 3[json_name="context"];
+  // @inject_tag: json:"status" xorm:"INT notnull default(0) comment('执行状态，0：初始状态；1：执行中；2：执行完成；3：取消')"
+  int32 status = 4[json_name="status"];
+  // @inject_tag: json:"result" xorm:"INT notnull default(0) comment('执行结果，0：初始状态；1：成功；2：失败')"
+  int32 result = 5[json_name="result"];
+  // @inject_tag: json:"return" xorm:"TEXT comment('执行返回信息')"
+  string return = 6[json_name="return"];
+  // @inject_tag: json:"start_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务开始时间')"
+  string start_time = 7[json_name="start_time"];
+  // @inject_tag: json:"finish_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务结束时间')"
+  string finish_time = 8[json_name="finish_time"];
+  // @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
+  string create_time = 9[json_name="create_time"];
+  // @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
+  string update_time = 10[json_name="update_time"];
+}

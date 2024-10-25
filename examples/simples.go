@@ -1,19 +1,16 @@
 package main
 
 import (
-	. "pcl-sdk-go-urchin/storage/adaptee"
+	. "pcl-sdk-go-urchin/storage/adapter"
 	. "pcl-sdk-go-urchin/storage/common"
 )
 
-var endpoint = ""
-var accessKey = ""
-var secretKey = ""
+var urchinServiceAddr = "urchin_service_addr"
+var sourcePath = "source_path"
 
 func main() {
 	log := new(Log)
 	log.Init()
 
-	obsAdapteeWithSignedUrl := new(ObsAdapteeWithSignedUrl)
-	obsAdapteeWithSignedUrl.Init()
-	obsAdapteeWithSignedUrl.Upload("")
+	Upload(urchinServiceAddr, sourcePath)
 }
