@@ -1,13 +1,14 @@
 package service
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"net"
 	"net/http"
 	. "pcl-sdk-go-urchin/storage/common"
-	. "pcl-sdk-go-urchin/storage/proto/api/v1"
+	. "pcl-sdk-go-urchin/storage/module"
 	"time"
 )
 
@@ -29,6 +30,7 @@ func (u *UrchinService) Init(addr string, reqTimeout int64, maxConnection int) {
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).Dial,
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 		TLSHandshakeTimeout: 10 * time.Second,
 		IdleConnTimeout:     60 * time.Second,
 		MaxIdleConnsPerHost: maxConnection,

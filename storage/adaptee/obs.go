@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	. "pcl-sdk-go-urchin/storage/common"
-	. "pcl-sdk-go-urchin/storage/proto/api/v1"
+	. "pcl-sdk-go-urchin/storage/module"
 	. "pcl-sdk-go-urchin/storage/service"
 	"sort"
 	"strings"

@@ -4,7 +4,7 @@ import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"os"
 	. "pcl-sdk-go-urchin/storage/common"
-	. "pcl-sdk-go-urchin/storage/proto/api/v1"
+	. "pcl-sdk-go-urchin/storage/module"
 	. "pcl-sdk-go-urchin/storage/service"
 )
 
@@ -17,6 +17,9 @@ func Upload(urchinServiceAddr, sourcePath string) (err error) {
 	urchinService.Init(urchinServiceAddr, 10, 10)
 
 	uploadObjectReq := new(UploadObjectReq)
+	uploadObjectReq.UserId = "wakinzhang"
+	uploadObjectReq.Name = "wakinzhang-test-obj"
+	uploadObjectReq.Size = 10086
 	stat, err := os.Stat(sourcePath)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
