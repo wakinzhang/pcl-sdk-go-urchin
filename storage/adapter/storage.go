@@ -2,8 +2,8 @@ package adapter
 
 import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
-	. "pcl-sdk-go-urchin/storage/adaptee"
-	. "pcl-sdk-go-urchin/storage/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/adaptee"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 )
 
 type Storage interface {
