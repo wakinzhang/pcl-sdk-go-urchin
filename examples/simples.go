@@ -5,8 +5,8 @@ import (
 	. "pcl-sdk-go-urchin/storage/common"
 )
 
-var urchinServiceAddr = "urchin_service_addr"
-var sourcePath = "source_path"
+var urchinServiceAddr = "https://127.0.0.1:39256"
+var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
 
 func main() {
 	log := new(Log)

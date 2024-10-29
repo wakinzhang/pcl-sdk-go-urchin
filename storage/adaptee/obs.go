@@ -144,7 +144,7 @@ func (o *ObsAdapteeWithAuth) CreateNewFolderSignedUrl(
 	input := &obs.CreateSignedUrlInput{}
 	input.Method = obs.HttpMethodPut
 	input.Bucket = bucketName
-	input.Key = objectKey + "/"
+	input.Key = objectKey
 	input.Expires = expires
 	output, err := o.obsClient.CreateSignedUrl(input)
 	if err != nil {
@@ -252,12 +252,6 @@ func (o *ObsAdapteeWithSignedUrl) Upload(
 		" urchinServiceAddr: %s, sourcePath: %s, taskId: %d",
 		urchinServiceAddr, sourcePath, taskId)
 
-	defer func() {
-		if err := recover(); err != nil {
-			obs.DoLog(obs.LEVEL_ERROR, "Upload failed. err: %v", err)
-		}
-	}()
-
 	stat, err := os.Stat(sourcePath)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
@@ -302,6 +296,7 @@ func (o *ObsAdapteeWithSignedUrl) uploadFile(
 
 	createInitiateMultipartUploadSignedUrlReq := new(CreateInitiateMultipartUploadSignedUrlReq)
 	createInitiateMultipartUploadSignedUrlReq.TaskId = taskId
+	createInitiateMultipartUploadSignedUrlReq.Source = filepath.Base(sourceFile)
 
 	err, createInitiateMultipartUploadSignedUrlResp :=
 		urchinService.CreateInitiateMultipartUploadSignedUrl(
@@ -312,10 +307,10 @@ func (o *ObsAdapteeWithSignedUrl) uploadFile(
 			"CreateInitiateMultipartUploadSignedUrl failed. err: %v", err)
 		return err
 	}
-	var initiateMultipartUploadWithSignedUrlHeader http.Header
+	var initiateMultipartUploadWithSignedUrlHeader = http.Header{}
 	for key, item := range createInitiateMultipartUploadSignedUrlResp.Header {
 		for _, value := range item.Values {
-			initiateMultipartUploadWithSignedUrlHeader.Add(key, value)
+			initiateMultipartUploadWithSignedUrlHeader.Set(key, value)
 		}
 	}
 	uploadId, err := o.initiateMultipartUploadWithSignedUrl(
@@ -444,6 +439,7 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 			createUploadPartSignedUrlReq.UploadId = uploadId
 			createUploadPartSignedUrlReq.PartNumber = int32(partNumber)
 			createUploadPartSignedUrlReq.TaskId = taskId
+			createUploadPartSignedUrlReq.Source = filepath.Base(sourceFile)
 			err, createUploadPartSignedUrlResp :=
 				urchinService.CreateUploadPartSignedUrl(
 					ConfigDefaultUrchinServiceCreateUploadPartSignedUrlInterface,
@@ -453,10 +449,10 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 					"CreateUploadPartSignedUrl failed. err: %v", err)
 				return
 			}
-			var uploadPartWithSignedUrlHeader http.Header
+			var uploadPartWithSignedUrlHeader = http.Header{}
 			for key, item := range createUploadPartSignedUrlResp.Header {
 				for _, value := range item.Values {
-					uploadPartWithSignedUrlHeader.Add(key, value)
+					uploadPartWithSignedUrlHeader.Set(key, value)
 				}
 			}
 
@@ -514,6 +510,8 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 	createCompleteMultipartUploadSignedUrlReq := new(CreateCompleteMultipartUploadSignedUrlReq)
 	createCompleteMultipartUploadSignedUrlReq.UploadId = uploadId
 	createCompleteMultipartUploadSignedUrlReq.TaskId = taskId
+	createCompleteMultipartUploadSignedUrlReq.Source = filepath.Base(sourceFile)
+
 	err, createCompleteMultipartUploadSignedUrlResp :=
 		urchinService.CreateCompleteMultipartUploadSignedUrl(
 			ConfigDefaultUrchinServiceCreateCompleteMultipartUploadSignedUrlInterface,
@@ -536,10 +534,10 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 		return
 	}
 
-	var completeMultipartUploadWithSignedUrlHeader http.Header
+	var completeMultipartUploadWithSignedUrlHeader = http.Header{}
 	for key, item := range createCompleteMultipartUploadSignedUrlResp.Header {
 		for _, value := range item.Values {
-			completeMultipartUploadWithSignedUrlHeader.Add(key, value)
+			completeMultipartUploadWithSignedUrlHeader.Set(key, value)
 		}
 	}
 	completeMultipartUploadOutput, err :=
@@ -578,17 +576,22 @@ func (o *ObsAdapteeWithSignedUrl) uploadFolder(
 	urchinService := new(UrchinService)
 	urchinService.Init(urchinServiceAddr, 10, 10)
 
+	createNewFolderSignedUrlReq := new(CreateNewFolderSignedUrlReq)
+	createNewFolderSignedUrlReq.TaskId = taskId
+	createNewFolderSignedUrlReq.Source = filepath.Base(dirPath)
+
 	err, createNewFolderSignedUrlResp :=
 		urchinService.CreateNewFolderSignedUrl(
-			ConfigDefaultUrchinServiceCreateNewFolderSignedUrlInterface)
+			ConfigDefaultUrchinServiceCreateNewFolderSignedUrlInterface,
+			createNewFolderSignedUrlReq)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "CreateNewFolderSignedUrl failed. err: %v", err)
 		return err
 	}
-	var newFolderWithSignedUrlHeader http.Header
+	var newFolderWithSignedUrlHeader = http.Header{}
 	for key, item := range createNewFolderSignedUrlResp.Header {
 		for _, value := range item.Values {
-			newFolderWithSignedUrlHeader.Add(key, value)
+			newFolderWithSignedUrlHeader.Set(key, value)
 		}
 	}
 	// 创建文件夹
@@ -673,10 +676,10 @@ func (o *ObsAdapteeWithSignedUrl) downloadFile(addr, targetFile string) (err err
 		obs.DoLog(obs.LEVEL_ERROR, "CreateGetObjectSignedUrl failed. err: %v", err)
 		return err
 	}
-	var getObjectWithSignedUrlHeader http.Header
+	var getObjectWithSignedUrlHeader = http.Header{}
 	for key, item := range createGetObjectSignedUrlResp.Header {
 		for _, value := range item.Values {
-			getObjectWithSignedUrlHeader.Add(key, value)
+			getObjectWithSignedUrlHeader.Set(key, value)
 		}
 	}
 
@@ -776,10 +779,10 @@ func (o *ObsAdapteeWithSignedUrl) downloadFolder(addr, prefix string) (err error
 		return err
 	}
 
-	var listObjectsWithSignedUrlHeader http.Header
+	var listObjectsWithSignedUrlHeader = http.Header{}
 	for key, item := range createListObjectsSignedUrlResp.Header {
 		for _, value := range item.Values {
-			listObjectsWithSignedUrlHeader.Add(key, value)
+			listObjectsWithSignedUrlHeader.Set(key, value)
 		}
 	}
 	listObjectsOutput, err :=

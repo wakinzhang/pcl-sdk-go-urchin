@@ -158,14 +158,23 @@ func (u *UrchinService) CreateCompleteMultipartUploadSignedUrl(
 	return nil, resp
 }
 
-func (u *UrchinService) CreateNewFolderSignedUrl(interf string) (
+func (u *UrchinService) CreateNewFolderSignedUrl(
+	interf string,
+	req *CreateNewFolderSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"Func: CreateNewFolderSignedUrl start. interface: %s", interf)
 
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Marshal CreateCompleteMultipartUploadSignedUrlReq failed. error: ", err)
+		return err, resp
+	}
+
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(u.addr+interf, nil, u.urchinClient)
+	err, respBody := Post(u.addr+interf, reqBody, u.urchinClient)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "Post failed. error: ", err)
 		return err, resp

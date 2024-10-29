@@ -10,6 +10,8 @@ type BaseResp struct {
 type CreateInitiateMultipartUploadSignedUrlReq struct {
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source"`
 }
 
 type CreateUploadPartSignedUrlReq struct {
@@ -19,6 +21,8 @@ type CreateUploadPartSignedUrlReq struct {
 	PartNumber int32 `protobuf:"varint,2,opt,name=part_number,proto3" json:"part_number"`
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source"`
 }
 
 type CreateCompleteMultipartUploadSignedUrlReq struct {
@@ -26,6 +30,15 @@ type CreateCompleteMultipartUploadSignedUrlReq struct {
 	UploadId string `protobuf:"bytes,1,opt,name=upload_id,proto3" json:"upload_id"`
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,2,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+}
+
+type CreateNewFolderSignedUrlReq struct {
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source"`
 }
 
 type CreateListObjectsSignedUrlReq struct {
@@ -56,12 +69,14 @@ type UploadObjectReq struct {
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name"`
 	// @inject_tag: json:"type"
 	Type int32 `protobuf:"varint,3,opt,name=type,proto3" json:"type"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source"`
 	// @inject_tag: json:"size"
-	Size int32 `protobuf:"varint,4,opt,name=size,proto3" json:"size"`
+	Size *int32 `protobuf:"varint,5,opt,name=size,proto3,oneof" json:"size"`
 	// @inject_tag: json:"desc"
-	Desc *string `protobuf:"bytes,5,opt,name=desc,proto3,oneof" json:"desc"`
+	Desc *string `protobuf:"bytes,6,opt,name=desc,proto3,oneof" json:"desc"`
 	// @inject_tag: json:"node_id"
-	NodeId *int32 `protobuf:"varint,6,opt,name=node_id,proto3,oneof" json:"node_id"`
+	NodeId *int32 `protobuf:"varint,7,opt,name=node_id,proto3,oneof" json:"node_id"`
 }
 
 type UploadObjectResp struct {

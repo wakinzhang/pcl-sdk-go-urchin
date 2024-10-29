@@ -6,6 +6,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 	"os"
+	"path/filepath"
 )
 
 func Upload(urchinServiceAddr, sourcePath string) (err error) {
@@ -19,7 +20,7 @@ func Upload(urchinServiceAddr, sourcePath string) (err error) {
 	uploadObjectReq := new(UploadObjectReq)
 	uploadObjectReq.UserId = "wakinzhang"
 	uploadObjectReq.Name = "wakinzhang-test-obj"
-	uploadObjectReq.Size = 10086
+
 	stat, err := os.Stat(sourcePath)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
@@ -31,6 +32,7 @@ func Upload(urchinServiceAddr, sourcePath string) (err error) {
 	} else {
 		uploadObjectReq.Type = DataObjectTypeEFile
 	}
+	uploadObjectReq.Source = filepath.Base(sourcePath)
 
 	err, uploadObjectResp := urchinService.UploadObject(
 		ConfigDefaultUrchinServiceUploadObjectInterface,
