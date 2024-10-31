@@ -180,7 +180,7 @@ func (o *ObsAdapteeWithAuth) CreateGetObjectMetadataSignedUrl(
 		bucketName, objectKey, expires)
 
 	input := &obs.CreateSignedUrlInput{}
-	input.Method = obs.HttpMethodGet
+	input.Method = obs.HTTP_HEAD
 	input.Bucket = bucketName
 	input.Key = objectKey
 	output, err := o.obsClient.CreateSignedUrl(input)
@@ -748,27 +748,20 @@ func (o *ObsAdapteeWithSignedUrl) Download(
 			index, object.ETag, object.Key, object.Size)
 		wg.Add(1)
 		// 处理文件
+		itemObject := object
 		go func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); err != nil {
-					obs.DoLog(obs.LEVEL_ERROR,
-						"downloadPartWithSignedUrl failed. err: %v", err)
-				}
 			}()
 			_, err = o.downloadPartWithSignedUrl(
-				urchinServiceAddr, object.Key, taskId)
+				urchinServiceAddr, itemObject.Key, taskId)
 			if err != nil {
 				obs.DoLog(obs.LEVEL_ERROR,
 					"downloadPartWithSignedUrl failed."+
 						" urchinServiceAddr: %s, objectKey: %s, taskId: %d, err: %v",
-					urchinServiceAddr, object.Key, taskId, err)
+					urchinServiceAddr, itemObject.Key, taskId, err)
 			}
 		}()
-		obs.DoLog(obs.LEVEL_INFO,
-			"downloadFile success."+
-				" urchinServiceAddr: %s, objectKey: %s, targetFile: %s",
-			urchinServiceAddr, object.Key, "targetFile")
 	}
 	wg.Wait()
 
@@ -1055,8 +1048,7 @@ func (o *ObsAdapteeWithSignedUrl) downloadFolder(
 			}
 		}()
 		obs.DoLog(obs.LEVEL_INFO,
-			"downloadFile success."+
-				" urchinServiceAddr: %s, objectKey: %s, targetFile: %s",
+			"downloadFile success. urchinServiceAddr: %s, objectKey: %s, targetFile: %s",
 			urchinServiceAddr, object.Key, "targetFile")
 	}
 	wg.Wait()

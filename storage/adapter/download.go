@@ -16,31 +16,6 @@ func Download(urchinServiceAddr, objUuid string) (err error) {
 	urchinService := new(UrchinService)
 	urchinService.Init(urchinServiceAddr, 10, 10)
 
-	/*
-		getObjectReq := new(GetObjectReq)
-		getObjectReq.UserId = "wakinzhang"
-		getObjectReq.ObjUuid = &objUuid
-		getObjectReq.PageIndex = 0
-		getObjectReq.PageSize = 10
-
-		err, getObjectResp := urchinService.GetObject(
-			ConfigDefaultUrchinServiceGetObjectInterface,
-			getObjectReq)
-		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR, "UrchinService.GetObject failed."+
-				" interface: %s, error: %v",
-				ConfigDefaultUrchinServiceGetObjectInterface, err)
-			return err
-		}
-
-		if 0 == len(getObjectResp.Data.List) {
-			err = errors.New("no valid data object")
-			obs.DoLog(obs.LEVEL_ERROR, "UrchinService.GetObject failed."+
-				" ObjUuid: %s, error: %v", objUuid, err)
-			return err
-		}
-	*/
-
 	downloadObjectReq := new(DownloadObjectReq)
 	downloadObjectReq.UserId = "wakinzhang"
 	downloadObjectReq.ObjUuid = objUuid
