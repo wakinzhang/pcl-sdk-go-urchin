@@ -233,12 +233,12 @@ func (o *ObsAdapteeWithAuth) CreateGetObjectSignedUrl(
 	return output.SignedUrl, output.ActualSignedRequestHeaders, nil
 }
 
-func (o *ObsAdapteeWithAuth) CreateListObjectSignedUrl(
+func (o *ObsAdapteeWithAuth) CreateListObjectsSignedUrl(
 	bucketName, prefix string, expires int) (
 	signedUrl string, header http.Header, err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
-		"ObsAdapteeWithAuth:CreateListObjectSignedUrl start. "+
+		"ObsAdapteeWithAuth:CreateListObjectsSignedUrl start. "+
 			" bucketName: %s, prefix: %s, expires: %d",
 		bucketName, prefix, expires)
 
@@ -262,7 +262,7 @@ func (o *ObsAdapteeWithAuth) CreateListObjectSignedUrl(
 
 	obs.DoLog(
 		obs.LEVEL_DEBUG,
-		"ObsAdapteeWithAuth:CreateListObjectSignedUrl finish.")
+		"ObsAdapteeWithAuth:CreateListObjectsSignedUrl finish.")
 	return output.SignedUrl, output.ActualSignedRequestHeaders, nil
 }
 
