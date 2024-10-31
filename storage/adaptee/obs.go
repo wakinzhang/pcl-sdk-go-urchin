@@ -696,11 +696,11 @@ func (o *ObsAdapteeWithSignedUrl) uploadFolder(
 }
 
 func (o *ObsAdapteeWithSignedUrl) Download(
-	urchinServiceAddr string, taskId int32) (err error) {
+	urchinServiceAddr, targetPath string, taskId int32) (err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:Download start."+
-		" urchinServiceAddr: %s, taskId: %d",
-		urchinServiceAddr, taskId)
+		" urchinServiceAddr: %s, targetPath: %s, taskId: %d",
+		urchinServiceAddr, targetPath, taskId)
 
 	urchinService := new(UrchinService)
 	urchinService.Init(urchinServiceAddr, 10, 10)
@@ -754,7 +754,7 @@ func (o *ObsAdapteeWithSignedUrl) Download(
 				wg.Done()
 			}()
 			_, err = o.downloadPartWithSignedUrl(
-				urchinServiceAddr, itemObject.Key, taskId)
+				urchinServiceAddr, itemObject.Key, targetPath+itemObject.Key, taskId)
 			if err != nil {
 				obs.DoLog(obs.LEVEL_ERROR,
 					"downloadPartWithSignedUrl failed."+
@@ -770,27 +770,27 @@ func (o *ObsAdapteeWithSignedUrl) Download(
 }
 
 func (o *ObsAdapteeWithSignedUrl) downloadPartWithSignedUrl(
-	urchinServiceAddr, source string,
+	urchinServiceAddr, objectKey, targetFile string,
 	taskId int32) (output *obs.GetObjectMetadataOutput, err error) {
 
 	downloadFileInput := new(obs.DownloadFileInput)
-	downloadFileInput.DownloadFile = source
+	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.CheckpointFile = downloadFileInput.DownloadFile + ".downloadfile_record"
 	downloadFileInput.TaskNum = 1
 	downloadFileInput.PartSize = obs.DEFAULT_PART_SIZE
 
-	output, err = o.resumeDownload(urchinServiceAddr, source, taskId, downloadFileInput)
+	output, err = o.resumeDownload(urchinServiceAddr, objectKey, taskId, downloadFileInput)
 	return
 }
 
 func (o *ObsAdapteeWithSignedUrl) resumeDownload(
-	urchinServiceAddr, source string,
+	urchinServiceAddr, objectKey string,
 	taskId int32,
 	input *obs.DownloadFileInput) (
 	output *obs.GetObjectMetadataOutput, err error) {
 
 	getObjectmetaOutput, err := o.getObjectInfoWithSignedUrl(
-		urchinServiceAddr, source, taskId)
+		urchinServiceAddr, objectKey, taskId)
 	if err != nil {
 		return nil, err
 	}
@@ -873,7 +873,7 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 }
 
 func (o *ObsAdapteeWithSignedUrl) getObjectInfoWithSignedUrl(
-	urchinServiceAddr, source string, taskId int32) (
+	urchinServiceAddr, objectKey string, taskId int32) (
 	getObjectmetaOutput *obs.GetObjectMetadataOutput, err error) {
 
 	urchinService := new(UrchinService)
@@ -881,7 +881,7 @@ func (o *ObsAdapteeWithSignedUrl) getObjectInfoWithSignedUrl(
 
 	createGetObjectMetadataSignedUrlReq := new(CreateGetObjectMetadataSignedUrlReq)
 	createGetObjectMetadataSignedUrlReq.TaskId = taskId
-	createGetObjectMetadataSignedUrlReq.Source = source
+	createGetObjectMetadataSignedUrlReq.Source = objectKey
 
 	err, createGetObjectMetadataSignedUrlResp :=
 		urchinService.CreateGetObjectMetadataSignedUrl(

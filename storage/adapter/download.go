@@ -7,11 +7,11 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 )
 
-func Download(urchinServiceAddr, objUuid string) (err error) {
+func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
-		"Download start. urchinServiceAddr: %s objUuid: %s",
-		urchinServiceAddr, objUuid)
+		"Download start. urchinServiceAddr: %s, targetPath: %s, objUuid: %s",
+		urchinServiceAddr, targetPath, objUuid)
 
 	urchinService := new(UrchinService)
 	urchinService.Init(urchinServiceAddr, 10, 10)
@@ -37,6 +37,7 @@ func Download(urchinServiceAddr, objUuid string) (err error) {
 	}
 	err = storage.Download(
 		urchinServiceAddr,
+		targetPath,
 		downloadObjectResp.TaskId)
 
 	if nil != err {

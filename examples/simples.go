@@ -7,6 +7,7 @@ import (
 
 var urchinServiceAddr = "https://127.0.0.1:39256"
 var sourcePath = "/Users/zhangjiayuan/Downloads/test/"
+var targetPath = "/Users/zhangjiayuan/Downloads/target/"
 var objUuid = "bc63d925-98ff-4f0c-8d72-495534e981bd"
 
 func main() {
@@ -14,5 +15,5 @@ func main() {
 	log.Init()
 
 	//Upload(urchinServiceAddr, sourcePath)
-	Download(urchinServiceAddr, objUuid)
+	Download(urchinServiceAddr, targetPath, objUuid)
 }

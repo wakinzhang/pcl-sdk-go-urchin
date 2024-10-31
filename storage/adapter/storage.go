@@ -8,7 +8,7 @@ import (
 
 type Storage interface {
 	Upload(urchinServiceAddr, sourcePath string, taskId int32) error
-	Download(urchinServiceAddr string, taskId int32) error
+	Download(urchinServiceAddr, targetFile string, taskId int32) error
 	Migrate()
 }
 
