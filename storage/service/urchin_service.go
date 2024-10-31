@@ -46,8 +46,7 @@ func (u *UrchinService) Init(addr string, reqTimeout int64, maxConnection int) {
 
 func (u *UrchinService) CreateInitiateMultipartUploadSignedUrl(
 	interf string,
-	req *CreateInitiateMultipartUploadSignedUrlReq) (
-	err error, resp *CreateSignedUrlResp) {
+	req *CreateInitiateMultipartUploadSignedUrlReq) (err error, resp *CreateSignedUrlResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"Func: CreateInitiateMultipartUploadSignedUrl start. interface: %s", interf)
@@ -85,8 +84,8 @@ func (u *UrchinService) CreateInitiateMultipartUploadSignedUrl(
 }
 
 func (u *UrchinService) CreateUploadPartSignedUrl(
-	interf string, req *CreateUploadPartSignedUrlReq) (
-	err error, resp *CreateSignedUrlResp) {
+	interf string,
+	req *CreateUploadPartSignedUrlReq) (err error, resp *CreateSignedUrlResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: CreateUploadPartSignedUrl start.")
 	reqBody, err := json.Marshal(req)
@@ -121,8 +120,8 @@ func (u *UrchinService) CreateUploadPartSignedUrl(
 }
 
 func (u *UrchinService) CreateCompleteMultipartUploadSignedUrl(
-	interf string, req *CreateCompleteMultipartUploadSignedUrlReq) (
-	err error, resp *CreateSignedUrlResp) {
+	interf string,
+	req *CreateCompleteMultipartUploadSignedUrlReq) (err error, resp *CreateSignedUrlResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: CreateCompleteMultipartUploadSignedUrl start.")
 
@@ -160,8 +159,7 @@ func (u *UrchinService) CreateCompleteMultipartUploadSignedUrl(
 
 func (u *UrchinService) CreateNewFolderSignedUrl(
 	interf string,
-	req *CreateNewFolderSignedUrlReq) (
-	err error, resp *CreateSignedUrlResp) {
+	req *CreateNewFolderSignedUrlReq) (err error, resp *CreateSignedUrlResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"Func: CreateNewFolderSignedUrl start. interface: %s", interf)
@@ -169,7 +167,7 @@ func (u *UrchinService) CreateNewFolderSignedUrl(
 	reqBody, err := json.Marshal(req)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
-			"Marshal CreateCompleteMultipartUploadSignedUrlReq failed. error: ", err)
+			"Marshal CreateNewFolderSignedUrlReq failed. error: ", err)
 		return err, resp
 	}
 
@@ -198,14 +196,61 @@ func (u *UrchinService) CreateNewFolderSignedUrl(
 	return nil, resp
 }
 
-func (u *UrchinService) CreateGetObjectSignedUrl(interf string) (
-	err error, resp *CreateSignedUrlResp) {
+func (u *UrchinService) CreateGetObjectMetadataSignedUrl(
+	interf string,
+	req *CreateGetObjectMetadataSignedUrlReq) (err error, resp *CreateSignedUrlResp) {
+
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"Func: CreateGetObjectMetadataSignedUrl start. interface: %s", interf)
+
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Marshal CreateGetObjectMetadataSignedUrlReq failed. error: ", err)
+		return err, resp
+	}
+
+	resp = new(CreateSignedUrlResp)
+	err, respBody := Post(u.addr+interf, reqBody, u.urchinClient)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "Post failed. error: ", err)
+		return err, resp
+	}
+
+	err = json.Unmarshal(respBody, resp)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"json.Unmarshal failed. error: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"CreateGetObjectMetadataSignedUrl failed. errCode: %d, errMessage: %s",
+			resp.Code, resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: CreateGetObjectMetadataSignedUrl end.")
+	return nil, resp
+}
+
+func (u *UrchinService) CreateGetObjectSignedUrl(
+	interf string,
+	req *CreateGetObjectSignedUrlReq) (err error, resp *CreateSignedUrlResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"Func: CreateGetObjectSignedUrl start. interface: %s", interf)
 
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Marshal CreateGetObjectSignedUrlReq failed. error: ", err)
+		return err, resp
+	}
+
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(u.addr+interf, nil, u.urchinClient)
+	err, respBody := Post(u.addr+interf, reqBody, u.urchinClient)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "Post failed. error: ", err)
 		return err, resp
@@ -230,11 +275,18 @@ func (u *UrchinService) CreateGetObjectSignedUrl(interf string) (
 }
 
 func (u *UrchinService) CreateListObjectsSignedUrl(
-	interf string, req *CreateListObjectsSignedUrlReq) (
-	err error, resp *CreateSignedUrlResp) {
+	interf string,
+	req *CreateListObjectsSignedUrlReq) (err error, resp *CreateSignedUrlResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: CreateListObjectsSignedUrl start.")
+
 	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Marshal CreateListObjectsSignedUrlReq failed. error: ", err)
+		return err, resp
+	}
+
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Post(u.addr+interf, reqBody, u.urchinClient)
 	if err != nil {
@@ -261,8 +313,8 @@ func (u *UrchinService) CreateListObjectsSignedUrl(
 }
 
 func (u *UrchinService) UploadObject(
-	interf string, req *UploadObjectReq) (
-	err error, resp *UploadObjectResp) {
+	interf string,
+	req *UploadObjectReq) (err error, resp *UploadObjectResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: UploadObject start.")
 
@@ -298,9 +350,47 @@ func (u *UrchinService) UploadObject(
 	return nil, resp
 }
 
+func (u *UrchinService) GetObject(
+	interf string,
+	req *GetObjectReq) (err error, resp *GetObjectResp) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetObject start.")
+
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Marshal GetObjectReq failed. error: ", err)
+		return err, resp
+	}
+
+	resp = new(GetObjectResp)
+	err, respBody := GetWithBody(u.addr+interf, reqBody, u.urchinClient)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "GetWithBody failed. error: ", err)
+		return err, resp
+	}
+
+	err = json.Unmarshal(respBody, resp)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"json.Unmarshal failed. error: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"GetObject failed. errCode: %d, errMessage: %s",
+			resp.Code, resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetObject end.")
+	return nil, resp
+}
+
 func (u *UrchinService) DownloadObject(
-	interf string, req *DownloadObjectReq) (
-	err error, resp *DownloadObjectResp) {
+	interf string,
+	req *DownloadObjectReq) (err error, resp *DownloadObjectResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: DownloadObject start.")
 
@@ -337,8 +427,8 @@ func (u *UrchinService) DownloadObject(
 }
 
 func (u *UrchinService) MigrateObject(
-	interf string, req *MigrateObjectReq) (
-	err error, resp *MigrateObjectResp) {
+	interf string,
+	req *MigrateObjectReq) (err error, resp *MigrateObjectResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: MigrateObject start.")
 
@@ -374,8 +464,7 @@ func (u *UrchinService) MigrateObject(
 	return nil, resp
 }
 
-func (u *UrchinService) FinishTask(
-	interf string, req *FinishTaskReq) (
+func (u *UrchinService) FinishTask(interf string, req *FinishTaskReq) (
 	err error, resp *BaseResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: FinishTask start.")

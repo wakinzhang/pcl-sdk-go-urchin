@@ -10,6 +10,9 @@ const (
 	ConfigDefaultUrchinServiceCreateUploadPartSignedUrlInterface              = "/v1/object/auth/create_upload_part_signed_url"
 	ConfigDefaultUrchinServiceCreateCompleteMultipartUploadSignedUrlInterface = "/v1/object/auth/create_complete_multi_part_upload_signed_url"
 	ConfigDefaultUrchinServiceCreateNewFolderSignedUrlInterface               = "/v1/object/auth/create_new_folder_signed_url"
+	ConfigDefaultUrchinServiceCreateGetObjectMetadataSignedUrlInterface       = "/v1/object/auth/create_get_object_metadata_signed_url"
+
+	ConfigDefaultUrchinServiceGetObjectInterface = "/v1/object"
 
 	ConfigDefaultUrchinServiceDownloadObjectInterface             = "/v1/object/download"
 	ConfigDefaultUrchinServiceCreateGetObjectSignedUrlInterface   = "/v1/object/auth/create_get_object_signed_url"
