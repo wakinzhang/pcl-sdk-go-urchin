@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -202,19 +203,24 @@ func (o *ObsAdapteeWithAuth) CreateGetObjectMetadataSignedUrl(
 }
 
 func (o *ObsAdapteeWithAuth) CreateGetObjectSignedUrl(
-	bucketName, objectKey string, expires int) (
-	signedUrl string, header http.Header, err error) {
+	bucketName, objectKey string,
+	rangeStart, rangeEnd int64,
+	expires int) (signedUrl string, header http.Header, err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"ObsAdapteeWithAuth:CreateGetObjectSignedUrl start. "+
-			" bucketName: %s, objectKey: %s, expires: %d",
-		bucketName, objectKey, expires)
+			" bucketName: %s, objectKey: %s, rangeStart: %d, rangeEnd: %d, expires: %d",
+		bucketName, objectKey, rangeStart, rangeEnd, expires)
 
 	input := &obs.CreateSignedUrlInput{}
 	input.Method = obs.HttpMethodGet
 	input.Bucket = bucketName
 	input.Key = objectKey
 	input.Expires = expires
+	input.QueryParams = make(map[string]string)
+	input.QueryParams["rangeStart"] = strconv.FormatInt(rangeStart, 10)
+	input.QueryParams["rangeEnd"] = strconv.FormatInt(rangeEnd, 10)
+
 	output, err := o.obsClient.CreateSignedUrl(input)
 	if err != nil {
 		if obsError, ok := err.(obs.ObsError); ok {
@@ -777,7 +783,9 @@ func (o *ObsAdapteeWithSignedUrl) downloadPartWithSignedUrl(
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.CheckpointFile = downloadFileInput.DownloadFile + ".downloadfile_record"
 	downloadFileInput.TaskNum = 1
-	downloadFileInput.PartSize = obs.DEFAULT_PART_SIZE
+	downloadFileInput.PartSize = 100 * 1024 * 1024 //obs.DEFAULT_PART_SIZE
+	downloadFileInput.Bucket = "zhangjiayuan-test"
+	downloadFileInput.Key = "bc63d925-98ff-4f0c-8d72-495534e981bd/test.zip"
 
 	output, err = o.resumeDownload(urchinServiceAddr, objectKey, taskId, downloadFileInput)
 	return
@@ -792,6 +800,10 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 	getObjectmetaOutput, err := o.getObjectInfoWithSignedUrl(
 		urchinServiceAddr, objectKey, taskId)
 	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"getObjectInfoWithSignedUrl failed."+
+				" urchinServiceAddr: %s, objectKey: %s, taskId: %d, err: %v",
+			urchinServiceAddr, objectKey, taskId, err)
 		return nil, err
 	}
 
@@ -805,6 +817,10 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 	if enableCheckpoint {
 		needCheckpoint, err = getDownloadCheckpointFile(dfc, input, getObjectmetaOutput)
 		if err != nil {
+			obs.DoLog(obs.LEVEL_ERROR,
+				"getDownloadCheckpointFile failed."+
+					" checkpointFilePath: %s, enableCheckpoint: %t, err: %v",
+				checkpointFilePath, enableCheckpoint, err)
 			return nil, err
 		}
 	}
@@ -825,6 +841,9 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 		sliceObject(objectSize, partSize, dfc)
 		_err := prepareTempFile(dfc.TempFileInfo.TempFileUrl, dfc.TempFileInfo.Size)
 		if _err != nil {
+			obs.DoLog(obs.LEVEL_ERROR,
+				"prepareTempFile failed. TempFileUrl: %s, Size: %d, err: %v",
+				dfc.TempFileInfo.TempFileUrl, dfc.TempFileInfo.Size, _err)
 			return nil, _err
 		}
 
@@ -843,12 +862,15 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 		}
 	}
 
-	downloadFileError := o.downloadFileConcurrent(input, dfc)
+	downloadFileError := o.downloadFileConcurrent(urchinServiceAddr, objectKey, taskId, input, dfc)
 	err = handleDownloadFileResult(
 		dfc.TempFileInfo.TempFileUrl,
 		enableCheckpoint,
 		downloadFileError)
 	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"handleDownloadFileResult failed. TempFileUrl: %s, err: %v",
+			dfc.TempFileInfo.TempFileUrl, err)
 		return nil, err
 	}
 
@@ -924,6 +946,8 @@ func (o *ObsAdapteeWithSignedUrl) getObjectInfoWithSignedUrl(
 }
 
 func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
+	urchinServiceAddr, objectKey string,
+	taskId int32,
 	input *obs.DownloadFileInput,
 	dfc *DownloadCheckpoint) error {
 
@@ -956,8 +980,18 @@ func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
 			tempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			enableCheckpoint: input.EnableCheckpoint,
 		}
+		obs.DoLog(obs.LEVEL_DEBUG,
+			"DownloadPartTask params."+
+				" rangeStart: %d, rangeEnd: %d, partNumber: %d,"+
+				" tempFileURL: %s, enableCheckpoint: %t",
+			downloadPart.Offset,
+			downloadPart.RangeEnd,
+			downloadPart.PartNumber,
+			dfc.TempFileInfo.TempFileUrl,
+			input.EnableCheckpoint)
+
 		pool.ExecuteFunc(func() interface{} {
-			result := task.Run()
+			result := task.Run(urchinServiceAddr, objectKey, taskId)
 			err := handleDownloadTaskResult(
 				result,
 				dfc,
@@ -966,6 +1000,8 @@ func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
 				input.CheckpointFile,
 				lock)
 			if err != nil && atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
+				obs.DoLog(obs.LEVEL_ERROR,
+					"handleDownloadTaskResult failed. err: %v", err)
 				downloadPartError.Store(err)
 			}
 			return nil
@@ -973,6 +1009,7 @@ func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
 	}
 	pool.ShutDown()
 	if err, ok := downloadPartError.Load().(error); ok {
+		obs.DoLog(obs.LEVEL_ERROR, "downloadPartError. err: %v", err)
 		return err
 	}
 	return nil
@@ -1225,22 +1262,54 @@ type DownloadPartTask struct {
 	enableCheckpoint bool
 }
 
-func (task *DownloadPartTask) Run() interface{} {
+func (task *DownloadPartTask) Run(
+	urchinServiceAddr, objectKey string, taskId int32) interface{} {
+
 	if atomic.LoadInt32(task.abort) == 1 {
 		return errAbort
 	}
-	getObjectInput := &obs.GetObjectInput{}
-	getObjectInput.GetObjectMetadataInput = task.GetObjectMetadataInput
-	getObjectInput.IfMatch = task.IfMatch
-	getObjectInput.IfNoneMatch = task.IfNoneMatch
-	getObjectInput.IfModifiedSince = task.IfModifiedSince
-	getObjectInput.IfUnmodifiedSince = task.IfUnmodifiedSince
-	getObjectInput.RangeStart = task.RangeStart
-	getObjectInput.RangeEnd = task.RangeEnd
 
-	var output *obs.GetObjectOutput
-	var err error
-	output, err = task.obsClient.GetObjectWithoutProgress(getObjectInput)
+	/*
+		getObjectInput := &obs.GetObjectInput{}
+		getObjectInput.GetObjectMetadataInput = task.GetObjectMetadataInput
+		getObjectInput.IfMatch = task.IfMatch
+		getObjectInput.IfNoneMatch = task.IfNoneMatch
+		getObjectInput.IfModifiedSince = task.IfModifiedSince
+		getObjectInput.IfUnmodifiedSince = task.IfUnmodifiedSince
+		getObjectInput.RangeStart = task.RangeStart
+		getObjectInput.RangeEnd = task.RangeEnd
+	*/
+
+	urchinService := new(UrchinService)
+	urchinService.Init(urchinServiceAddr, 10, 10)
+
+	createGetObjectSignedUrlReq := new(CreateGetObjectSignedUrlReq)
+	createGetObjectSignedUrlReq.TaskId = taskId
+	createGetObjectSignedUrlReq.Source = objectKey
+	createGetObjectSignedUrlReq.RangeStart = task.RangeStart
+	createGetObjectSignedUrlReq.RangeEnd = task.RangeEnd
+
+	err, createGetObjectSignedUrlResp :=
+		urchinService.CreateGetObjectSignedUrl(
+			ConfigDefaultUrchinServiceCreateGetObjectSignedUrlInterface,
+			createGetObjectSignedUrlReq)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"CreateGetObjectSignedUrl failed. err: %v", err)
+		return err
+	}
+	var getObjectWithSignedUrlHeader = http.Header{}
+	for key, item := range createGetObjectSignedUrlResp.Header {
+		for _, value := range item.Values {
+			getObjectWithSignedUrlHeader.Set(key, value)
+		}
+	}
+
+	output, err := task.obsClient.GetObjectWithSignedUrl(
+		createGetObjectSignedUrlResp.SignedUrl,
+		getObjectWithSignedUrlHeader)
+	//var output *obs.GetObjectOutput
+	//output, err = task.obsClient.GetObjectWithoutProgress(getObjectInput)
 
 	if err == nil {
 		defer func() {
