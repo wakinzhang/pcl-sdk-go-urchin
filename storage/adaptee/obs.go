@@ -218,8 +218,8 @@ func (o *ObsAdapteeWithAuth) CreateGetObjectSignedUrl(
 	input.Key = objectKey
 	input.Expires = expires
 	input.QueryParams = make(map[string]string)
-	input.QueryParams["rangeStart"] = strconv.FormatInt(rangeStart, 10)
-	input.QueryParams["rangeEnd"] = strconv.FormatInt(rangeEnd, 10)
+	input.QueryParams["RangeStart"] = strconv.FormatInt(rangeStart, 10)
+	input.QueryParams["RangeEnd"] = strconv.FormatInt(rangeEnd, 10)
 
 	output, err := o.obsClient.CreateSignedUrl(input)
 	if err != nil {
@@ -781,8 +781,9 @@ func (o *ObsAdapteeWithSignedUrl) downloadPartWithSignedUrl(
 
 	downloadFileInput := new(obs.DownloadFileInput)
 	downloadFileInput.DownloadFile = targetFile
+	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile = downloadFileInput.DownloadFile + ".downloadfile_record"
-	downloadFileInput.TaskNum = 1
+	downloadFileInput.TaskNum = 3
 	downloadFileInput.PartSize = 100 * 1024 * 1024 //obs.DEFAULT_PART_SIZE
 	downloadFileInput.Bucket = "zhangjiayuan-test"
 	downloadFileInput.Key = "bc63d925-98ff-4f0c-8d72-495534e981bd/test.zip"
