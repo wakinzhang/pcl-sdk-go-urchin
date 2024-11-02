@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -204,22 +203,18 @@ func (o *ObsAdapteeWithAuth) CreateGetObjectMetadataSignedUrl(
 
 func (o *ObsAdapteeWithAuth) CreateGetObjectSignedUrl(
 	bucketName, objectKey string,
-	rangeStart, rangeEnd int64,
 	expires int) (signedUrl string, header http.Header, err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"ObsAdapteeWithAuth:CreateGetObjectSignedUrl start. "+
-			" bucketName: %s, objectKey: %s, rangeStart: %d, rangeEnd: %d, expires: %d",
-		bucketName, objectKey, rangeStart, rangeEnd, expires)
+			" bucketName: %s, objectKey: %s, expires: %d",
+		bucketName, objectKey, expires)
 
 	input := &obs.CreateSignedUrlInput{}
 	input.Method = obs.HttpMethodGet
 	input.Bucket = bucketName
 	input.Key = objectKey
 	input.Expires = expires
-	input.QueryParams = make(map[string]string)
-	input.QueryParams["RangeStart"] = strconv.FormatInt(rangeStart, 10)
-	input.QueryParams["RangeEnd"] = strconv.FormatInt(rangeEnd, 10)
 
 	output, err := o.obsClient.CreateSignedUrl(input)
 	if err != nil {
@@ -421,7 +416,7 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 			" urchinServiceAddr: %s, sourceFile: %s, uploadId: %s",
 		urchinServiceAddr, sourceFile, uploadId)
 
-	var partSize int64 = 100 * 1024 * 1024
+	var partSize int64 = DefaultPartSize
 	stat, err := os.Stat(sourceFile)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
@@ -779,16 +774,23 @@ func (o *ObsAdapteeWithSignedUrl) downloadPartWithSignedUrl(
 	urchinServiceAddr, objectKey, targetFile string,
 	taskId int32) (output *obs.GetObjectMetadataOutput, err error) {
 
+	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadPartWithSignedUrl start."+
+		" urchinServiceAddr: %s, objectKey: %s, targetFile: %s, taskId: %d",
+		urchinServiceAddr, objectKey, targetFile, taskId)
+
 	downloadFileInput := new(obs.DownloadFileInput)
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile = downloadFileInput.DownloadFile + ".downloadfile_record"
-	downloadFileInput.TaskNum = 3
-	downloadFileInput.PartSize = 100 * 1024 * 1024 //obs.DEFAULT_PART_SIZE
+	downloadFileInput.TaskNum = DefaultDownloadFileTaskNum
+	downloadFileInput.PartSize = DefaultPartSize
 	downloadFileInput.Bucket = "zhangjiayuan-test"
 	downloadFileInput.Key = "bc63d925-98ff-4f0c-8d72-495534e981bd/test.zip"
 
 	output, err = o.resumeDownload(urchinServiceAddr, objectKey, taskId, downloadFileInput)
+
+	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadPartWithSignedUrl success.")
+
 	return
 }
 
@@ -797,6 +799,10 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 	taskId int32,
 	input *obs.DownloadFileInput) (
 	output *obs.GetObjectMetadataOutput, err error) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:resumeDownload start."+
+		" urchinServiceAddr: %s, objectKey: %s, taskId: %d",
+		urchinServiceAddr, objectKey, taskId)
 
 	getObjectmetaOutput, err := o.getObjectInfoWithSignedUrl(
 		urchinServiceAddr, objectKey, taskId)
@@ -852,18 +858,19 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 			_err := updateCheckpointFile(dfc, checkpointFilePath)
 			if _err != nil {
 				obs.DoLog(obs.LEVEL_ERROR,
-					"Failed to update checkpoint file with error [%v].", _err)
+					"Failed to update checkpoint file. error: %v", _err)
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
 				if _errMsg != nil {
 					obs.DoLog(obs.LEVEL_WARN,
-						"Failed to remove temp download file with error [%v].", _errMsg)
+						"Failed to remove temp download file. error: %v", _errMsg)
 				}
 				return nil, _err
 			}
 		}
 	}
 
-	downloadFileError := o.downloadFileConcurrent(urchinServiceAddr, objectKey, taskId, input, dfc)
+	downloadFileError := o.downloadFileConcurrent(
+		urchinServiceAddr, objectKey, taskId, input, dfc)
 	err = handleDownloadFileResult(
 		dfc.TempFileInfo.TempFileUrl,
 		enableCheckpoint,
@@ -878,8 +885,8 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 	err = os.Rename(dfc.TempFileInfo.TempFileUrl, input.DownloadFile)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
-			"Failed to rename temp download file [%s] "+
-				"to download file [%s] with error [%v].",
+			"Failed to rename temp download file."+
+				" TempFileUrl: %s, DownloadFile: %s, error: %v",
 			dfc.TempFileInfo.TempFileUrl, input.DownloadFile, err)
 		return nil, err
 	}
@@ -888,16 +895,20 @@ func (o *ObsAdapteeWithSignedUrl) resumeDownload(
 		if err != nil {
 			obs.DoLog(obs.LEVEL_WARN,
 				"Download file successfully,"+
-					" but remove checkpoint file failed with error [%v].", err)
+					" but remove checkpoint file failed. error: %v", err)
 		}
 	}
-
+	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:resumeDownload success.")
 	return getObjectmetaOutput, nil
 }
 
 func (o *ObsAdapteeWithSignedUrl) getObjectInfoWithSignedUrl(
 	urchinServiceAddr, objectKey string, taskId int32) (
 	getObjectmetaOutput *obs.GetObjectMetadataOutput, err error) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:getObjectInfoWithSignedUrl start."+
+		" urchinServiceAddr: %s, objectKey: %s, taskId: %d",
+		urchinServiceAddr, objectKey, taskId)
 
 	urchinService := new(UrchinService)
 	urchinService.Init(urchinServiceAddr, 10, 10)
@@ -951,6 +962,10 @@ func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
 	taskId int32,
 	input *obs.DownloadFileInput,
 	dfc *DownloadCheckpoint) error {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadFileConcurrent start."+
+		" urchinServiceAddr: %s, objectKey: %s, taskId: %d",
+		urchinServiceAddr, objectKey, taskId)
 
 	pool := obs.NewRoutinePool(input.TaskNum, obs.MAX_PART_NUM)
 	var downloadPartError atomic.Value
@@ -1013,192 +1028,8 @@ func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
 		obs.DoLog(obs.LEVEL_ERROR, "downloadPartError. err: %v", err)
 		return err
 	}
+	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadFileConcurrent success.")
 	return nil
-}
-
-func (o *ObsAdapteeWithSignedUrl) downloadFolder(
-	urchinServiceAddr string, taskId int32) (err error) {
-
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"ObsAdapteeWithSignedUrl:downloadFolder start."+
-			" urchinServiceAddr: %s, taskId: %d",
-		urchinServiceAddr, taskId)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
-
-	createListObjectsSignedUrlReq := new(CreateListObjectsSignedUrlReq)
-	createListObjectsSignedUrlReq.TaskId = taskId
-
-	err, createListObjectsSignedUrlResp :=
-		urchinService.CreateListObjectsSignedUrl(
-			ConfigDefaultUrchinServiceCreateListObjectsSignedUrlInterface,
-			createListObjectsSignedUrlReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"CreateListObjectSignedUrl failed. err: %v", err)
-		return err
-	}
-
-	var listObjectsWithSignedUrlHeader = http.Header{}
-	for key, item := range createListObjectsSignedUrlResp.Header {
-		for _, value := range item.Values {
-			listObjectsWithSignedUrlHeader.Set(key, value)
-		}
-	}
-	listObjectsOutput, err :=
-		o.obsClient.ListObjectsWithSignedUrl(
-			createListObjectsSignedUrlResp.SignedUrl,
-			listObjectsWithSignedUrlHeader)
-	if err != nil {
-		if obsError, ok := err.(obs.ObsError); ok {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"obsClient.ListObjectsWithSignedUrl failed."+
-					" obsCode: %s, obsMessage: %s", obsError.Code, obsError.Message)
-			return err
-		} else {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"obsClient.CompleteMultipartUploadWithSignedUrl failed. err: %v", err)
-			return err
-		}
-	}
-
-	var wg sync.WaitGroup
-	for index, object := range listObjectsOutput.Contents {
-		obs.DoLog(obs.LEVEL_DEBUG,
-			"Object: Content[%d]-ETag:%s, Key:%s, Size:%d",
-			index, object.ETag, object.Key, object.Size)
-		wg.Add(1)
-		// 处理文件
-		go func() {
-			defer func() {
-				wg.Done()
-				if err := recover(); err != nil {
-					obs.DoLog(obs.LEVEL_ERROR, "downloadFile failed. err: %v", err)
-				}
-			}()
-			err = o.downloadFile(urchinServiceAddr, object.Key, "targetFile", taskId)
-			if err != nil {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"downloadFile failed."+
-						" urchinServiceAddr: %s, objectKey: %s, targetFile: %s, err: %v",
-					urchinServiceAddr, object.Key, "targetFile", err)
-			}
-		}()
-		obs.DoLog(obs.LEVEL_INFO,
-			"downloadFile success. urchinServiceAddr: %s, objectKey: %s, targetFile: %s",
-			urchinServiceAddr, object.Key, "targetFile")
-	}
-	wg.Wait()
-
-	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadFolder finish.")
-	return nil
-}
-
-func (o *ObsAdapteeWithSignedUrl) downloadFile(
-	urchinServiceAddr, source, targetFile string, taskId int32) (err error) {
-
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"ObsAdapteeWithSignedUrl:downloadFile start."+
-			" urchinServiceAddr: %s, source: %s, targetFile: %s, taskId: %d",
-		urchinServiceAddr, source, targetFile, taskId)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
-
-	createGetObjectSignedUrlReq := new(CreateGetObjectSignedUrlReq)
-	createGetObjectSignedUrlReq.TaskId = taskId
-	createGetObjectSignedUrlReq.Source = source
-
-	err, createGetObjectSignedUrlResp :=
-		urchinService.CreateGetObjectSignedUrl(
-			ConfigDefaultUrchinServiceCreateGetObjectSignedUrlInterface,
-			createGetObjectSignedUrlReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "CreateGetObjectSignedUrl failed. err: %v", err)
-		return err
-	}
-	var getObjectWithSignedUrlHeader = http.Header{}
-	for key, item := range createGetObjectSignedUrlResp.Header {
-		for _, value := range item.Values {
-			getObjectWithSignedUrlHeader.Set(key, value)
-		}
-	}
-
-	getObjectOutput, err := o.obsClient.GetObjectWithSignedUrl(
-		createGetObjectSignedUrlResp.SignedUrl,
-		getObjectWithSignedUrlHeader)
-	if err != nil {
-		if obsError, ok := err.(obs.ObsError); ok {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"obsClient.GetObjectWithSignedUrl failed."+
-					" obsCode: %s, obsMessage: %s", obsError.Code, obsError.Message)
-			return err
-		} else {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"obsClient.GetObjectWithSignedUrl failed. err: %v", err)
-			return err
-		}
-	} else {
-		defer func() {
-			if err := getObjectOutput.Body.Close(); err != nil {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"GetObjectOutput.Body.Close failed. err: %v", err)
-			}
-		}()
-		obs.DoLog(obs.LEVEL_DEBUG, "obsClient.GetObjectWithSignedUrl success. "+
-			" SignedUrl: %s StorageClass:%s, ETag:%s, ContentType:%s,"+
-			" ContentLength:%d, LastModified:%s",
-			createGetObjectSignedUrlResp.SignedUrl,
-			getObjectOutput.StorageClass, getObjectOutput.ETag, getObjectOutput.ContentType,
-			getObjectOutput.ContentLength, getObjectOutput.LastModified)
-
-		fl, err := os.Create(targetFile)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"Create target file failed. targetFile: %s, err: %v", targetFile, err)
-			return err
-		}
-		defer func() {
-			if err := fl.Close(); err != nil {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"File.Close failed. err: %v", err)
-			}
-		}()
-
-		writer := bufio.NewWriter(fl)
-
-		// 读取对象内容
-		p := make([]byte, 1024)
-		var readCount int
-		for {
-			readCount, err = getObjectOutput.Body.Read(p)
-			if err != nil {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"Read failed. targetFile: %s, err: %v", targetFile, err)
-				return err
-			}
-			if readCount > 0 {
-				_, err = writer.WriteString(string(p[:readCount]))
-				if err != nil {
-					obs.DoLog(obs.LEVEL_ERROR,
-						"writer.WriteString failed. targetFile: %s, err: %v",
-						targetFile, err)
-					return err
-				}
-				err = writer.Flush()
-				if err != nil {
-					obs.DoLog(obs.LEVEL_ERROR,
-						"writer.Flush failed. targetFile: %s, err: %v", targetFile, err)
-					return err
-				}
-			} else {
-				break
-			}
-		}
-		obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadFile finish.")
-		return nil
-	}
 }
 
 func (o *ObsAdapteeWithSignedUrl) Migrate() {
@@ -1266,20 +1097,13 @@ type DownloadPartTask struct {
 func (task *DownloadPartTask) Run(
 	urchinServiceAddr, objectKey string, taskId int32) interface{} {
 
+	obs.DoLog(obs.LEVEL_DEBUG, "DownloadPartTask:Run start."+
+		" urchinServiceAddr: %s, objectKey: %s, taskId: %d",
+		urchinServiceAddr, objectKey, taskId)
+
 	if atomic.LoadInt32(task.abort) == 1 {
 		return errAbort
 	}
-
-	/*
-		getObjectInput := &obs.GetObjectInput{}
-		getObjectInput.GetObjectMetadataInput = task.GetObjectMetadataInput
-		getObjectInput.IfMatch = task.IfMatch
-		getObjectInput.IfNoneMatch = task.IfNoneMatch
-		getObjectInput.IfModifiedSince = task.IfModifiedSince
-		getObjectInput.IfUnmodifiedSince = task.IfUnmodifiedSince
-		getObjectInput.RangeStart = task.RangeStart
-		getObjectInput.RangeEnd = task.RangeEnd
-	*/
 
 	urchinService := new(UrchinService)
 	urchinService.Init(urchinServiceAddr, 10, 10)
@@ -1306,36 +1130,39 @@ func (task *DownloadPartTask) Run(
 		}
 	}
 
-	output, err := task.obsClient.GetObjectWithSignedUrl(
+	getObjectWithSignedUrlOutput, err := task.obsClient.GetObjectWithSignedUrl(
 		createGetObjectSignedUrlResp.SignedUrl,
 		getObjectWithSignedUrlHeader)
-	//var output *obs.GetObjectOutput
-	//output, err = task.obsClient.GetObjectWithoutProgress(getObjectInput)
 
 	if err == nil {
 		defer func() {
-			errMsg := output.Body.Close()
+			errMsg := getObjectWithSignedUrlOutput.Body.Close()
 			if errMsg != nil {
 				obs.DoLog(obs.LEVEL_WARN, "Failed to close response body.")
 			}
 		}()
-		_err := updateDownloadFile(task.tempFileURL, task.RangeStart, output)
+		_err := updateDownloadFile(
+			task.tempFileURL,
+			task.RangeStart,
+			getObjectWithSignedUrlOutput)
 		if _err != nil {
 			if !task.enableCheckpoint {
 				atomic.CompareAndSwapInt32(task.abort, 0, 1)
 				obs.DoLog(obs.LEVEL_WARN,
-					"Task is aborted, part number is [%d]", task.partNumber)
+					"Task is aborted, part number: %d", task.partNumber)
 			}
 			return _err
 		}
-		return output
+		return getObjectWithSignedUrlOutput
 	} else if obsError, ok := err.(obs.ObsError); ok &&
 		obsError.StatusCode >= 400 &&
 		obsError.StatusCode < 500 {
 
 		atomic.CompareAndSwapInt32(task.abort, 0, 1)
-		obs.DoLog(obs.LEVEL_WARN, "Task is aborted, part number is [%d]", task.partNumber)
+		obs.DoLog(obs.LEVEL_WARN, "Task is aborted, part number: %d", task.partNumber)
 	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "DownloadPartTask:Run success.")
 	return err
 }
 
@@ -1344,11 +1171,14 @@ func getDownloadCheckpointFile(
 	input *obs.DownloadFileInput,
 	output *obs.GetObjectMetadataOutput) (needCheckpoint bool, err error) {
 
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"getDownloadCheckpointFile start. CheckpointFile: %s", input.CheckpointFile)
+
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_DEBUG,
-			fmt.Sprintf("Stat checkpoint file failed with error: [%v].", err))
+			fmt.Sprintf("Stat checkpoint file failed. error: %v", err))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
@@ -1358,40 +1188,47 @@ func getDownloadCheckpointFile(
 	err = loadCheckpointFile(checkpointFilePath, dfc)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_WARN,
-			fmt.Sprintf("Load checkpoint file failed with error: [%v].", err))
+			fmt.Sprintf("Load checkpoint file failed. error: %v", err))
 		return true, nil
 	} else if !dfc.IsValid(input, output) {
 		if dfc.TempFileInfo.TempFileUrl != "" {
 			_err := os.Remove(dfc.TempFileInfo.TempFileUrl)
 			if _err != nil {
 				obs.DoLog(obs.LEVEL_WARN,
-					"Failed to remove temp download file with error [%v].", _err)
+					"Failed to remove temp download file. error: %v", _err)
 			}
 		}
 		_err := os.Remove(checkpointFilePath)
 		if _err != nil {
 			obs.DoLog(obs.LEVEL_WARN,
-				"Failed to remove checkpoint file with error [%v].", _err)
+				"Failed to remove checkpoint file. error: %v", _err)
 		}
 	} else {
+		obs.DoLog(obs.LEVEL_DEBUG, "no need to check point.")
 		return false, nil
 	}
-
+	obs.DoLog(obs.LEVEL_DEBUG, "need to check point.")
 	return true, nil
 }
 
 func loadCheckpointFile(checkpointFile string, result interface{}) error {
+	obs.DoLog(obs.LEVEL_DEBUG, "loadCheckpointFile start.")
 	ret, err := ioutil.ReadFile(checkpointFile)
 	if err != nil {
 		return err
 	}
 	if len(ret) == 0 {
+		obs.DoLog(obs.LEVEL_DEBUG, "loadCheckpointFile nil.")
 		return nil
 	}
+	obs.DoLog(obs.LEVEL_DEBUG, "loadCheckpointFile success.")
 	return xml.Unmarshal(ret, result)
 }
 
 func sliceObject(objectSize, partSize int64, dfc *DownloadCheckpoint) {
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"sliceObject start. objectSize: %d, partSize: %d", objectSize, partSize)
+
 	cnt := objectSize / partSize
 	if objectSize%partSize > 0 {
 		cnt++
@@ -1416,16 +1253,20 @@ func sliceObject(objectSize, partSize int64, dfc *DownloadCheckpoint) {
 			dfc.DownloadParts[cnt-1].RangeEnd = dfc.ObjectInfo.Size - 1
 		}
 	}
+	obs.DoLog(obs.LEVEL_DEBUG, "sliceObject success.")
 }
 
 func prepareTempFile(tempFileURL string, fileSize int64) error {
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"prepareTempFile start. tempFileURL: %s, fileSize: %d", tempFileURL, fileSize)
+
 	parentDir := filepath.Dir(tempFileURL)
 	stat, err := os.Stat(parentDir)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_DEBUG, "Failed to stat path with error [%v].", err)
+		obs.DoLog(obs.LEVEL_DEBUG, "Failed to stat path. error: %v", err)
 		_err := os.MkdirAll(parentDir, os.ModePerm)
 		if _err != nil {
-			obs.DoLog(obs.LEVEL_ERROR, "Failed to make dir with error [%v].", _err)
+			obs.DoLog(obs.LEVEL_ERROR, "Failed to make dir. error: %v", _err)
 			return _err
 		}
 	} else if !stat.IsDir() {
@@ -1440,53 +1281,66 @@ func prepareTempFile(tempFileURL string, fileSize int64) error {
 	}
 	fd, err := os.OpenFile(tempFileURL, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Failed to open temp download file [%s].", tempFileURL)
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Failed to open temp download file. tempFileURL: %s, error: %v",
+			tempFileURL, err)
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil {
-			obs.DoLog(obs.LEVEL_WARN, "Failed to close file with error [%v].", errMsg)
+			obs.DoLog(obs.LEVEL_WARN, "Failed to close file. error: %v", errMsg)
 		}
 	}()
 	if fileSize > 0 {
 		_, err = fd.WriteAt([]byte("a"), fileSize-1)
 		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"Failed to create temp download file with error [%v].", err)
+			obs.DoLog(obs.LEVEL_ERROR, "Failed to WriteAt file. error: %v", err)
 			return err
 		}
 	}
-
+	obs.DoLog(obs.LEVEL_DEBUG, "prepareTempFile success.")
 	return nil
 }
 
 func updateCheckpointFile(fc interface{}, checkpointFilePath string) error {
+	obs.DoLog(obs.LEVEL_DEBUG, "updateCheckpointFile start.")
 	result, err := xml.Marshal(fc)
 	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "xml.Marshal failed. error: %v", err)
 		return err
 	}
 	err = ioutil.WriteFile(checkpointFilePath, result, 0640)
+	obs.DoLog(obs.LEVEL_DEBUG, "updateCheckpointFile finish.")
 	return err
 }
 
 func createFile(tempFileURL string, fileSize int64) error {
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"createFile start. tempFileURL: %s, fileSize: %d", tempFileURL, fileSize)
+
 	fd, err := syscall.Open(tempFileURL, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0640)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_WARN, "Failed to open temp download file [%s].", tempFileURL)
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Failed to open temp download file. tempFileURL: %s, error: %v",
+			tempFileURL, err)
 		return err
 	}
 	defer func() {
 		errMsg := syscall.Close(fd)
 		if errMsg != nil {
-			obs.DoLog(obs.LEVEL_WARN, "Failed to close file with error [%v].", errMsg)
+			obs.DoLog(obs.LEVEL_WARN,
+				"Failed to close file. error: %v", errMsg)
 		}
 	}()
 	err = syscall.Ftruncate(fd, fileSize)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_WARN, "Failed to create file with error [%v].", err)
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Failed to Ftruncate file. error: %v", err)
+		return err
 	}
-	return err
+	obs.DoLog(obs.LEVEL_DEBUG, "createFile success.")
+	return nil
 }
 
 func handleDownloadTaskResult(
@@ -1497,6 +1351,10 @@ func handleDownloadTaskResult(
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"handleDownloadTaskResult start. partNum: %d, checkpointFile: %s",
+		partNum, checkpointFile)
+
 	if _, ok := result.(*obs.GetObjectOutput); ok {
 		lock.Lock()
 		defer lock.Unlock()
@@ -1506,7 +1364,7 @@ func handleDownloadTaskResult(
 			_err := updateCheckpointFile(dfc, checkpointFile)
 			if _err != nil {
 				obs.DoLog(obs.LEVEL_WARN,
-					"Failed to update checkpoint file with error [%v].", _err)
+					"Failed to update checkpoint file. error: %v", _err)
 			}
 		}
 	} else if result != errAbort {
@@ -1514,6 +1372,7 @@ func handleDownloadTaskResult(
 			err = _err
 		}
 	}
+	obs.DoLog(obs.LEVEL_DEBUG, "handleDownloadTaskResult finish.")
 	return
 }
 
@@ -1522,21 +1381,32 @@ func handleDownloadFileResult(
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"handleDownloadFileResult start. tempFileURL: %s", tempFileURL)
+
 	if downloadFileError != nil {
 		if !enableCheckpoint {
 			_err := os.Remove(tempFileURL)
 			if _err != nil {
 				obs.DoLog(obs.LEVEL_WARN,
-					"Failed to remove temp download file with error [%v].", _err)
+					"Failed to remove temp download file. error: %v", _err)
 			}
 		}
+		obs.DoLog(obs.LEVEL_DEBUG, "handleDownloadFileResult finish.")
 		return downloadFileError
 	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "handleDownloadFileResult success.")
 	return nil
 }
 
 func updateDownloadFile(
-	filePath string, rangeStart int64, output *obs.GetObjectOutput) error {
+	filePath string,
+	rangeStart int64,
+	output *obs.GetObjectOutput) error {
+
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"updateDownloadFile start. filePath: %s, rangeStart: %d", filePath, rangeStart)
 
 	fd, err := os.OpenFile(filePath, os.O_WRONLY, 0640)
 	if err != nil {
@@ -1557,29 +1427,29 @@ func updateDownloadFile(
 	fileWriter := bufio.NewWriterSize(fd, 65536)
 	part := make([]byte, 8192)
 	var readErr error
-	var readCount int
+	var readCount, readTotal int
 	for {
 		readCount, readErr = output.Body.Read(part)
 		if readCount > 0 {
 			wcnt, werr := fileWriter.Write(part[0:readCount])
 			if werr != nil {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"Failed to write to file with error [%v].", werr)
+				obs.DoLog(obs.LEVEL_ERROR, "Failed to write to file. error: %v", werr)
 				return werr
 			}
 			if wcnt != readCount {
 				obs.DoLog(obs.LEVEL_ERROR,
-					"Failed to write to file [%s], expect: [%d], actual: [%d]",
+					"Failed to write to file. filePath: %s, expect: %d, actual: %d",
 					filePath, readCount, wcnt)
 				return fmt.Errorf(
-					"failed to write to file [%s], expect: [%d], actual: [%d]",
+					"failed to write to file. filePath: %s, expect: %d, actual: %d",
 					filePath, readCount, wcnt)
 			}
+			readTotal = readTotal + readCount
 		}
 		if readErr != nil {
 			if readErr != io.EOF {
 				obs.DoLog(obs.LEVEL_ERROR,
-					"Failed to read response body with error [%v].", readErr)
+					"Failed to read response body. error: %v", readErr)
 				return readErr
 			}
 			break
@@ -1587,8 +1457,10 @@ func updateDownloadFile(
 	}
 	err = fileWriter.Flush()
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Failed to flush file with error [%v].", err)
+		obs.DoLog(obs.LEVEL_ERROR, "Failed to flush file. error: %v", err)
 		return err
 	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "updateDownloadFile success. readTotal: %d", readTotal)
 	return nil
 }

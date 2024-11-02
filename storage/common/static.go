@@ -24,4 +24,7 @@ const (
 	DataObjectTypeEFolder = 2
 
 	TaskFResultESuccess = 1
+
+	DefaultPartSize            = 100 * 1024 * 1024
+	DefaultDownloadFileTaskNum = 3
 )
