@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -27,12 +28,28 @@ type ObsAdapteeWithAuth struct {
 	obsClient *obs.ObsClient
 }
 
-func (o *ObsAdapteeWithAuth) Init(accessKey, secretKey, endPoint string) (err error) {
+func (o *ObsAdapteeWithAuth) Init(
+	accessKey, secretKey, endPoint string,
+	nodeType int32) (err error) {
 	obs.DoLog(obs.LEVEL_DEBUG, "Function ObsAdapteeWithAuth:Init start."+
-		" accessKey: %s, secretKey: %s, endPoint: %s",
-		accessKey, secretKey, endPoint)
+		" accessKey: %s, secretKey: %s, endPoint: %s, nodeType: %d",
+		accessKey, secretKey, endPoint, nodeType)
 
-	o.obsClient, err = obs.New(accessKey, secretKey, endPoint, obs.WithSignature(obs.SignatureV4))
+	if StorageCategoryEObs == nodeType {
+		o.obsClient, err = obs.New(
+			accessKey,
+			secretKey,
+			endPoint,
+			obs.WithSignature(obs.SignatureObs))
+	} else if StorageCategoryEMinio == nodeType {
+		o.obsClient, err = obs.New(
+			accessKey,
+			secretKey,
+			endPoint,
+			obs.WithSignature(obs.SignatureV4))
+	} else {
+
+	}
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "obs.New failed. err: %v", err)
 		return err
@@ -554,6 +571,9 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 					uploadPartWithSignedUrlHeader.Set(key, value)
 				}
 			}
+
+			uploadPartWithSignedUrlHeader.Set("Content-Length",
+				strconv.FormatInt(currPartSize, 10))
 
 			uploadPartInputOutput, err := o.obsClient.UploadPartWithSignedUrl(
 				createUploadPartSignedUrlResp.SignedUrl,
