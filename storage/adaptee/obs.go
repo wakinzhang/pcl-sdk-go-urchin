@@ -32,7 +32,7 @@ func (o *ObsAdapteeWithAuth) Init(accessKey, secretKey, endPoint string) (err er
 		" accessKey: %s, secretKey: %s, endPoint: %s",
 		accessKey, secretKey, endPoint)
 
-	o.obsClient, err = obs.New(accessKey, secretKey, endPoint)
+	o.obsClient, err = obs.New(accessKey, secretKey, endPoint, obs.WithSignature(obs.SignatureV4))
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "obs.New failed. err: %v", err)
 		return err
