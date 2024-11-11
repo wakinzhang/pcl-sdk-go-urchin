@@ -67,5 +67,6 @@ func Upload(urchinServiceAddr, sourcePath string) (err error) {
 			ConfigDefaultUrchinServiceFinishTaskInterface, err)
 		return err
 	}
+	obs.DoLog(obs.LEVEL_DEBUG, "Upload success.")
 	return nil
 }

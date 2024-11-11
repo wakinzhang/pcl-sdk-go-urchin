@@ -38,7 +38,8 @@ func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {
 	err = storage.Download(
 		urchinServiceAddr,
 		targetPath,
-		downloadObjectResp.TaskId)
+		downloadObjectResp.TaskId,
+		downloadObjectResp.BucketName)
 
 	if nil != err {
 		obs.DoLog(obs.LEVEL_ERROR, "storage.Download failed. error: %v", err)
@@ -57,5 +58,6 @@ func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {
 			ConfigDefaultUrchinServiceFinishTaskInterface, err)
 		return err
 	}
+	obs.DoLog(obs.LEVEL_DEBUG, "Download success.")
 	return nil
 }

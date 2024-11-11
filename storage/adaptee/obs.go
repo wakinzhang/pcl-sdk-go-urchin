@@ -308,7 +308,8 @@ func (o *ObsAdapteeWithSignedUrl) Upload(
 			return err
 		}
 	} else {
-		err = o.uploadFile(urchinServiceAddr, sourcePath, taskId)
+		objectKey := filepath.Base(sourcePath)
+		err = o.uploadFile(urchinServiceAddr, sourcePath, objectKey, taskId)
 		if err != nil {
 			obs.DoLog(obs.LEVEL_ERROR,
 				"uploadFile failed. urchinServiceAddr: %s, sourcePath: %s,"+
@@ -323,19 +324,68 @@ func (o *ObsAdapteeWithSignedUrl) Upload(
 }
 
 func (o *ObsAdapteeWithSignedUrl) uploadFile(
-	urchinServiceAddr, sourceFile string, taskId int32) (err error) {
+	urchinServiceAddr, sourceFile, objectKey string, taskId int32) (err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"ObsAdapteeWithSignedUrl:uploadFile start."+
-			" urchinServiceAddr: %s, sourceFile: %s, taskId: %d",
-		urchinServiceAddr, sourceFile, taskId)
+			" urchinServiceAddr: %s, sourceFile: %s, objectKey: %s, taskId: %d",
+		urchinServiceAddr, sourceFile, objectKey, taskId)
+
+	stat, err := os.Stat(sourceFile)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"os.Stat failed. sourceFile: %s, err: %v", sourceFile, err)
+		return
+	}
+	fileSize := stat.Size()
 
 	urchinService := new(UrchinService)
 	urchinService.Init(urchinServiceAddr, 10, 10)
 
+	if 0 == fileSize {
+		createEmptyFileSignedUrlReq := new(CreateNewFolderSignedUrlReq)
+		createEmptyFileSignedUrlReq.TaskId = taskId
+		createEmptyFileSignedUrlReq.Source = &objectKey
+
+		_err, createEmptyFileSignedUrlResp :=
+			urchinService.CreateNewFolderSignedUrl(
+				ConfigDefaultUrchinServiceCreateNewFolderSignedUrlInterface,
+				createEmptyFileSignedUrlReq)
+		if _err != nil {
+			obs.DoLog(obs.LEVEL_ERROR, "CreateEmptyFileSignedUrl failed."+
+				" objectKey:%s, err: %v", objectKey, _err)
+			return _err
+		}
+		var emptyFileWithSignedUrlHeader = http.Header{}
+		for key, item := range createEmptyFileSignedUrlResp.Header {
+			for _, value := range item.Values {
+				emptyFileWithSignedUrlHeader.Set(key, value)
+			}
+		}
+		// 创建空文件
+		_, _err = o.obsClient.PutObjectWithSignedUrl(
+			createEmptyFileSignedUrlResp.SignedUrl,
+			emptyFileWithSignedUrlHeader,
+			nil)
+		if _err != nil {
+			if obsError, ok := _err.(obs.ObsError); ok {
+				obs.DoLog(obs.LEVEL_ERROR,
+					"obsClient.PutObjectWithSignedUrl failed."+
+						" obsCode: %s, obsMessage: %s", obsError.Code, obsError.Message)
+				return _err
+			} else {
+				obs.DoLog(obs.LEVEL_ERROR,
+					"obsClient.PutObjectWithSignedUrl failed. error: %v", _err)
+				return _err
+			}
+		}
+		obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:uploadFile finish.")
+		return nil
+	}
+
 	createInitiateMultipartUploadSignedUrlReq := new(CreateInitiateMultipartUploadSignedUrlReq)
 	createInitiateMultipartUploadSignedUrlReq.TaskId = taskId
-	createInitiateMultipartUploadSignedUrlReq.Source = filepath.Base(sourceFile)
+	createInitiateMultipartUploadSignedUrlReq.Source = objectKey
 
 	err, createInitiateMultipartUploadSignedUrlResp :=
 		urchinService.CreateInitiateMultipartUploadSignedUrl(
@@ -362,11 +412,16 @@ func (o *ObsAdapteeWithSignedUrl) uploadFile(
 			createInitiateMultipartUploadSignedUrlResp.SignedUrl, err)
 		return err
 	}
-	err = o.uploadPartWithSignedUrl(urchinServiceAddr, sourceFile, uploadId, taskId)
+	err = o.uploadPartWithSignedUrl(
+		urchinServiceAddr,
+		sourceFile,
+		objectKey,
+		uploadId,
+		taskId)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "uploadPartWithSignedUrl failed."+
-			"addr: %s, sourceFile: %s, uploadId: %s, err: %v",
-			urchinServiceAddr, sourceFile, uploadId, err)
+			"addr: %s, sourceFile: %s, objectKey: %s, uploadId: %s, err: %v",
+			urchinServiceAddr, sourceFile, objectKey, uploadId, err)
 		return err
 	}
 
@@ -409,12 +464,16 @@ func (o *ObsAdapteeWithSignedUrl) initiateMultipartUploadWithSignedUrl(
 }
 
 func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
-	urchinServiceAddr, sourceFile, uploadId string, taskId int32) (err error) {
+	urchinServiceAddr,
+	sourceFile,
+	objectKey,
+	uploadId string,
+	taskId int32) (err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"ObsAdapteeWithSignedUrl:uploadPartWithSignedUrl start."+
-			" urchinServiceAddr: %s, sourceFile: %s, uploadId: %s",
-		urchinServiceAddr, sourceFile, uploadId)
+			" urchinServiceAddr: %s, sourceFile: %s, objectKey: %s, uploadId: %s",
+		urchinServiceAddr, sourceFile, objectKey, uploadId)
 
 	var partSize int64 = DefaultPartSize
 	stat, err := os.Stat(sourceFile)
@@ -479,7 +538,7 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 			createUploadPartSignedUrlReq.UploadId = uploadId
 			createUploadPartSignedUrlReq.PartNumber = int32(partNumber)
 			createUploadPartSignedUrlReq.TaskId = taskId
-			createUploadPartSignedUrlReq.Source = filepath.Base(sourceFile)
+			createUploadPartSignedUrlReq.Source = objectKey
 			err, createUploadPartSignedUrlResp :=
 				urchinService.CreateUploadPartSignedUrl(
 					ConfigDefaultUrchinServiceCreateUploadPartSignedUrlInterface,
@@ -505,10 +564,11 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 				if obsError, ok := err.(obs.ObsError); ok {
 					obs.DoLog(obs.LEVEL_ERROR,
 						"obsClient.UploadPartWithSignedUrl failed."+
-							" signedUrl: %s, sourceFile: %s, partNumber: %d, offset: %d,"+
+							" signedUrl: %s, sourceFile: %s, objectKey: %s,"+
+							" partNumber: %d, offset: %d,"+
 							" currPartSize: %d, obsCode: %s, obsMessage: %s",
 						createUploadPartSignedUrlResp.SignedUrl,
-						sourceFile, partNumber, offset, currPartSize,
+						sourceFile, objectKey, partNumber, offset, currPartSize,
 						obsError.Code, obsError.Message)
 					return
 				} else {
@@ -522,9 +582,9 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 				}
 			}
 			obs.DoLog(obs.LEVEL_INFO, "obsClient.UploadPartWithSignedUrl success."+
-				" signedUrl: %s, sourceFile: %s, partNumber: %d,"+
+				" signedUrl: %s, sourceFile: %s, objectKey: %s, partNumber: %d,"+
 				" offset: %d, currPartSize: %d, ETag: %s",
-				createUploadPartSignedUrlResp.SignedUrl, sourceFile, partNumber,
+				createUploadPartSignedUrlResp.SignedUrl, sourceFile, objectKey, partNumber,
 				offset, currPartSize, strings.Trim(uploadPartInputOutput.ETag, "\""))
 			partChan <- XPart{
 				ETag:       strings.Trim(uploadPartInputOutput.ETag, "\""),
@@ -550,7 +610,7 @@ func (o *ObsAdapteeWithSignedUrl) uploadPartWithSignedUrl(
 	createCompleteMultipartUploadSignedUrlReq := new(CreateCompleteMultipartUploadSignedUrlReq)
 	createCompleteMultipartUploadSignedUrlReq.UploadId = uploadId
 	createCompleteMultipartUploadSignedUrlReq.TaskId = taskId
-	createCompleteMultipartUploadSignedUrlReq.Source = filepath.Base(sourceFile)
+	createCompleteMultipartUploadSignedUrlReq.Source = objectKey
 
 	err, createCompleteMultipartUploadSignedUrlResp :=
 		urchinService.CreateCompleteMultipartUploadSignedUrl(
@@ -618,7 +678,6 @@ func (o *ObsAdapteeWithSignedUrl) uploadFolder(
 
 	createNewFolderSignedUrlReq := new(CreateNewFolderSignedUrlReq)
 	createNewFolderSignedUrlReq.TaskId = taskId
-	createNewFolderSignedUrlReq.Source = filepath.Base(dirPath)
 
 	err, createNewFolderSignedUrlResp :=
 		urchinService.CreateNewFolderSignedUrl(
@@ -670,16 +729,22 @@ func (o *ObsAdapteeWithSignedUrl) uploadFolder(
 						obs.DoLog(obs.LEVEL_ERROR, "uploadFile failed. err: %v", err)
 					}
 				}()
-				err = o.uploadFile(urchinServiceAddr, filePath, taskId)
+				objectKey, err := filepath.Rel(dirPath, filePath)
 				if err != nil {
 					obs.DoLog(obs.LEVEL_ERROR,
-						"uploadFile failed. urchinServiceAddr: %s, path: %s, err: %v",
-						urchinServiceAddr, filePath, err)
+						"filepath.Rel failed. urchinServiceAddr: %s, dirPath: %s,"+
+							" filePath: %s, objectKey: %s, err: %v",
+						urchinServiceAddr, dirPath, filePath, objectKey, err)
+					return
+				}
+				err = o.uploadFile(urchinServiceAddr, filePath, objectKey, taskId)
+				if err != nil {
+					obs.DoLog(obs.LEVEL_ERROR,
+						"uploadFile failed."+
+							" urchinServiceAddr: %s, filePath: %s, objectKey: %s, err: %v",
+						urchinServiceAddr, filePath, objectKey, err)
 				}
 			}()
-			obs.DoLog(obs.LEVEL_INFO,
-				"uploadFile success. urchinServiceAddr: %s, filePath: %s",
-				urchinServiceAddr, filePath)
 		}
 		return nil
 	})
@@ -697,7 +762,7 @@ func (o *ObsAdapteeWithSignedUrl) uploadFolder(
 }
 
 func (o *ObsAdapteeWithSignedUrl) Download(
-	urchinServiceAddr, targetPath string, taskId int32) (err error) {
+	urchinServiceAddr, targetPath string, taskId int32, bucketName string) (err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:Download start."+
 		" urchinServiceAddr: %s, targetPath: %s, taskId: %d",
@@ -755,7 +820,11 @@ func (o *ObsAdapteeWithSignedUrl) Download(
 				wg.Done()
 			}()
 			_, err = o.downloadPartWithSignedUrl(
-				urchinServiceAddr, itemObject.Key, targetPath+itemObject.Key, taskId)
+				urchinServiceAddr,
+				bucketName,
+				itemObject.Key,
+				targetPath+itemObject.Key,
+				taskId)
 			if err != nil {
 				obs.DoLog(obs.LEVEL_ERROR,
 					"downloadPartWithSignedUrl failed."+
@@ -771,12 +840,33 @@ func (o *ObsAdapteeWithSignedUrl) Download(
 }
 
 func (o *ObsAdapteeWithSignedUrl) downloadPartWithSignedUrl(
-	urchinServiceAddr, objectKey, targetFile string,
+	urchinServiceAddr, bucketName, objectKey, targetFile string,
 	taskId int32) (output *obs.GetObjectMetadataOutput, err error) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadPartWithSignedUrl start."+
 		" urchinServiceAddr: %s, objectKey: %s, targetFile: %s, taskId: %d",
 		urchinServiceAddr, objectKey, targetFile, taskId)
+
+	if '/' == objectKey[len(objectKey)-1] {
+		parentDir := filepath.Dir(targetFile)
+		stat, err := os.Stat(parentDir)
+		if err != nil {
+			obs.DoLog(obs.LEVEL_DEBUG, "Failed to stat path. error: %v", err)
+			_err := os.MkdirAll(parentDir, os.ModePerm)
+			if _err != nil {
+				obs.DoLog(obs.LEVEL_ERROR, "Failed to make dir. error: %v", _err)
+				return output, _err
+			}
+			return output, nil
+		} else if !stat.IsDir() {
+			obs.DoLog(obs.LEVEL_ERROR,
+				"Cannot create folder: %s due to a same file exists.", parentDir)
+			return output,
+				fmt.Errorf("cannot create folder: %s due to a same file exists", parentDir)
+		} else {
+			return output, nil
+		}
+	}
 
 	downloadFileInput := new(obs.DownloadFileInput)
 	downloadFileInput.DownloadFile = targetFile
@@ -784,8 +874,8 @@ func (o *ObsAdapteeWithSignedUrl) downloadPartWithSignedUrl(
 	downloadFileInput.CheckpointFile = downloadFileInput.DownloadFile + ".downloadfile_record"
 	downloadFileInput.TaskNum = DefaultDownloadFileTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
-	downloadFileInput.Bucket = "zhangjiayuan-test"
-	downloadFileInput.Key = "bc63d925-98ff-4f0c-8d72-495534e981bd/test.zip"
+	downloadFileInput.Bucket = bucketName
+	downloadFileInput.Key = objectKey
 
 	output, err = o.resumeDownload(urchinServiceAddr, objectKey, taskId, downloadFileInput)
 
@@ -1007,20 +1097,36 @@ func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
 			input.EnableCheckpoint)
 
 		pool.ExecuteFunc(func() interface{} {
-			result := task.Run(urchinServiceAddr, objectKey, taskId)
-			err := handleDownloadTaskResult(
-				result,
-				dfc,
-				task.partNumber,
-				input.EnableCheckpoint,
-				input.CheckpointFile,
-				lock)
-			if err != nil && atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"handleDownloadTaskResult failed. err: %v", err)
-				downloadPartError.Store(err)
+			if 0 == dfc.ObjectInfo.Size {
+				lock.Lock()
+				defer lock.Unlock()
+				dfc.DownloadParts[task.partNumber-1].IsCompleted = true
+
+				if input.EnableCheckpoint {
+					err := updateCheckpointFile(dfc, input.CheckpointFile)
+					if err != nil {
+						obs.DoLog(obs.LEVEL_WARN,
+							"Failed to update checkpoint file. error: %v", err)
+						downloadPartError.Store(err)
+					}
+				}
+				return nil
+			} else {
+				result := task.Run(urchinServiceAddr, objectKey, taskId)
+				err := handleDownloadTaskResult(
+					result,
+					dfc,
+					task.partNumber,
+					input.EnableCheckpoint,
+					input.CheckpointFile,
+					lock)
+				if err != nil && atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
+					obs.DoLog(obs.LEVEL_ERROR,
+						"handleDownloadTaskResult failed. err: %v", err)
+					downloadPartError.Store(err)
+				}
+				return nil
 			}
-			return nil
 		})
 	}
 	pool.ShutDown()
@@ -1030,11 +1136,6 @@ func (o *ObsAdapteeWithSignedUrl) downloadFileConcurrent(
 	}
 	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:downloadFileConcurrent success.")
 	return nil
-}
-
-func (o *ObsAdapteeWithSignedUrl) Migrate() {
-	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:Migrate start.")
-	obs.DoLog(obs.LEVEL_DEBUG, "ObsAdapteeWithSignedUrl:Migrate finish.")
 }
 
 type DownloadCheckpoint struct {
@@ -1271,8 +1372,8 @@ func prepareTempFile(tempFileURL string, fileSize int64) error {
 		}
 	} else if !stat.IsDir() {
 		obs.DoLog(obs.LEVEL_ERROR,
-			"Cannot create folder [%s] due to a same file exists.", parentDir)
-		return fmt.Errorf("cannot create folder [%s] due to a same file exists", parentDir)
+			"Cannot create folder: %s due to a same file exists.", parentDir)
+		return fmt.Errorf("cannot create folder: %s due to a same file exists", parentDir)
 	}
 
 	err = createFile(tempFileURL, fileSize)
@@ -1410,18 +1511,19 @@ func updateDownloadFile(
 
 	fd, err := os.OpenFile(filePath, os.O_WRONLY, 0640)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Failed to open file [%s].", filePath)
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Failed to open file. filePath: %s, error: %v", filePath, err)
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil {
-			obs.DoLog(obs.LEVEL_WARN, "Failed to close file with error [%v].", errMsg)
+			obs.DoLog(obs.LEVEL_WARN, "Failed to close file. error: %v", errMsg)
 		}
 	}()
 	_, err = fd.Seek(rangeStart, 0)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Failed to seek file with error [%v].", err)
+		obs.DoLog(obs.LEVEL_ERROR, "Failed to seek file. error: %v", err)
 		return err
 	}
 	fileWriter := bufio.NewWriterSize(fd, 65536)

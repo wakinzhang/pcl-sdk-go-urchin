@@ -6,14 +6,18 @@ import (
 )
 
 var urchinServiceAddr = "https://127.0.0.1:39256"
-var sourcePath = "/Users/zhangjiayuan/Downloads/test/"
+var sourcePath = "/Users/zhangjiayuan/Downloads/source/"
 var targetPath = "/Users/zhangjiayuan/Downloads/target/"
-var objUuid = "bc63d925-98ff-4f0c-8d72-495534e981bd"
+var cachePath = "/Users/zhangjiayuan/Downloads/cache/"
+var objUuid = "01805ff7-8e1f-46ec-8d6f-f4f03bfd13e7"
+var sourceNodeId int32 = 1
+var targetNodeId int32 = 2
 
 func main() {
 	log := new(Log)
 	log.Init()
 
 	//Upload(urchinServiceAddr, sourcePath)
-	Download(urchinServiceAddr, targetPath, objUuid)
+	//Download(urchinServiceAddr, objUuid, targetPath)
+	Migrate(urchinServiceAddr, objUuid, &sourceNodeId, targetNodeId, cachePath)
 }

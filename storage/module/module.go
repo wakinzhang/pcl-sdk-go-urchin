@@ -38,7 +38,7 @@ type CreateNewFolderSignedUrlReq struct {
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"source"
-	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source"`
+	Source *string `protobuf:"bytes,2,opt,name=source,proto3,oneof" json:"source"`
 }
 
 type CreateGetObjectMetadataSignedUrlReq struct {
@@ -183,7 +183,9 @@ type DownloadObjectResp struct {
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"node_type"
-	NodeType int32 `protobuf:"varint,5,opt,name=node_type,proto3" json:"node_type"`
+	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	// @inject_tag: json:"bucket_name"
+	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
 }
 
 type MigrateObjectReq struct {
@@ -204,8 +206,16 @@ type MigrateObjectResp struct {
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
-	// @inject_tag: json:"node_type"
-	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	// @inject_tag: json:"source_node_type"
+	SourceNodeType int32 `protobuf:"varint,4,opt,name=source_node_type,proto3" json:"source_node_type"`
+	// @inject_tag: json:"source_bucket_name"
+	SourceBucketName string `protobuf:"bytes,5,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
+	// @inject_tag: json:"target_node_type"
+	TargetNodeType int32 `protobuf:"varint,6,opt,name=target_node_type,proto3" json:"target_node_type"`
+	// @inject_tag: json:"data_object_type"
+	DataObjectType int32 `protobuf:"varint,7,opt,name=data_object_type,proto3" json:"data_object_type"`
+	// @inject_tag: json:"location"
+	Location string `protobuf:"bytes,8,opt,name=location,proto3" json:"location"`
 }
 
 type FinishTaskReq struct {
