@@ -152,8 +152,8 @@ type DataObj struct {
 	Desc string `protobuf:"bytes,5,opt,name=desc,proto3" json:"desc" xorm:"TEXT comment('数据对象描述信息')"`
 	// @inject_tag: json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"
 	Size int32 `protobuf:"varint,6,opt,name=size,proto3" json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"`
-	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：正常状态；2：操作中；3：已删除')"
-	Status int32 `protobuf:"varint,7,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：正常状态；2：操作中；3：已删除')"`
+	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：正常状态；3：操作中；4：已删除；5：上传失败')"
+	Status int32 `protobuf:"varint,7,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：正常状态；3：操作中；4：已删除；5：上传失败')"`
 	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"
 	UserId string `protobuf:"bytes,8,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"`
 	// @inject_tag: json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"

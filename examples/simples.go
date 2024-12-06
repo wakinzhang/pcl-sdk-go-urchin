@@ -9,9 +9,9 @@ var urchinServiceAddr = "https://127.0.0.1:39256"
 var sourcePath = "/Users/zhangjiayuan/Downloads/source/"
 var targetPath = "/Users/zhangjiayuan/Downloads/target/"
 var cachePath = "/Users/zhangjiayuan/Downloads/cache/"
-var objUuid = "01805ff7-8e1f-46ec-8d6f-f4f03bfd13e7"
-var sourceNodeId int32 = 1
-var targetNodeId int32 = 2
+var objUuid = "6348513e-fbed-447d-8d4f-13b25173200e"
+var sourceNodeId int32 = 3
+var targetNodeId int32 = 1
 
 func main() {
 	log := new(Log)

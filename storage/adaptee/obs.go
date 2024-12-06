@@ -284,6 +284,43 @@ func (o *ObsAdapteeWithAuth) CreateListObjectsSignedUrl(
 	return output.SignedUrl, output.ActualSignedRequestHeaders, nil
 }
 
+func (o *ObsAdapteeWithAuth) ListObjects(
+	bucketName, prefix string, marker *string, maxKeys int) (
+	listObjectsOutput *obs.ListObjectsOutput, err error) {
+
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"ObsAdapteeWithAuth:ListObjects start."+
+			" bucketName: %s, prefix: %s, marker: %s, maxKeys: %d",
+		bucketName, prefix, *marker, maxKeys)
+
+	listObjectsInput := &obs.ListObjectsInput{}
+	listObjectsInput.Bucket = bucketName
+	listObjectsInput.Prefix = prefix
+	if nil != marker {
+		listObjectsInput.Marker = *marker
+	}
+	listObjectsInput.MaxKeys = maxKeys
+
+	listObjectsOutput = &obs.ListObjectsOutput{}
+
+	listObjectsOutput, err = o.obsClient.ListObjects(listObjectsInput)
+	if err != nil {
+		if obsError, ok := err.(obs.ObsError); ok {
+			obs.DoLog(obs.LEVEL_ERROR, "obsClient.ListObjects failed."+
+				" obsCode: %s, obsMessage: %s", obsError.Code, obsError.Message)
+			return listObjectsOutput, err
+		} else {
+			obs.DoLog(obs.LEVEL_ERROR, "obsClient.ListObjects failed. err: %v", err)
+			return listObjectsOutput, err
+		}
+	}
+
+	obs.DoLog(
+		obs.LEVEL_DEBUG,
+		"ObsAdapteeWithAuth:ListObjects finish.")
+	return listObjectsOutput, nil
+}
+
 type ObsAdapteeWithSignedUrl struct {
 	obsClient *obs.ObsClient
 }
