@@ -2,9 +2,9 @@ package adapter
 
 import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
-	. "pcl-sdk-go-urchin/storage/common"
-	. "pcl-sdk-go-urchin/storage/module"
-	. "pcl-sdk-go-urchin/storage/service"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 )
 
 func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {

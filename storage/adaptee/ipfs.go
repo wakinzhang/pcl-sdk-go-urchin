@@ -6,10 +6,10 @@ import (
 	"errors"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"github.com/urchinfs/go-urchin2-sdk/ipfs_api"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 	"os"
-	. "pcl-sdk-go-urchin/storage/common"
-	. "pcl-sdk-go-urchin/storage/module"
-	. "pcl-sdk-go-urchin/storage/service"
 )
 
 type IPFS struct {

@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"net"
 	"net/http"
-	. "pcl-sdk-go-urchin/storage/common"
-	. "pcl-sdk-go-urchin/storage/module"
 	"time"
 )
 

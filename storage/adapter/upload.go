@@ -2,11 +2,11 @@ package adapter
 
 import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 	"os"
 	"path/filepath"
-	. "pcl-sdk-go-urchin/storage/common"
-	. "pcl-sdk-go-urchin/storage/module"
-	. "pcl-sdk-go-urchin/storage/service"
 )
 
 func Upload(urchinServiceAddr, sourcePath string) (err error) {
