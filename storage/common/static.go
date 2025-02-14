@@ -12,19 +12,34 @@ const (
 	ConfigDefaultUrchinServiceCreateGetObjectMetadataSignedUrlInterface       = "/v1/object/auth/create_get_object_metadata_signed_url"
 	ConfigDefaultUrchinServiceCreateGetObjectSignedUrlInterface               = "/v1/object/auth/create_get_object_signed_url"
 	ConfigDefaultUrchinServiceCreateListObjectsSignedUrlInterface             = "/v1/object/auth/create_list_objects_signed_url"
+	ConfigDefaultUrchinServiceGetIpfsTokenInterface                           = "/v1/object/auth/get_ipfs_token"
 
-	ConfigDefaultUrchinServiceUploadObjectInterface   = "/v1/object/upload"
-	ConfigDefaultUrchinServiceDownloadObjectInterface = "/v1/object/download"
-	ConfigDefaultUrchinServiceMigrateObjectInterface  = "/v1/object/migrate"
-	ConfigDefaultUrchinServiceGetObjectInterface      = "/v1/object"
+	ConfigDefaultUrchinServiceUploadObjectInterface        = "/v1/object/upload"
+	ConfigDefaultUrchinServiceDownloadObjectInterface      = "/v1/object/download"
+	ConfigDefaultUrchinServiceMigrateObjectInterface       = "/v1/object/migrate"
+	ConfigDefaultUrchinServiceGetObjectInterface           = "/v1/object"
+	ConfigDefaultUrchinServicePutObjectDeploymentInterface = "/v1/object/deployment"
 
+	ConfigDefaultUrchinServiceGetTaskInterface    = "/v1/task/get"
 	ConfigDefaultUrchinServiceFinishTaskInterface = "/v1/task/finish"
 
 	DataObjectTypeEFile   = 1
 	DataObjectTypeEFolder = 2
 
 	TaskFResultESuccess = 1
+	TaskFResultEFailed  = 2
 
 	DefaultPartSize            = 100 * 1024 * 1024
+	DefaultUploadMultiNumber   = 5
 	DefaultDownloadFileTaskNum = 3
+
+	DefaultPageIndex = 1
+	DefaultPageSize  = 10
+
+	HttpMethodGet  = "GET"
+	HttpMethodPost = "Post"
+	HttpMethodPut  = "Put"
+
+	ChanResultSuccess = 0
+	ChanResultFailed  = -1
 )

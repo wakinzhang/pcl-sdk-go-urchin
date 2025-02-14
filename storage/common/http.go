@@ -61,17 +61,12 @@ func Get(url string, client *http.Client) (err error, respBody []byte) {
 	return nil, respBody
 }
 
-func GetWithBody(url string, reqBody []byte, client *http.Client) (err error, respBody []byte) {
+func Do(url, method string, reqBody []byte, client *http.Client) (err error, respBody []byte) {
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"Func: GetWithBody start. url: %s, reqBody: %s", url, string(reqBody))
 
-	request, _ := http.NewRequest(
-		"GET",
-		url,
-		strings.NewReader(string(reqBody)))
-
+	request, _ := http.NewRequest(method, url, strings.NewReader(string(reqBody)))
 	resp, err := client.Do(request)
-
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
 			"request failed. url: %s, reqBody: %s, error: %v",

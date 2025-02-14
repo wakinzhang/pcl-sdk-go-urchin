@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"net"
 	"net/http"
+	. "pcl-sdk-go-urchin/storage/common"
+	. "pcl-sdk-go-urchin/storage/module"
 	"time"
 )
 
@@ -67,8 +67,7 @@ func (u *UrchinService) CreateInitiateMultipartUploadSignedUrl(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
@@ -103,8 +102,7 @@ func (u *UrchinService) CreateUploadPartSignedUrl(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
@@ -141,8 +139,7 @@ func (u *UrchinService) CreateCompleteMultipartUploadSignedUrl(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
@@ -180,8 +177,7 @@ func (u *UrchinService) CreateNewFolderSignedUrl(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
@@ -219,8 +215,7 @@ func (u *UrchinService) CreateGetObjectMetadataSignedUrl(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
@@ -258,8 +253,7 @@ func (u *UrchinService) CreateGetObjectSignedUrl(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
@@ -296,8 +290,7 @@ func (u *UrchinService) CreateListObjectsSignedUrl(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
@@ -312,6 +305,40 @@ func (u *UrchinService) CreateListObjectsSignedUrl(
 	return nil, resp
 }
 
+func (u *UrchinService) GetIpfsToken(interf string, req *GetIpfsTokenReq) (
+	err error, resp *GetIpfsTokenResp) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetIpfsToken start.")
+
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "Marshal GetIpfsTokenReq failed. error: ", err)
+		return err, resp
+	}
+
+	resp = new(GetIpfsTokenResp)
+	err, respBody := Do(u.addr+interf, HttpMethodGet, reqBody, u.urchinClient)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "HttpDo failed. error: ", err)
+		return err, resp
+	}
+
+	err = json.Unmarshal(respBody, resp)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		obs.DoLog(obs.LEVEL_ERROR, "GetIpfsToken failed. errCode: %d, errMessage: %s",
+			resp.Code, resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetIpfsToken end.")
+	return nil, resp
+}
+
 func (u *UrchinService) UploadObject(
 	interf string,
 	req *UploadObjectReq) (err error, resp *UploadObjectResp) {
@@ -320,8 +347,7 @@ func (u *UrchinService) UploadObject(
 
 	reqBody, err := json.Marshal(req)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"Marshal UploadObjectReq failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "Marshal UploadObjectReq failed. error: ", err)
 		return err, resp
 	}
 
@@ -334,14 +360,12 @@ func (u *UrchinService) UploadObject(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UploadObject failed. errCode: %d, errMessage: %s",
+		obs.DoLog(obs.LEVEL_ERROR, "UploadObject failed. errCode: %d, errMessage: %s",
 			resp.Code, resp.Message)
 		return errors.New(resp.Message), resp
 	}
@@ -358,28 +382,25 @@ func (u *UrchinService) GetObject(
 
 	reqBody, err := json.Marshal(req)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"Marshal GetObjectReq failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "Marshal GetObjectReq failed. error: ", err)
 		return err, resp
 	}
 
 	resp = new(GetObjectResp)
-	err, respBody := GetWithBody(u.addr+interf, reqBody, u.urchinClient)
+	err, respBody := Do(u.addr+interf, HttpMethodGet, reqBody, u.urchinClient)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "GetWithBody failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "HttpDo failed. error: ", err)
 		return err, resp
 	}
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"GetObject failed. errCode: %d, errMessage: %s",
+		obs.DoLog(obs.LEVEL_ERROR, "GetObject failed. errCode: %d, errMessage: %s",
 			resp.Code, resp.Message)
 		return errors.New(resp.Message), resp
 	}
@@ -410,14 +431,12 @@ func (u *UrchinService) DownloadObject(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"DownloadObject failed. errCode: %d, errMessage: %s",
+		obs.DoLog(obs.LEVEL_ERROR, "DownloadObject failed. errCode: %d, errMessage: %s",
 			resp.Code, resp.Message)
 		return errors.New(resp.Message), resp
 	}
@@ -434,8 +453,7 @@ func (u *UrchinService) MigrateObject(
 
 	reqBody, err := json.Marshal(req)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"Marshal MigrateObjectReq failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "Marshal MigrateObjectReq failed. error: ", err)
 		return err, resp
 	}
 
@@ -448,19 +466,87 @@ func (u *UrchinService) MigrateObject(
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"MigrateObject failed. errCode: %d, errMessage: %s",
+		obs.DoLog(obs.LEVEL_ERROR, "MigrateObject failed. errCode: %d, errMessage: %s",
 			resp.Code, resp.Message)
 		return errors.New(resp.Message), resp
 	}
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: MigrateObject end.")
+	return nil, resp
+}
+
+func (u *UrchinService) PutObjectDeployment(interf string, req *PutObjectDeploymentReq) (
+	err error, resp *BaseResp) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: PutObjectDeployment start.")
+
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Marshal PutObjectDeploymentReq failed. error: ", err)
+		return err, resp
+	}
+
+	resp = new(BaseResp)
+	err, respBody := Do(u.addr+interf, HttpMethodPut, reqBody, u.urchinClient)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "HttpDo failed. error: ", err)
+		return err, resp
+	}
+
+	err = json.Unmarshal(respBody, resp)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"PutObjectDeployment failed. errCode: %d, errMessage: %s",
+			resp.Code, resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: PutObjectDeployment end.")
+	return nil, resp
+}
+
+func (u *UrchinService) GetTask(interf string, req *GetTaskReq) (
+	err error, resp *GetTaskResp) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetTask start.")
+
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "Marshal GetTaskReq failed. error: ", err)
+		return err, resp
+	}
+
+	resp = new(GetTaskResp)
+	err, respBody := Do(u.addr+interf, HttpMethodGet, reqBody, u.urchinClient)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "HttpDo failed. error: ", err)
+		return err, resp
+	}
+
+	err = json.Unmarshal(respBody, resp)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		obs.DoLog(obs.LEVEL_ERROR, "GetTask failed. errCode: %d, errMessage: %s",
+			resp.Code, resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetTask end.")
 	return nil, resp
 }
 
@@ -471,8 +557,7 @@ func (u *UrchinService) FinishTask(interf string, req *FinishTaskReq) (
 
 	reqBody, err := json.Marshal(req)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"Marshal FinishTaskReq failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "Marshal FinishTaskReq failed. error: ", err)
 		return err, resp
 	}
 
@@ -485,14 +570,12 @@ func (u *UrchinService) FinishTask(interf string, req *FinishTaskReq) (
 
 	err = json.Unmarshal(respBody, resp)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"json.Unmarshal failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"FinishTask failed. errCode: %d, errMessage: %s",
+		obs.DoLog(obs.LEVEL_ERROR, "FinishTask failed. errCode: %d, errMessage: %s",
 			resp.Code, resp.Message)
 		return errors.New(resp.Message), resp
 	}

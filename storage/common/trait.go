@@ -19,6 +19,7 @@ type XPart struct {
 	XMLName    xml.Name `xml:"Part"`
 	PartNumber int      `xml:"PartNumber"`
 	ETag       string   `xml:"ETag"`
+	Result     int      `xml:"Result"`
 }
 
 func (parts PartSlice) Len() int {

@@ -2,9 +2,10 @@ package adapter
 
 import (
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
+	"os"
+	. "pcl-sdk-go-urchin/storage/common"
+	. "pcl-sdk-go-urchin/storage/module"
+	. "pcl-sdk-go-urchin/storage/service"
 )
 
 func Migrate(
@@ -37,6 +38,29 @@ func Migrate(
 		return err
 	}
 
+	defer func() {
+		_err := os.RemoveAll(cachePath + "/" + objUuid)
+		if _err == nil {
+			obs.DoLog(obs.LEVEL_ERROR, "remove local cache failed. error: %v", _err)
+		}
+
+		finishTaskReq := new(FinishTaskReq)
+		finishTaskReq.TaskId = migrateObjectResp.TaskId
+		if err != nil {
+			finishTaskReq.Result = TaskFResultEFailed
+		} else {
+			finishTaskReq.Result = TaskFResultESuccess
+		}
+		_err, _ = urchinService.FinishTask(
+			ConfigDefaultUrchinServiceFinishTaskInterface,
+			finishTaskReq)
+		if nil != _err {
+			obs.DoLog(obs.LEVEL_ERROR, "UrchinService.FinishTask failed."+
+				" interface: %s, error: %v",
+				ConfigDefaultUrchinServiceFinishTaskInterface, _err)
+		}
+	}()
+
 	err, sourceStorage := NewStorage(migrateObjectResp.SourceNodeType)
 	if nil != err {
 		obs.DoLog(obs.LEVEL_ERROR, "NewStorage failed. error: %v", err)
@@ -63,21 +87,8 @@ func Migrate(
 		cachePath+"/"+migrateObjectResp.Location,
 		migrateObjectResp.TaskId)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "migrateObjectResp.Upload failed. error: %v", err)
-		return err
-	}
-
-	finishTaskReq := new(FinishTaskReq)
-	finishTaskReq.TaskId = migrateObjectResp.TaskId
-	finishTaskReq.Result = TaskFResultESuccess
-	err, _ = urchinService.FinishTask(
-		ConfigDefaultUrchinServiceFinishTaskInterface,
-		finishTaskReq)
-	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "UrchinService.FinishTask failed."+
-			" interface: %s, error: %v",
-			ConfigDefaultUrchinServiceFinishTaskInterface, err)
-		return err
+		obs.DoLog(obs.LEVEL_ERROR, "targetStorage.Upload failed. error: %v", err)
+		return
 	}
 	return nil
 }
