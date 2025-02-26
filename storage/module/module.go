@@ -130,6 +130,76 @@ type UploadObjectResp struct {
 	NodeName string `protobuf:"bytes,5,opt,name=node_name,proto3" json:"node_name"`
 }
 
+type UploadFileReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+	// @inject_tag: json:"size"
+	Size *int32 `protobuf:"varint,4,opt,name=size,proto3,oneof" json:"size"`
+}
+
+type UploadFileTaskParams struct {
+	// @inject_tag: json:"request"
+	Request *UploadFileReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
+	// @inject_tag: json:"node_id"
+	NodeId int32 `protobuf:"varint,3,opt,name=node_id,proto3" json:"node_id"`
+	// @inject_tag: json:"node_name"
+	NodeName string `protobuf:"bytes,4,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"location"
+	Location string `protobuf:"bytes,5,opt,name=location,proto3" json:"location"`
+}
+
+type UploadFileResp struct {
+	// @inject_tag: json:"code"
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	// @inject_tag: json:"message"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"node_type"
+	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	// @inject_tag: json:"node_name"
+	NodeName string `protobuf:"bytes,5,opt,name=node_name,proto3" json:"node_name"`
+}
+
+type DownloadFileReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+	// @inject_tag: json:"node_name"
+	NodeName *string `protobuf:"bytes,4,opt,name=node_name,proto3,oneof" json:"node_name"`
+}
+
+type DownloadFileTaskParams struct {
+	// @inject_tag: json:"request"
+	Request *DownloadFileReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
+	// @inject_tag: json:"node_id"
+	NodeId int32 `protobuf:"varint,2,opt,name=node_id,proto3" json:"node_id"`
+	// @inject_tag: json:"node_name"
+	NodeName string `protobuf:"bytes,3,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"location"
+	Location string `protobuf:"bytes,4,opt,name=location,proto3" json:"location"`
+}
+
+type DownloadFileResp struct {
+	// @inject_tag: json:"code"
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	// @inject_tag: json:"message"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"node_type"
+	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	// @inject_tag: json:"bucket_name"
+	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
+}
+
 type GetObjectReq struct {
 	// @inject_tag: json:"user_id"
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`

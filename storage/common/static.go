@@ -5,23 +5,26 @@ const (
 	StorageCategoryEObs   = 2
 	StorageCategoryEMinio = 3
 
-	ConfigDefaultUrchinServiceCreateInitiateMultipartUploadSignedUrlInterface = "/v1/object/auth/create_init_multi_part_upload_signed_url"
-	ConfigDefaultUrchinServiceCreateUploadPartSignedUrlInterface              = "/v1/object/auth/create_upload_part_signed_url"
-	ConfigDefaultUrchinServiceCreateCompleteMultipartUploadSignedUrlInterface = "/v1/object/auth/create_complete_multi_part_upload_signed_url"
-	ConfigDefaultUrchinServiceCreateNewFolderSignedUrlInterface               = "/v1/object/auth/create_new_folder_signed_url"
-	ConfigDefaultUrchinServiceCreateGetObjectMetadataSignedUrlInterface       = "/v1/object/auth/create_get_object_metadata_signed_url"
-	ConfigDefaultUrchinServiceCreateGetObjectSignedUrlInterface               = "/v1/object/auth/create_get_object_signed_url"
-	ConfigDefaultUrchinServiceCreateListObjectsSignedUrlInterface             = "/v1/object/auth/create_list_objects_signed_url"
-	ConfigDefaultUrchinServiceGetIpfsTokenInterface                           = "/v1/object/auth/get_ipfs_token"
+	UrchinServiceCreateInitiateMultipartUploadSignedUrlInterface = "/v1/object/auth/create_init_multi_part_upload_signed_url"
+	UrchinServiceCreateUploadPartSignedUrlInterface              = "/v1/object/auth/create_upload_part_signed_url"
+	UrchinServiceCreateCompleteMultipartUploadSignedUrlInterface = "/v1/object/auth/create_complete_multi_part_upload_signed_url"
+	UrchinServiceCreateNewFolderSignedUrlInterface               = "/v1/object/auth/create_new_folder_signed_url"
+	UrchinServiceCreateGetObjectMetadataSignedUrlInterface       = "/v1/object/auth/create_get_object_metadata_signed_url"
+	UrchinServiceCreateGetObjectSignedUrlInterface               = "/v1/object/auth/create_get_object_signed_url"
+	UrchinServiceCreateListObjectsSignedUrlInterface             = "/v1/object/auth/create_list_objects_signed_url"
+	UrchinServiceGetIpfsTokenInterface                           = "/v1/object/auth/get_ipfs_token"
 
-	ConfigDefaultUrchinServiceUploadObjectInterface        = "/v1/object/upload"
-	ConfigDefaultUrchinServiceDownloadObjectInterface      = "/v1/object/download"
-	ConfigDefaultUrchinServiceMigrateObjectInterface       = "/v1/object/migrate"
-	ConfigDefaultUrchinServiceGetObjectInterface           = "/v1/object"
-	ConfigDefaultUrchinServicePutObjectDeploymentInterface = "/v1/object/deployment"
+	UrchinServiceUploadObjectInterface        = "/v1/object/upload"
+	UrchinServiceDownloadObjectInterface      = "/v1/object/download"
+	UrchinServiceMigrateObjectInterface       = "/v1/object/migrate"
+	UrchinServiceGetObjectInterface           = "/v1/object"
+	UrchinServicePutObjectDeploymentInterface = "/v1/object/deployment"
 
-	ConfigDefaultUrchinServiceGetTaskInterface    = "/v1/task/get"
-	ConfigDefaultUrchinServiceFinishTaskInterface = "/v1/task/finish"
+	UrchinServiceUploadFileInterface   = "/v1/object/file/upload"
+	UrchinServiceDownloadFileInterface = "/v1/object/file/download"
+
+	UrchinServiceGetTaskInterface    = "/v1/task/get"
+	UrchinServiceFinishTaskInterface = "/v1/task/finish"
 
 	DataObjectTypeEFile   = 1
 	DataObjectTypeEFolder = 2
@@ -42,4 +45,11 @@ const (
 
 	ChanResultSuccess = 0
 	ChanResultFailed  = -1
+
+	TaskTypeUpload       = 1
+	TaskTypeDownload     = 2
+	TaskTypeMigrate      = 3
+	TaskTypeCopy         = 4
+	TaskTypeUploadFile   = 5
+	TaskTypeDownloadFile = 6
 )

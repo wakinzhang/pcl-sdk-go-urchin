@@ -34,13 +34,10 @@ func Upload(urchinServiceAddr, sourcePath string) (err error) {
 	}
 	uploadObjectReq.Source = filepath.Base(sourcePath)
 
-	err, uploadObjectResp := urchinService.UploadObject(
-		ConfigDefaultUrchinServiceUploadObjectInterface,
-		uploadObjectReq)
+	err, uploadObjectResp := urchinService.UploadObject(uploadObjectReq)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "UrchinService.UploadObject failed."+
-			" interface: %s, error: %v",
-			ConfigDefaultUrchinServiceUploadObjectInterface, err)
+		obs.DoLog(obs.LEVEL_ERROR,
+			"UrchinService.UploadObject failed. error: %v", err)
 		return err
 	}
 
@@ -52,13 +49,10 @@ func Upload(urchinServiceAddr, sourcePath string) (err error) {
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		_err, _ := urchinService.FinishTask(
-			ConfigDefaultUrchinServiceFinishTaskInterface,
-			finishTaskReq)
+		_err, _ := urchinService.FinishTask(finishTaskReq)
 		if nil != _err {
-			obs.DoLog(obs.LEVEL_ERROR, "UrchinService.FinishTask failed."+
-				" interface: %s, error: %v",
-				ConfigDefaultUrchinServiceFinishTaskInterface, _err)
+			obs.DoLog(obs.LEVEL_ERROR,
+				"UrchinService.FinishTask failed. error: %v", _err)
 		}
 	}()
 

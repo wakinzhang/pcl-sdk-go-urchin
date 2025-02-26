@@ -30,32 +30,65 @@ func (o *IPFS) Upload(
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
 
-	err, getTaskResp := urchinService.GetTask(
-		ConfigDefaultUrchinServiceGetTaskInterface,
-		getTaskReq)
+	err, getTaskResp := urchinService.GetTask(getTaskReq)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "GetTask failed. err: %v", err)
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		obs.DoLog(obs.LEVEL_ERROR, "task invalid. taskId: %d", taskId)
-		return errors.New("task invalid")
+		obs.DoLog(obs.LEVEL_ERROR, "task not exist. taskId: %d", taskId)
+		return errors.New("task not exist")
 	}
+	if TaskTypeUpload == getTaskResp.Data.List[0].Task.Type {
+		err = o.uploadObject(
+			urchinServiceAddr,
+			sourcePath,
+			getTaskResp.Data.List[0].Task)
+		if err != nil {
+			obs.DoLog(obs.LEVEL_ERROR, "IPFS:uploadObject failed. err: %v", err)
+			return err
+		}
+	} else if TaskTypeUploadFile == getTaskResp.Data.List[0].Task.Type {
+		err = o.uploadFile(
+			urchinServiceAddr,
+			sourcePath,
+			getTaskResp.Data.List[0].Task)
+		if err != nil {
+			obs.DoLog(obs.LEVEL_ERROR, "IPFS:uploadFile failed. err: %v", err)
+			return err
+		}
+	} else {
+		obs.DoLog(obs.LEVEL_ERROR, "task type invalid. taskId: %d", taskId)
+		return errors.New("task type invalid")
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:Upload finish.")
+	return err
+}
+
+func (o *IPFS) uploadObject(
+	urchinServiceAddr, sourcePath string, task *Task) (err error) {
+
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"IPFS:uploadObject start. urchinServiceAddr: %s, sourcePath: %s",
+		urchinServiceAddr, sourcePath)
+
+	urchinService := new(UrchinService)
+	urchinService.Init(urchinServiceAddr, 10, 10)
+
 	taskParams := new(UploadObjectTaskParams)
-	err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
+	err = json.Unmarshal([]byte(task.Params), taskParams)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
-			"UploadObjectTaskParams Unmarshal failed. params: %s, error:",
-			getTaskResp.Data.List[0].Task.Params, err)
+			"UploadObjectTaskParams Unmarshal failed. params: %s, error: %v",
+			task.Params, err)
 		return err
 	}
 
 	getIpfsTokenReq := new(GetIpfsTokenReq)
 	getIpfsTokenReq.NodeName = taskParams.NodeName
 
-	err, getIpfsTokenResp := urchinService.GetIpfsToken(
-		ConfigDefaultUrchinServiceGetIpfsTokenInterface,
-		getIpfsTokenReq)
+	err, getIpfsTokenResp := urchinService.GetIpfsToken(getIpfsTokenReq)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "GetIpfsToken failed. err: %v", err)
 		return err
@@ -76,8 +109,8 @@ func (o *IPFS) Upload(
 			cid, _err := ipfsClient.AddDir(context.Background(), sourcePath)
 			if _err != nil {
 				obs.DoLog(obs.LEVEL_ERROR,
-					"IPFS.AddDir failed. sourcePath: %s, taskId: %d, err: %v",
-					sourcePath, taskId, _err)
+					"IPFS.AddDir failed. sourcePath: %s, err: %v",
+					sourcePath, _err)
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
@@ -87,10 +120,9 @@ func (o *IPFS) Upload(
 		} else {
 			cid, _err := ipfsClient.Add(context.Background(), sourcePath)
 			if _err != nil {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"IPFS.Add failed. urchinServiceAddr: %s, sourcePath: %s,"+
-						" taskId: %d, err: %v",
-					urchinServiceAddr, sourcePath, taskId, _err)
+				obs.DoLog(obs.LEVEL_ERROR, "IPFS.Add failed."+
+					" urchinServiceAddr: %s, sourcePath: %s, err: %v",
+					urchinServiceAddr, sourcePath, _err)
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
@@ -106,9 +138,8 @@ func (o *IPFS) Upload(
 			break
 		}
 		if ChanResultFailed == uploadResult.Result {
-			obs.DoLog(obs.LEVEL_ERROR, "IPFS:Upload failed."+
-				" urchinServiceAddr: %s, sourcePath: %s, taskId: %d",
-				urchinServiceAddr, sourcePath, taskId)
+			obs.DoLog(obs.LEVEL_ERROR, "IPFS:uploadObject failed."+
+				" urchinServiceAddr: %s, sourcePath: %s", urchinServiceAddr, sourcePath)
 			return errors.New("IPFS:Upload failed")
 		}
 		location = uploadResult.CId
@@ -119,15 +150,36 @@ func (o *IPFS) Upload(
 	putObjectDeploymentReq.NodeName = taskParams.NodeName
 	putObjectDeploymentReq.Location = &location
 
-	err, _ = urchinService.PutObjectDeployment(
-		ConfigDefaultUrchinServicePutObjectDeploymentInterface,
-		putObjectDeploymentReq)
+	err, _ = urchinService.PutObjectDeployment(putObjectDeploymentReq)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "PutObjectDeployment failed. err: %v", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:Upload finish.")
+	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:uploadObject finish.")
+	return nil
+}
+
+func (o *IPFS) uploadFile(
+	urchinServiceAddr, sourcePath string, task *Task) (err error) {
+
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"IPFS:uploadFile start. urchinServiceAddr: %s, sourcePath: %s",
+		urchinServiceAddr, sourcePath)
+
+	urchinService := new(UrchinService)
+	urchinService.Init(urchinServiceAddr, 10, 10)
+
+	taskParams := new(UploadFileTaskParams)
+	err = json.Unmarshal([]byte(task.Params), taskParams)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"UploadFileTaskParams Unmarshal failed. params: %s, error: %v",
+			task.Params, err)
+		return err
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:uploadFile finish.")
 	return nil
 }
 
@@ -148,9 +200,7 @@ func (o *IPFS) Download(
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
 
-	err, getTaskResp := urchinService.GetTask(
-		ConfigDefaultUrchinServiceGetTaskInterface,
-		getTaskReq)
+	err, getTaskResp := urchinService.GetTask(getTaskReq)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "GetTask failed. err: %v", err)
 		return err
@@ -159,20 +209,39 @@ func (o *IPFS) Download(
 		obs.DoLog(obs.LEVEL_ERROR, "task invalid. taskId: %d", taskId)
 		return errors.New("task invalid")
 	}
-	taskParams := new(DownloadObjectTaskParams)
-	err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "DownloadObjectTaskParams Unmarshal failed."+
-			" params: %s, error:", getTaskResp.Data.List[0].Task.Params, err)
-		return err
+	var nodeName, hash string
+	if TaskTypeDownload == getTaskResp.Data.List[0].Task.Type {
+		taskParams := new(DownloadObjectTaskParams)
+		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
+		if err != nil {
+			obs.DoLog(obs.LEVEL_ERROR,
+				"DownloadObjectTaskParams Unmarshal failed."+
+					" params: %s, error: %v",
+				getTaskResp.Data.List[0].Task.Params, err)
+			return err
+		}
+		nodeName = taskParams.NodeName
+		hash = taskParams.Location
+	} else if TaskTypeDownloadFile == getTaskResp.Data.List[0].Task.Type {
+		taskParams := new(DownloadFileTaskParams)
+		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
+		if err != nil {
+			obs.DoLog(obs.LEVEL_ERROR,
+				"DownloadFileTaskParams Unmarshal failed."+
+					" params: %s, error: %v",
+				getTaskResp.Data.List[0].Task.Params, err)
+			return err
+		}
+		nodeName = taskParams.NodeName
+		hash = taskParams.Location + taskParams.Request.Source
+	} else {
+		obs.DoLog(obs.LEVEL_ERROR, "task type invalid. taskId: %d", taskId)
+		return errors.New("task type invalid")
 	}
-
 	getIpfsTokenReq := new(GetIpfsTokenReq)
-	getIpfsTokenReq.NodeName = taskParams.NodeName
+	getIpfsTokenReq.NodeName = nodeName
 
-	err, getIpfsTokenResp := urchinService.GetIpfsToken(
-		ConfigDefaultUrchinServiceGetIpfsTokenInterface,
-		getIpfsTokenReq)
+	err, getIpfsTokenResp := urchinService.GetIpfsToken(getIpfsTokenReq)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "GetIpfsToken failed. err: %v", err)
 		return err
@@ -180,11 +249,11 @@ func (o *IPFS) Download(
 	ipfsClient := ipfs_api.NewClient(getIpfsTokenResp.Url, getIpfsTokenResp.Token)
 	ch := make(chan XIpfsDownload)
 	go func() {
-		_err := ipfsClient.Get(taskParams.Location, targetPath)
+		_err := ipfsClient.Get(hash, targetPath)
 		if _err != nil {
 			obs.DoLog(obs.LEVEL_ERROR,
-				"IPFS.Get failed. CId: %s, targetPath: %s, err: %v",
-				taskParams.Location, targetPath, _err)
+				"IPFS.Get failed. hash: %s, targetPath: %s, err: %v",
+				hash, targetPath, _err)
 			ch <- XIpfsDownload{
 				Result: ChanResultFailed}
 		}

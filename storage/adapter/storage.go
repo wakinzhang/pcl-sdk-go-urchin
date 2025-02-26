@@ -9,7 +9,7 @@ import (
 
 type Storage interface {
 	Upload(urchinServiceAddr, sourcePath string, taskId int32) error
-	Download(urchinServiceAddr, targetFile string, taskId int32, bucketName string) error
+	Download(urchinServiceAddr, targetPath string, taskId int32, bucketName string) error
 }
 
 func NewStorage(nodeType int32) (err error, storage Storage) {

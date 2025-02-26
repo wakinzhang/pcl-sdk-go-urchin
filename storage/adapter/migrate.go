@@ -28,13 +28,10 @@ func Migrate(
 	}
 	migrateObjectReq.TargetNodeId = targetNodeId
 
-	err, migrateObjectResp := urchinService.MigrateObject(
-		ConfigDefaultUrchinServiceMigrateObjectInterface,
-		migrateObjectReq)
+	err, migrateObjectResp := urchinService.MigrateObject(migrateObjectReq)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "UrchinService.MigrateObject failed."+
-			" interface: %s, error: %v",
-			ConfigDefaultUrchinServiceMigrateObjectInterface, err)
+		obs.DoLog(obs.LEVEL_ERROR,
+			"UrchinService.MigrateObject failed. error: %v", err)
 		return err
 	}
 
@@ -51,13 +48,10 @@ func Migrate(
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		_err, _ = urchinService.FinishTask(
-			ConfigDefaultUrchinServiceFinishTaskInterface,
-			finishTaskReq)
+		_err, _ = urchinService.FinishTask(finishTaskReq)
 		if nil != _err {
-			obs.DoLog(obs.LEVEL_ERROR, "UrchinService.FinishTask failed."+
-				" interface: %s, error: %v",
-				ConfigDefaultUrchinServiceFinishTaskInterface, _err)
+			obs.DoLog(obs.LEVEL_ERROR,
+				"UrchinService.FinishTask failed. error: %v", _err)
 		}
 	}()
 
