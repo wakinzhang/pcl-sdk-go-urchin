@@ -8,7 +8,11 @@ import (
 	"strings"
 )
 
-func Post(url string, reqBody []byte, client *http.Client) (err error, respBody []byte) {
+func Post(
+	url string,
+	reqBody []byte,
+	client *http.Client) (err error, respBody []byte) {
+
 	obs.DoLog(obs.LEVEL_DEBUG,
 		"Func: Post start. url: %s, reqBody: %s", url, string(reqBody))
 
@@ -61,11 +65,18 @@ func Get(url string, client *http.Client) (err error, respBody []byte) {
 	return nil, respBody
 }
 
-func Do(url, method string, reqBody []byte, client *http.Client) (err error, respBody []byte) {
+func Do(
+	url,
+	method string,
+	header http.Header,
+	reqBody []byte,
+	client *http.Client) (err error, respBody []byte) {
+
 	obs.DoLog(obs.LEVEL_DEBUG,
-		"Func: GetWithBody start. url: %s, reqBody: %s", url, string(reqBody))
+		"Func: http:Do start. url: %s, reqBody: %s", url, string(reqBody))
 
 	request, _ := http.NewRequest(method, url, strings.NewReader(string(reqBody)))
+	request.Header = header
 	resp, err := client.Do(request)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR,
@@ -85,6 +96,6 @@ func Do(url, method string, reqBody []byte, client *http.Client) (err error, res
 		obs.DoLog(obs.LEVEL_ERROR, "response failed. url: %s, error: %v", url, err)
 		return err, respBody
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetWithBody end. respBody: %s", string(respBody))
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: http:Do end. respBody: %s", string(respBody))
 	return nil, respBody
 }

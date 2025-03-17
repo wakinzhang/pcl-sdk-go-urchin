@@ -1,6 +1,7 @@
 package adapter
 
 import (
+	"fmt"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
@@ -17,8 +18,9 @@ func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {
 	urchinService.Init(urchinServiceAddr, 10, 10)
 
 	downloadObjectReq := new(DownloadObjectReq)
-	downloadObjectReq.UserId = "wakinzhang"
+	downloadObjectReq.UserId = "vg3yHwUa"
 	downloadObjectReq.ObjUuid = objUuid
+	downloadObjectReq.TargetLocalPath = targetPath
 
 	err, downloadObjectResp := urchinService.DownloadObject(downloadObjectReq)
 	if nil != err {
@@ -27,22 +29,50 @@ func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {
 		return err
 	}
 
+	fmt.Printf("Download TaskId: %d\n", downloadObjectResp.TaskId)
+
+	err = ProcessDownload(
+		urchinServiceAddr,
+		targetPath,
+		downloadObjectResp.BucketName,
+		downloadObjectResp.TaskId,
+		downloadObjectResp.NodeType)
+	if nil != err {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"ProcessDownload failed. error: %v", err)
+		return err
+	}
+	obs.DoLog(obs.LEVEL_DEBUG, "Download success.")
+	return err
+}
+
+func ProcessDownload(
+	urchinServiceAddr, targetPath, bucketName string,
+	taskId, nodeType int32) (err error) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "ProcessDownload start."+
+		" urchinServiceAddr: %s targetPath: %s, bucketName: %s, taskId: %d, nodeType: %d",
+		urchinServiceAddr, targetPath, bucketName, taskId, nodeType)
+
+	urchinService := new(UrchinService)
+	urchinService.Init(urchinServiceAddr, 10, 10)
+
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
-		finishTaskReq.TaskId = downloadObjectResp.TaskId
+		finishTaskReq.TaskId = taskId
 		if err != nil {
 			finishTaskReq.Result = TaskFResultEFailed
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		_err, _ := urchinService.FinishTask(finishTaskReq)
-		if nil != _err {
+		err, _ = urchinService.FinishTask(finishTaskReq)
+		if nil != err {
 			obs.DoLog(obs.LEVEL_ERROR,
-				"UrchinService.FinishTask failed. error: %v", _err)
+				"UrchinService.FinishTask failed. error: %v", err)
 		}
 	}()
 
-	err, storage := NewStorage(downloadObjectResp.NodeType)
+	err, storage := NewStorage(nodeType)
 	if nil != err {
 		obs.DoLog(obs.LEVEL_ERROR, "NewStorage failed. error: %v", err)
 		return err
@@ -50,14 +80,14 @@ func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {
 	err = storage.Download(
 		urchinServiceAddr,
 		targetPath,
-		downloadObjectResp.TaskId,
-		downloadObjectResp.BucketName)
+		taskId,
+		bucketName)
 
 	if nil != err {
 		obs.DoLog(obs.LEVEL_ERROR, "storage.Download failed. error: %v", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "Download success.")
+	obs.DoLog(obs.LEVEL_DEBUG, "ProcessDownload success.")
 	return nil
 }

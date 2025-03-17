@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"github.com/google/go-querystring/query"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
@@ -15,9 +16,14 @@ import (
 type UrchinService struct {
 	addr         string
 	urchinClient *http.Client
+	header       http.Header
 }
 
-func (u *UrchinService) Init(address string, reqTimeout int64, maxConnection int) {
+func (u *UrchinService) Init(
+	address string,
+	reqTimeout int64,
+	maxConnection int) {
+
 	obs.DoLog(obs.LEVEL_DEBUG, "Function UrchinService:Init start.")
 
 	u.addr = address
@@ -41,6 +47,12 @@ func (u *UrchinService) Init(address string, reqTimeout int64, maxConnection int
 		Transport: transport,
 	}
 
+	userId := "test"
+	token := "test"
+	u.header = make(http.Header)
+	u.header.Add(UrchinServiceHeaderUserId, userId)
+	u.header.Add(UrchinServiceHeaderToken, token)
+
 	obs.DoLog(obs.LEVEL_DEBUG, "Function UrchinService:Init finish.")
 }
 
@@ -62,8 +74,10 @@ func (u *UrchinService) CreateInitiateMultipartUploadSignedUrl(
 	}
 
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceCreateInitiateMultipartUploadSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody, u.urchinClient)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "Post failed. error: ", err)
@@ -100,8 +114,10 @@ func (u *UrchinService) CreateUploadPartSignedUrl(req *CreateUploadPartSignedUrl
 		return err, resp
 	}
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceCreateUploadPartSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -142,8 +158,10 @@ func (u *UrchinService) CreateCompleteMultipartUploadSignedUrl(
 	}
 
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceCreateCompleteMultipartUploadSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -169,6 +187,51 @@ func (u *UrchinService) CreateCompleteMultipartUploadSignedUrl(
 	return nil, resp
 }
 
+func (u *UrchinService) CreateAbortMultipartUploadSignedUrl(
+	req *CreateAbortMultipartUploadSignedUrlReq) (
+	err error, resp *CreateSignedUrlResp) {
+
+	obs.DoLog(obs.LEVEL_DEBUG,
+		"Func: CreateAbortMultipartUploadSignedUrl start.")
+
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"Marshal CreateAbortMultipartUploadSignedUrlReq failed."+
+				" error: ", err)
+		return err, resp
+	}
+
+	resp = new(CreateSignedUrlResp)
+	err, respBody := Do(
+		u.addr+UrchinServiceCreateAbortMultipartUploadSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
+		reqBody,
+		u.urchinClient)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "Post failed. error: ", err)
+		return err, resp
+	}
+
+	err = json.Unmarshal(respBody, resp)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"CreateAbortMultipartUploadSignedUrl failed."+
+				" errCode: %d, errMessage: %s",
+			resp.Code, resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: CreateAbortMultipartUploadSignedUrl end.")
+	return nil, resp
+}
+
 func (u *UrchinService) CreateNewFolderSignedUrl(req *CreateNewFolderSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
@@ -184,8 +247,10 @@ func (u *UrchinService) CreateNewFolderSignedUrl(req *CreateNewFolderSignedUrlRe
 	}
 
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceCreateNewFolderSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -226,8 +291,10 @@ func (u *UrchinService) CreateGetObjectMetadataSignedUrl(
 	}
 
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceCreateGetObjectMetadataSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -268,8 +335,10 @@ func (u *UrchinService) CreateGetObjectSignedUrl(req *CreateGetObjectSignedUrlRe
 	}
 
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceCreateGetObjectSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -307,8 +376,10 @@ func (u *UrchinService) CreateListObjectsSignedUrl(req *CreateListObjectsSignedU
 	}
 
 	resp = new(CreateSignedUrlResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceCreateListObjectsSignedUrlInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -337,18 +408,17 @@ func (u *UrchinService) GetIpfsToken(req *GetIpfsTokenReq) (
 	err error, resp *GetIpfsTokenResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetIpfsToken start.")
-
-	reqBody, err := json.Marshal(req)
+	values, err := query.Values(req)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Marshal GetIpfsTokenReq failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "query.Values failed. error: ", err)
 		return err, resp
 	}
-
 	resp = new(GetIpfsTokenResp)
 	err, respBody := Do(
-		u.addr+UrchinServiceGetIpfsTokenInterface,
+		u.addr+UrchinServiceGetIpfsTokenInterface+"?"+values.Encode(),
 		HttpMethodGet,
-		reqBody,
+		u.header,
+		nil,
 		u.urchinClient)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "HttpDo failed. error: ", err)
@@ -385,8 +455,10 @@ func (u *UrchinService) UploadObject(req *UploadObjectReq) (
 	}
 
 	resp = new(UploadObjectResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceUploadObjectInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -424,8 +496,10 @@ func (u *UrchinService) UploadFile(req *UploadFileReq) (
 	}
 
 	resp = new(UploadFileResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceUploadFileInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -452,20 +526,18 @@ func (u *UrchinService) UploadFile(req *UploadFileReq) (
 
 func (u *UrchinService) GetObject(req *GetObjectReq) (
 	err error, resp *GetObjectResp) {
-
+	values, err := query.Values(req)
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetObject start.")
-
-	reqBody, err := json.Marshal(req)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Marshal GetObjectReq failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "query.Values failed. error: ", err)
 		return err, resp
 	}
-
 	resp = new(GetObjectResp)
 	err, respBody := Do(
-		u.addr+UrchinServiceGetObjectInterface,
+		u.addr+UrchinServiceGetObjectInterface+"?"+values.Encode(),
 		HttpMethodGet,
-		reqBody,
+		u.header,
+		nil,
 		u.urchinClient)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "HttpDo failed. error: ", err)
@@ -502,8 +574,10 @@ func (u *UrchinService) DownloadObject(req *DownloadObjectReq) (
 	}
 
 	resp = new(DownloadObjectResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceDownloadObjectInterface,
+		HttpMethodPut,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -541,8 +615,10 @@ func (u *UrchinService) DownloadFile(req *DownloadFileReq) (
 	}
 
 	resp = new(DownloadFileResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceDownloadFileInterface,
+		HttpMethodPost,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -580,8 +656,10 @@ func (u *UrchinService) MigrateObject(req *MigrateObjectReq) (
 	}
 
 	resp = new(MigrateObjectResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceMigrateObjectInterface,
+		HttpMethodPut,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -622,6 +700,7 @@ func (u *UrchinService) PutObjectDeployment(req *PutObjectDeploymentReq) (
 	err, respBody := Do(
 		u.addr+UrchinServicePutObjectDeploymentInterface,
 		HttpMethodPut,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -650,18 +729,17 @@ func (u *UrchinService) GetTask(req *GetTaskReq) (
 	err error, resp *GetTaskResp) {
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: GetTask start.")
-
-	reqBody, err := json.Marshal(req)
+	values, err := query.Values(req)
 	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Marshal GetTaskReq failed. error: ", err)
+		obs.DoLog(obs.LEVEL_ERROR, "query.Values failed. error: ", err)
 		return err, resp
 	}
-
 	resp = new(GetTaskResp)
 	err, respBody := Do(
-		u.addr+UrchinServiceGetTaskInterface,
+		u.addr+UrchinServiceGetTaskInterface+"?"+values.Encode(),
 		HttpMethodGet,
-		reqBody,
+		u.header,
+		nil,
 		u.urchinClient)
 	if err != nil {
 		obs.DoLog(obs.LEVEL_ERROR, "HttpDo failed. error: ", err)
@@ -696,8 +774,10 @@ func (u *UrchinService) FinishTask(req *FinishTaskReq) (
 	}
 
 	resp = new(BaseResp)
-	err, respBody := Post(
+	err, respBody := Do(
 		u.addr+UrchinServiceFinishTaskInterface,
+		HttpMethodPut,
+		u.header,
 		reqBody,
 		u.urchinClient)
 	if err != nil {
@@ -719,5 +799,45 @@ func (u *UrchinService) FinishTask(req *FinishTaskReq) (
 	}
 
 	obs.DoLog(obs.LEVEL_DEBUG, "Func: FinishTask end.")
+	return nil, resp
+}
+
+func (u *UrchinService) RetryTask(req *RetryTaskReq) (
+	err error, resp *BaseResp) {
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: RetryTask start.")
+
+	reqBody, err := json.Marshal(req)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "Marshal RetryTaskReq failed. error: ", err)
+		return err, resp
+	}
+
+	resp = new(BaseResp)
+	err, respBody := Do(
+		u.addr+UrchinServiceRetryTaskInterface,
+		HttpMethodPut,
+		u.header,
+		reqBody,
+		u.urchinClient)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "Post failed. error: ", err)
+		return err, resp
+	}
+
+	err = json.Unmarshal(respBody, resp)
+	if err != nil {
+		obs.DoLog(obs.LEVEL_ERROR, "json.Unmarshal failed. error: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		obs.DoLog(obs.LEVEL_ERROR,
+			"RetryTask failed. errCode: %d, errMessage: %s",
+			resp.Code, resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	obs.DoLog(obs.LEVEL_DEBUG, "Func: RetryTask end.")
 	return nil, resp
 }

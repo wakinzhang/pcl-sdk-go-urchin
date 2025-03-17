@@ -13,7 +13,7 @@ func (l *Log) Init() {
 	// 设置每个日志文件的大小，单位：字节
 	var maxLogSize int64 = 1024 * 1024 * 100
 	// 设置保留日志文件的个数
-	var backups = 10
+	var backups = 3
 	// 设置日志的级别
 	var level = obs.LEVEL_DEBUG
 

@@ -38,6 +38,15 @@ type CreateCompleteMultipartUploadSignedUrlReq struct {
 	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
 }
 
+type CreateAbortMultipartUploadSignedUrlReq struct {
+	// @inject_tag: json:"upload_id"
+	UploadId string `protobuf:"bytes,1,opt,name=upload_id,proto3" json:"upload_id"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,2,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+}
+
 type CreateNewFolderSignedUrlReq struct {
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
@@ -86,7 +95,7 @@ type HeaderValues struct {
 
 type GetIpfsTokenReq struct {
 	// @inject_tag: json:"node_name"
-	NodeName string `protobuf:"bytes,1,opt,name=node_name,proto3" json:"node_name"`
+	NodeName string `protobuf:"bytes,1,opt,name=node_name,proto3" json:"node_name" url:"node_name"`
 }
 
 type GetIpfsTokenResp struct {
@@ -109,12 +118,29 @@ type UploadObjectReq struct {
 	Type int32 `protobuf:"varint,3,opt,name=type,proto3" json:"type"`
 	// @inject_tag: json:"source"
 	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source"`
+	// @inject_tag: json:"source_local_path"
+	SourceLocalPath string `protobuf:"bytes,5,opt,name=source_local_path,proto3" json:"source_local_path"`
 	// @inject_tag: json:"size"
-	Size *int32 `protobuf:"varint,5,opt,name=size,proto3,oneof" json:"size"`
+	Size *int32 `protobuf:"varint,6,opt,name=size,proto3,oneof" json:"size"`
 	// @inject_tag: json:"desc"
-	Desc *string `protobuf:"bytes,6,opt,name=desc,proto3,oneof" json:"desc"`
+	Desc *string `protobuf:"bytes,7,opt,name=desc,proto3,oneof" json:"desc"`
+	// @inject_tag: json:"node_name"
+	NodeName *string `protobuf:"bytes,8,opt,name=node_name,proto3,oneof" json:"node_name"`
+}
+
+type UploadObjectTaskParams struct {
+	// @inject_tag: json:"request"
+	Request *UploadObjectReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
+	// @inject_tag: json:"uuid"
+	Uuid string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid"`
 	// @inject_tag: json:"node_id"
-	NodeId *int32 `protobuf:"varint,7,opt,name=node_id,proto3,oneof" json:"node_id"`
+	NodeId int32 `protobuf:"varint,3,opt,name=node_id,proto3" json:"node_id"`
+	// @inject_tag: json:"node_name"
+	NodeName string `protobuf:"bytes,4,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"node_type"
+	NodeType int32 `protobuf:"varint,5,opt,name=node_type,proto3" json:"node_type"`
+	// @inject_tag: json:"location"
+	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location"`
 }
 
 type UploadObjectResp struct {
@@ -137,17 +163,21 @@ type UploadFileReq struct {
 	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
 	// @inject_tag: json:"source"
 	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+	// @inject_tag: json:"source_local_path"
+	SourceLocalPath string `protobuf:"bytes,4,opt,name=source_local_path,proto3" json:"source_local_path"`
 	// @inject_tag: json:"size"
-	Size *int32 `protobuf:"varint,4,opt,name=size,proto3,oneof" json:"size"`
+	Size *int32 `protobuf:"varint,5,opt,name=size,proto3,oneof" json:"size"`
 }
 
 type UploadFileTaskParams struct {
 	// @inject_tag: json:"request"
 	Request *UploadFileReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
 	// @inject_tag: json:"node_id"
-	NodeId int32 `protobuf:"varint,3,opt,name=node_id,proto3" json:"node_id"`
+	NodeId int32 `protobuf:"varint,2,opt,name=node_id,proto3" json:"node_id"`
 	// @inject_tag: json:"node_name"
-	NodeName string `protobuf:"bytes,4,opt,name=node_name,proto3" json:"node_name"`
+	NodeName string `protobuf:"bytes,3,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"node_type"
+	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"location"
 	Location string `protobuf:"bytes,5,opt,name=location,proto3" json:"location"`
 }
@@ -172,8 +202,10 @@ type DownloadFileReq struct {
 	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
 	// @inject_tag: json:"source"
 	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+	// @inject_tag: json:"target_local_path"
+	TargetLocalPath string `protobuf:"bytes,4,opt,name=target_local_path,proto3" json:"target_local_path"`
 	// @inject_tag: json:"node_name"
-	NodeName *string `protobuf:"bytes,4,opt,name=node_name,proto3,oneof" json:"node_name"`
+	NodeName *string `protobuf:"bytes,5,opt,name=node_name,proto3,oneof" json:"node_name"`
 }
 
 type DownloadFileTaskParams struct {
@@ -183,8 +215,12 @@ type DownloadFileTaskParams struct {
 	NodeId int32 `protobuf:"varint,2,opt,name=node_id,proto3" json:"node_id"`
 	// @inject_tag: json:"node_name"
 	NodeName string `protobuf:"bytes,3,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"node_type"
+	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	// @inject_tag: json:"bucket_name"
+	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
 	// @inject_tag: json:"location"
-	Location string `protobuf:"bytes,4,opt,name=location,proto3" json:"location"`
+	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location"`
 }
 
 type DownloadFileResp struct {
@@ -202,17 +238,17 @@ type DownloadFileResp struct {
 
 type GetObjectReq struct {
 	// @inject_tag: json:"user_id"
-	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id" url:"user_id"`
 	// @inject_tag: json:"page_index"
-	PageIndex int32 `protobuf:"varint,2,opt,name=page_index,proto3" json:"page_index"`
+	PageIndex int32 `protobuf:"varint,2,opt,name=page_index,proto3" json:"page_index" url:"page_index"`
 	// @inject_tag: json:"page_size"
-	PageSize int32 `protobuf:"varint,3,opt,name=page_size,proto3" json:"page_size"`
+	PageSize int32 `protobuf:"varint,3,opt,name=page_size,proto3" json:"page_size" url:"page_size"`
 	// @inject_tag: json:"sort_by"
-	SortBy *string `protobuf:"bytes,4,opt,name=sort_by,proto3,oneof" json:"sort_by"`
+	SortBy *string `protobuf:"bytes,4,opt,name=sort_by,proto3,oneof" json:"sort_by" url:"sort_by,omitempty"`
 	// @inject_tag: json:"order_by"
-	OrderBy *string `protobuf:"bytes,5,opt,name=order_by,proto3,oneof" json:"order_by"`
+	OrderBy *string `protobuf:"bytes,5,opt,name=order_by,proto3,oneof" json:"order_by" url:"order_by,omitempty"`
 	// @inject_tag: json:"obj_uuid"
-	ObjUuid *string `protobuf:"bytes,6,opt,name=obj_uuid,proto3,oneof" json:"obj_uuid"`
+	ObjUuid *string `protobuf:"bytes,6,opt,name=obj_uuid,proto3,oneof" json:"obj_uuid" url:"obj_uuid,omitempty"`
 }
 
 type GetObjectResp struct {
@@ -238,24 +274,26 @@ type DataObj struct {
 	Uuid string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"`
 	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"`
+	// @inject_tag: json:"source" xorm:"VARCHAR(1024) NOT NULL DEFAULT ” comment('数据对象资源')"
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source" xorm:"VARCHAR(1024) NOT NULL DEFAULT ” comment('数据对象资源')"`
 	// @inject_tag: json:"type" xorm:"INT notnull default(0) comment('数据对象类型，1：文件；2：文件夹')"
-	Type int32 `protobuf:"varint,4,opt,name=type,proto3" json:"type" xorm:"INT notnull default(0) comment('数据对象类型，1：文件；2：文件夹')"`
+	Type int32 `protobuf:"varint,5,opt,name=type,proto3" json:"type" xorm:"INT notnull default(0) comment('数据对象类型，1：文件；2：文件夹')"`
 	// @inject_tag: json:"desc" xorm:"TEXT comment('数据对象描述信息')"
-	Desc string `protobuf:"bytes,5,opt,name=desc,proto3" json:"desc" xorm:"TEXT comment('数据对象描述信息')"`
+	Desc string `protobuf:"bytes,6,opt,name=desc,proto3" json:"desc" xorm:"TEXT comment('数据对象描述信息')"`
 	// @inject_tag: json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"
-	Size int32 `protobuf:"varint,6,opt,name=size,proto3" json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"`
+	Size int32 `protobuf:"varint,7,opt,name=size,proto3" json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"`
 	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"
-	Status int32 `protobuf:"varint,7,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"`
+	Status int32 `protobuf:"varint,8,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"`
 	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"
-	UserId string `protobuf:"bytes,8,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"`
+	UserId string `protobuf:"bytes,9,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"`
 	// @inject_tag: json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"
-	Version int32 `protobuf:"varint,9,opt,name=version,proto3" json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"`
+	Version int32 `protobuf:"varint,10,opt,name=version,proto3" json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"`
 	// @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
-	CreateTime string `protobuf:"bytes,10,opt,name=create_time,proto3" json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"`
+	CreateTime string `protobuf:"bytes,11,opt,name=create_time,proto3" json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"`
 	// @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
-	UpdateTime string `protobuf:"bytes,11,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
+	UpdateTime string `protobuf:"bytes,12,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
 	// @inject_tag: json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"
-	DeleteTime string `protobuf:"bytes,12,opt,name=delete_time,proto3" json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"`
+	DeleteTime string `protobuf:"bytes,13,opt,name=delete_time,proto3" json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"`
 }
 
 type DownloadObjectReq struct {
@@ -263,8 +301,25 @@ type DownloadObjectReq struct {
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"obj_uuid"
 	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"target_local_path"
+	TargetLocalPath string `protobuf:"bytes,3,opt,name=target_local_path,proto3" json:"target_local_path"`
+	// @inject_tag: json:"node_name"
+	NodeName *string `protobuf:"bytes,4,opt,name=node_name,proto3,oneof" json:"node_name"`
+}
+
+type DownloadObjectTaskParams struct {
+	// @inject_tag: json:"request"
+	Request *DownloadObjectReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
 	// @inject_tag: json:"node_id"
-	NodeId *int32 `protobuf:"varint,3,opt,name=node_id,proto3,oneof" json:"node_id"`
+	NodeId int32 `protobuf:"varint,2,opt,name=node_id,proto3" json:"node_id"`
+	// @inject_tag: json:"node_name"
+	NodeName string `protobuf:"bytes,3,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"node_type"
+	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	// @inject_tag: json:"bucket_name"
+	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
+	// @inject_tag: json:"location"
+	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location"`
 }
 
 type DownloadObjectResp struct {
@@ -285,10 +340,35 @@ type MigrateObjectReq struct {
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"obj_uuid"
 	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"source_node_name"
+	SourceNodeName *string `protobuf:"bytes,3,opt,name=source_node_name,proto3,oneof" json:"source_node_name"`
+	// @inject_tag: json:"target_node_name"
+	TargetNodeName string `protobuf:"bytes,4,opt,name=target_node_name,proto3" json:"target_node_name"`
+	// @inject_tag: json:"cache_local_path"
+	CacheLocalPath string `protobuf:"bytes,5,opt,name=cache_local_path,proto3" json:"cache_local_path"`
+}
+
+type MigrateObjectTaskParams struct {
+	// @inject_tag: json:"request"
+	Request *MigrateObjectReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
 	// @inject_tag: json:"source_node_id"
-	SourceNodeId *int32 `protobuf:"varint,3,opt,name=source_node_id,proto3,oneof" json:"source_node_id"`
+	SourceNodeId int32 `protobuf:"varint,2,opt,name=source_node_id,proto3" json:"source_node_id"`
+	// @inject_tag: json:"source_node_name"
+	SourceNodeName string `protobuf:"bytes,3,opt,name=source_node_name,proto3" json:"source_node_name"`
+	// @inject_tag: json:"source_node_type"
+	SourceNodeType int32 `protobuf:"varint,4,opt,name=source_node_type,proto3" json:"source_node_type"`
+	// @inject_tag: json:"source_bucket_name"
+	SourceBucketName string `protobuf:"bytes,5,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
 	// @inject_tag: json:"target_node_id"
-	TargetNodeId int32 `protobuf:"varint,4,opt,name=target_node_id,proto3" json:"target_node_id"`
+	TargetNodeId int32 `protobuf:"varint,6,opt,name=target_node_id,proto3" json:"target_node_id"`
+	// @inject_tag: json:"target_node_name"
+	TargetNodeName string `protobuf:"bytes,7,opt,name=target_node_name,proto3" json:"target_node_name"`
+	// @inject_tag: json:"target_node_type"
+	TargetNodeType int32 `protobuf:"varint,8,opt,name=target_node_type,proto3" json:"target_node_type"`
+	// @inject_tag: json:"location"
+	Location string `protobuf:"bytes,9,opt,name=location,proto3" json:"location"`
+	// @inject_tag: json:"data_object_type"
+	DataObjectType int32 `protobuf:"varint,10,opt,name=data_object_type,proto3" json:"data_object_type"`
 }
 
 type MigrateObjectResp struct {
@@ -306,8 +386,6 @@ type MigrateObjectResp struct {
 	TargetNodeType int32 `protobuf:"varint,6,opt,name=target_node_type,proto3" json:"target_node_type"`
 	// @inject_tag: json:"data_object_type"
 	DataObjectType int32 `protobuf:"varint,7,opt,name=data_object_type,proto3" json:"data_object_type"`
-	// @inject_tag: json:"location"
-	Location string `protobuf:"bytes,8,opt,name=location,proto3" json:"location"`
 }
 
 type PutObjectDeploymentReq struct {
@@ -321,15 +399,15 @@ type PutObjectDeploymentReq struct {
 
 type GetTaskReq struct {
 	// @inject_tag: json:"page_index"
-	PageIndex int32 `protobuf:"varint,1,opt,name=page_index,proto3" json:"page_index"`
+	PageIndex int32 `protobuf:"varint,1,opt,name=page_index,proto3" json:"page_index" url:"page_index"`
 	// @inject_tag: json:"page_size"
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size,proto3" json:"page_size"`
+	PageSize int32 `protobuf:"varint,2,opt,name=page_size,proto3" json:"page_size" url:"page_size"`
 	// @inject_tag: json:"sort_by"
-	SortBy *string `protobuf:"bytes,3,opt,name=sort_by,proto3,oneof" json:"sort_by"`
+	SortBy *string `protobuf:"bytes,3,opt,name=sort_by,proto3,oneof" json:"sort_by" url:"sort_by,omitempty"`
 	// @inject_tag: json:"order_by"
-	OrderBy *string `protobuf:"bytes,4,opt,name=order_by,proto3,oneof" json:"order_by"`
+	OrderBy *string `protobuf:"bytes,4,opt,name=order_by,proto3,oneof" json:"order_by" url:"order_by,omitempty"`
 	// @inject_tag: json:"task_id"
-	TaskId *int32 `protobuf:"varint,5,opt,name=task_id,proto3,oneof" json:"task_id"`
+	TaskId *int32 `protobuf:"varint,5,opt,name=task_id,proto3,oneof" json:"task_id" url:"task_id,omitempty"`
 }
 
 type GetTaskResp struct {
@@ -386,30 +464,6 @@ type Task struct {
 	UpdateTime string `protobuf:"bytes,14,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
 }
 
-type UploadObjectTaskParams struct {
-	// @inject_tag: json:"request"
-	Request *UploadObjectReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
-	// @inject_tag: json:"uuid"
-	Uuid string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid"`
-	// @inject_tag: json:"node_id"
-	NodeId int32 `protobuf:"varint,3,opt,name=node_id,proto3" json:"node_id"`
-	// @inject_tag: json:"node_name"
-	NodeName string `protobuf:"bytes,4,opt,name=node_name,proto3" json:"node_name"`
-	// @inject_tag: json:"location"
-	Location string `protobuf:"bytes,5,opt,name=location,proto3" json:"location"`
-}
-
-type DownloadObjectTaskParams struct {
-	// @inject_tag: json:"request"
-	Request *DownloadObjectReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
-	// @inject_tag: json:"node_id"
-	NodeId int32 `protobuf:"varint,2,opt,name=node_id,proto3" json:"node_id"`
-	// @inject_tag: json:"node_name"
-	NodeName string `protobuf:"bytes,3,opt,name=node_name,proto3" json:"node_name"`
-	// @inject_tag: json:"location"
-	Location string `protobuf:"bytes,4,opt,name=location,proto3" json:"location"`
-}
-
 type TaskExec struct {
 	// @inject_tag: json:"id" xorm:"pk autoincr"
 	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id" xorm:"pk autoincr"`
@@ -440,6 +494,11 @@ type FinishTaskReq struct {
 	Result int32 `protobuf:"varint,2,opt,name=result,proto3" json:"result"`
 	// @inject_tag: json:"return"
 	Return *string `protobuf:"bytes,3,opt,name=return,proto3,oneof" json:"return"`
+}
+
+type RetryTaskReq struct {
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
 }
 
 type XIpfsUpload struct {
