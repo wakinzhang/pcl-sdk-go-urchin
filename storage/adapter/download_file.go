@@ -1,21 +1,36 @@
 package adapter
 
 import (
+	"context"
 	"fmt"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
+	uuid "github.com/satori/go.uuid"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 )
 
-func DownloadFile(urchinServiceAddr, objUuid, source, targetPath string) (err error) {
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"DownloadFile start. urchinServiceAddr: %s, objUuid: %s,"+
-			" source: %s, targetPath: %s",
-		urchinServiceAddr, objUuid, source, targetPath)
+func DownloadFile(
+	urchinServiceAddr,
+	objUuid,
+	source,
+	targetPath string) (err error) {
 
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	requestId := uuid.NewV4().String()
+	var ctx context.Context
+	ctx = context.Background()
+	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
+
+	Logger.WithContext(ctx).Debug(
+		"DownloadFile start.",
+		" objUuid: ", objUuid,
+		" source: ", source,
+		" targetPath: ", targetPath)
+
+	UClient.Init(
+		ctx,
+		urchinServiceAddr,
+		DefaultUClientReqTimeout,
+		DefaultUClientMaxConnection)
 
 	downloadFileReq := new(DownloadFileReq)
 	downloadFileReq.UserId = "vg3yHwUa"
@@ -23,72 +38,82 @@ func DownloadFile(urchinServiceAddr, objUuid, source, targetPath string) (err er
 	downloadFileReq.Source = source
 	downloadFileReq.TargetLocalPath = targetPath
 
-	err, downloadFileResp := urchinService.DownloadFile(downloadFileReq)
+	err, downloadFileResp := UClient.DownloadFile(ctx, downloadFileReq)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UrchinService.DownloadFile failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.DownloadFile failed.",
+			" err: ", err)
 		return err
 	}
 
 	fmt.Printf("DownloadFile TaskId: %d\n", downloadFileResp.TaskId)
 
 	err = ProcessDownloadFile(
-		urchinServiceAddr,
+		ctx,
 		targetPath,
 		downloadFileResp.BucketName,
 		downloadFileResp.TaskId,
 		downloadFileResp.NodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessDownloadFile failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessDownloadFile failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "DownloadFile success.")
+	Logger.WithContext(ctx).Debug(
+		"DownloadFile finish.")
 	return err
 }
 
 func ProcessDownloadFile(
-	urchinServiceAddr, targetPath, bucketName string,
+	ctx context.Context,
+	targetPath, bucketName string,
 	taskId, nodeType int32) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessDownloadFile start."+
-		" urchinServiceAddr: %s targetPath: %s, bucketName: %s, taskId: %d, nodeType: %d",
-		urchinServiceAddr, targetPath, bucketName, taskId, nodeType)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"ProcessDownloadFile start.",
+		" targetPath: ", targetPath,
+		" bucketName: ", bucketName,
+		" taskId: ", taskId,
+		" nodeType: ", nodeType)
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
 		finishTaskReq.TaskId = taskId
-		if err != nil {
+		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = urchinService.FinishTask(finishTaskReq)
+		err, _ = UClient.FinishTask(ctx, finishTaskReq)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"UrchinService.FinishTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.FinishTask failed.",
+				" err: ", err)
 		}
 	}()
 
-	err, storage := NewStorage(nodeType)
+	err, storage := NewStorage(ctx, nodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "NewStorage failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"NewStorage failed.",
+			" err: ", err)
 		return err
 	}
 	err = storage.Download(
-		urchinServiceAddr,
+		ctx,
 		targetPath,
 		taskId,
 		bucketName)
 
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "storage.Download failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"storage.Download failed.",
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessDownloadFile success.")
+	Logger.WithContext(ctx).Debug(
+		"ProcessDownloadFile finish.")
 	return nil
 }

@@ -1,28 +1,41 @@
 package adapter
 
 import (
+	"context"
 	"fmt"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
+	uuid "github.com/satori/go.uuid"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 	"os"
 )
 
 func Migrate(
-	urchinServiceAddr, objUuid string,
+	urchinServiceAddr,
+	objUuid string,
 	sourceNodeName *string,
 	targetNodeName string,
 	cachePath string,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"Migrate start. urchinServiceAddr: %s, objUuid: %s,"+
-			" sourceNodeName: %s, targetNodeName: %s, needPure: %t",
-		urchinServiceAddr, objUuid, sourceNodeName, targetNodeName, needPure)
+	requestId := uuid.NewV4().String()
+	var ctx context.Context
+	ctx = context.Background()
+	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"Migrate start.",
+		" objUuid: ", objUuid,
+		" sourceNodeName: ", *sourceNodeName,
+		" targetNodeName: ", targetNodeName,
+		" cachePath: ", cachePath,
+		" needPure: ", needPure)
+
+	UClient.Init(
+		ctx,
+		urchinServiceAddr,
+		DefaultUClientReqTimeout,
+		DefaultUClientMaxConnection)
 
 	migrateObjectReq := new(MigrateObjectReq)
 	migrateObjectReq.UserId = "vg3yHwUa"
@@ -33,17 +46,18 @@ func Migrate(
 	migrateObjectReq.TargetNodeName = targetNodeName
 	migrateObjectReq.CacheLocalPath = cachePath
 
-	err, migrateObjectResp := urchinService.MigrateObject(migrateObjectReq)
+	err, migrateObjectResp := UClient.MigrateObject(ctx, migrateObjectReq)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UrchinService.MigrateObject failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.MigrateObject  failed.",
+			" err: ", err)
 		return err
 	}
 
 	fmt.Printf("Migrate TaskId: %d\n", migrateObjectResp.TaskId)
 
 	err = ProcessMigrate(
-		urchinServiceAddr,
+		ctx,
 		cachePath,
 		objUuid,
 		migrateObjectResp.SourceBucketName,
@@ -52,89 +66,102 @@ func Migrate(
 		migrateObjectResp.TargetNodeType,
 		needPure)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessMigrate failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessMigrate failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "Download success.")
+	Logger.WithContext(ctx).Debug(
+		"Migrate finish.")
 	return err
 }
 
 func ProcessMigrate(
-	urchinServiceAddr, cachePath, objUuid, sourceBucketName string,
+	ctx context.Context,
+	cachePath, objUuid, sourceBucketName string,
 	taskId, sourceNodeType, targetNodeType int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessMigrate start."+
-		" urchinServiceAddr: %s cachePath: %s, objUuid: %s, sourceBucketName: %s,"+
-		" taskId: %d, sourceNodeType: %d, targetNodeType: %d, needPure: %t",
-		urchinServiceAddr, cachePath, objUuid, sourceBucketName, taskId,
-		sourceNodeType, targetNodeType, needPure)
+	Logger.WithContext(ctx).Debug(
+		"ProcessMigrate start.",
+		" cachePath: ", cachePath,
+		" objUuid: ", objUuid,
+		" sourceBucketName: ", sourceBucketName,
+		" taskId: ", taskId,
+		" sourceNodeType: ", sourceNodeType,
+		" targetNodeType: ", targetNodeType,
+		" needPure: ", needPure)
 
-	migrateDownloadFinishFile := cachePath + objUuid + ".migrate_download_finish"
-	migrateUploadFinishFile := cachePath + objUuid + ".migrate_upload_finish"
+	migrateDownloadFinishFile :=
+		cachePath + objUuid + ".migrate_download_finish"
+
+	migrateUploadFinishFile :=
+		cachePath + objUuid + ".migrate_upload_finish"
+
 	migrateCachePath := cachePath + "/" + objUuid
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
 		finishTaskReq.TaskId = taskId
-		if err != nil {
+		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = urchinService.FinishTask(finishTaskReq)
+		err, _ = UClient.FinishTask(ctx, finishTaskReq)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"UrchinService.FinishTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.FinishTask failed.",
+				" err: ", err)
 			return
 		}
 		_err := os.RemoveAll(migrateCachePath)
-		if _err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"os.Remove failed. migrateCachePath: %s, error: %v",
-				migrateCachePath, _err)
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" migrateCachePath: ", migrateCachePath, " err: ", _err)
 		}
 		_err = os.Remove(migrateDownloadFinishFile)
 		if nil != _err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"os.Remove failed. migrateDownloadFinishFile: %s, err: %v",
-				migrateDownloadFinishFile, _err)
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+				" err: ", _err)
 		}
 		_err = os.Remove(migrateUploadFinishFile)
 		if nil != _err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"os.Remove failed. migrateUploadFinishFile: %s, err: %v",
-				migrateUploadFinishFile, _err)
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" migrateUploadFinishFile: ", migrateUploadFinishFile,
+				" err: ", _err)
 		}
 	}()
 
 	if needPure {
 		err = os.RemoveAll(migrateCachePath)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"os.RemoveAll failed. migrateCachePath: %s, error: %v",
-				migrateCachePath, err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" migrateCachePath: ", migrateCachePath, " err: ", err)
 			return err
 		}
 		err = os.Remove(migrateDownloadFinishFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"os.Remove failed. migrateDownloadFinishFile: %s, err: %v",
-					migrateDownloadFinishFile, err)
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+					" err: ", err)
 				return err
 			}
 		}
 		err = os.Remove(migrateUploadFinishFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"os.Remove failed. migrateUploadFinishFile: %s, err: %v",
-					migrateUploadFinishFile, err)
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" migrateUploadFinishFile: ", migrateUploadFinishFile,
+					" err: ", err)
 				return err
 			}
 		}
@@ -143,34 +170,38 @@ func ProcessMigrate(
 	_, err = os.Stat(migrateDownloadFinishFile)
 	if nil != err {
 		if os.IsNotExist(err) {
-			err, sourceStorage := NewStorage(sourceNodeType)
+			err, sourceStorage := NewStorage(ctx, sourceNodeType)
 			if nil != err {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"source NewStorage failed. error: %v", err)
+				Logger.WithContext(ctx).Error(
+					"source NewStorage failed.",
+					" err: ", err)
 				return err
 			}
 			err = sourceStorage.Download(
-				urchinServiceAddr,
+				ctx,
 				cachePath,
 				taskId,
 				sourceBucketName)
 
 			if nil != err {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"sourceStorage.Download failed. error: %v", err)
+				Logger.WithContext(ctx).Error(
+					"sourceStorage.Download failed.",
+					" err: ", err)
 				return err
 			}
 			_, err = os.Create(migrateDownloadFinishFile)
 			if nil != err {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"os.Create failed.  migrateDownloadFinishFile: %s error: %v",
-					migrateDownloadFinishFile, err)
+				Logger.WithContext(ctx).Error(
+					"os.Create failed.",
+					" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+					" err: ", err)
 				return err
 			}
 		} else {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"os.Stat failed. migrateDownloadFinishFile: %s, err: %v",
-				migrateDownloadFinishFile, err)
+			Logger.WithContext(ctx).Error(
+				"os.Stat failed.",
+				" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+				" err: ", err)
 			return err
 		}
 	}
@@ -178,47 +209,55 @@ func ProcessMigrate(
 	_, err = os.Stat(migrateUploadFinishFile)
 	if nil != err {
 		if os.IsNotExist(err) {
-			err, targetStorage := NewStorage(targetNodeType)
+			err, targetStorage := NewStorage(ctx, targetNodeType)
 			if nil != err {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"target NewStorage failed. error: %v", err)
+				Logger.WithContext(ctx).Error(
+					"target NewStorage failed.",
+					" err: ", err)
 				return err
 			}
 			entries, err := os.ReadDir(migrateCachePath)
 			if nil != err {
-				obs.DoLog(obs.LEVEL_ERROR, "os.ReadDir failed."+
-					" dir: %s, error: %v", migrateCachePath, err)
+				Logger.WithContext(ctx).Error(
+					"os.ReadDir failed.",
+					" migrateCachePath: ", migrateCachePath,
+					" err: ", err)
 				return err
 			}
 			if 0 == len(entries) {
-				obs.DoLog(obs.LEVEL_ERROR, "object cache empty."+
-					" dir: %s", migrateCachePath)
+				Logger.WithContext(ctx).Error(
+					"object cache empty.",
+					" migrateCachePath: ", migrateCachePath)
 				return err
 			}
 			err = targetStorage.Upload(
-				urchinServiceAddr,
+				ctx,
 				migrateCachePath+"/"+entries[0].Name(),
 				taskId,
 				needPure)
 			if nil != err {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"targetStorage.Upload failed. error: %v", err)
+				Logger.WithContext(ctx).Error(
+					"targetStorage.Upload failed.",
+					" err: ", err)
 				return err
 			}
 			_, err = os.Create(migrateUploadFinishFile)
 			if nil != err {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"os.Create failed.  migrateUploadFinishFile: %s error: %v",
-					migrateUploadFinishFile, err)
+				Logger.WithContext(ctx).Error(
+					"os.Create failed.",
+					" migrateUploadFinishFile: ", migrateUploadFinishFile,
+					" err: ", err)
 				return err
 			}
 		} else {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"os.Stat failed. migrateUploadFinishFile: %s, err: %v",
-				migrateUploadFinishFile, err)
+			Logger.WithContext(ctx).Error(
+				"os.Stat failed.",
+				" migrateUploadFinishFile: ", migrateUploadFinishFile,
+				" err: ", err)
 			return err
 		}
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessMigrate success.")
+	Logger.WithContext(ctx).Debug(
+		"ProcessMigrate finish.")
 	return nil
 }

@@ -1,42 +1,68 @@
 package adapter
 
 import (
+	"context"
 	"errors"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/adaptee"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 )
 
 type Storage interface {
 	Upload(
-		urchinServiceAddr, sourcePath string,
+		ctx context.Context,
+		sourcePath string,
 		taskId int32,
 		needPure bool) error
 
 	Download(
-		urchinServiceAddr, targetPath string,
+		ctx context.Context,
+		targetPath string,
 		taskId int32,
 		bucketName string) error
 }
 
-func NewStorage(nodeType int32) (err error, storage Storage) {
-	obs.DoLog(obs.LEVEL_DEBUG, "NewStorage start. nodeType: %d", nodeType)
+func NewStorage(
+	ctx context.Context,
+	nodeType int32) (err error, storage Storage) {
+
+	Logger.WithContext(ctx).Debug(
+		"NewStorage start. nodeType: ", nodeType)
 	if StorageCategoryEObs == nodeType ||
 		StorageCategoryEMinio == nodeType {
 		var s3 S3
-		err = s3.Init()
+		err = s3.Init(ctx)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"s3.Init failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"s3.Init failed.",
+				" err: ", err)
 			return err, storage
 		}
+		Logger.WithContext(ctx).Debug(
+			"NewStorage S3 finish.")
 		return nil, &s3
 	} else if StorageCategoryEIpfs == nodeType {
+		Logger.WithContext(ctx).Debug(
+			"NewStorage IPFS finish.")
 		return nil, new(IPFS)
+	} else if StorageCategoryEJcs == nodeType {
+		var jcs JCS
+		err = jcs.Init(
+			ctx,
+			DefaultJCSClientReqTimeout,
+			DefaultJCSClientMaxConnection)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"JCS.Init failed.",
+				" err: ", err)
+			return err, storage
+		}
+		Logger.WithContext(ctx).Debug(
+			"NewStorage JCS finish.")
+		return nil, &jcs
 	} else {
-		obs.DoLog(obs.LEVEL_ERROR, "invalid storage node type")
+		Logger.WithContext(ctx).Error(
+			"invalid storage node type.")
 		return errors.New("invalid storage node type"), storage
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "NewStorage finish")
-	return nil, storage
 }

@@ -3,6 +3,7 @@ package adaptee
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -13,52 +14,291 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
 )
 
-type StarLight struct {
-	slClient *SLClient
+type JCS struct {
+	jcsClient *JCSClient
 }
 
-func (o *StarLight) Init(
+func (o *JCS) Init(
 	ctx context.Context,
-	username,
-	password,
-	endpoint,
-	lustreType string) (err error) {
+	reqTimeout,
+	maxConnection int) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:Init start.",
-		" username: ", "***",
-		" password: ", "***",
-		" endpoint: ", endpoint,
-		" lustreType: ", lustreType)
+		"JCS:Init start.",
+		" reqTimeout: ", reqTimeout,
+		" maxConnection: ", maxConnection)
 
-	o.slClient = new(SLClient)
-	o.slClient.Init(
-		ctx,
-		username,
-		password,
-		endpoint,
-		lustreType,
-		DefaultSLClientReqTimeout,
-		DefaultSLClientMaxConnection)
+	o.jcsClient = new(JCSClient)
+	o.jcsClient.Init(ctx, reqTimeout, maxConnection)
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:Init finish.")
+		"JCS:Init finish.")
 	return nil
 }
 
-func (o *StarLight) loadCheckpointFile(
+func (o *JCS) NewFolderWithSignedUrl(
+	ctx context.Context,
+	objectPath string,
+	taskId int32) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:NewFolderWithSignedUrl start.",
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
+
+	createJCSPreSignedObjectUploadReq :=
+		new(CreateJCSPreSignedObjectUploadReq)
+	createJCSPreSignedObjectUploadReq.TaskId = taskId
+	createJCSPreSignedObjectUploadReq.Source = objectPath
+
+	err, createJCSPreSignedObjectUploadResp :=
+		UClient.CreateJCSPreSignedObjectUpload(
+			ctx,
+			createJCSPreSignedObjectUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectUpload"+
+				" failed.",
+			" err: ", err)
+		return err
+	}
+
+	err = o.jcsClient.UploadFileWithSignedUrl(
+		ctx,
+		createJCSPreSignedObjectUploadResp.SignedUrl,
+		nil)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.UploadFileWithSignedUrl failed.",
+			" signedUrl: ", createJCSPreSignedObjectUploadResp.SignedUrl,
+			" err: ", err)
+		return err
+	}
+	Logger.WithContext(ctx).Debug(
+		"JCS:NewFolderWithSignedUrl finish.")
+
+	return err
+}
+
+func (o *JCS) UploadFileWithSignedUrl(
+	ctx context.Context,
+	sourceFile,
+	objectPath string,
+	taskId int32) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:UploadFileWithSignedUrl start.",
+		" sourceFile: ", sourceFile,
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
+
+	createJCSPreSignedObjectUploadReq :=
+		new(CreateJCSPreSignedObjectUploadReq)
+	createJCSPreSignedObjectUploadReq.TaskId = taskId
+	createJCSPreSignedObjectUploadReq.Source = objectPath
+
+	err, createJCSPreSignedObjectUploadResp :=
+		UClient.CreateJCSPreSignedObjectUpload(
+			ctx,
+			createJCSPreSignedObjectUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectUpload"+
+				" failed.",
+			" err: ", err)
+		return err
+	}
+
+	fd, err := os.Open(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Open failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+	defer func() {
+		errMsg := fd.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" sourceFile: ", sourceFile,
+				" err: ", errMsg)
+		}
+	}()
+
+	err = o.jcsClient.UploadFileWithSignedUrl(
+		ctx,
+		createJCSPreSignedObjectUploadResp.SignedUrl,
+		fd)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.UploadFileWithSignedUrl failed.",
+			" sourceFile: ", sourceFile,
+			" signedUrl: ", createJCSPreSignedObjectUploadResp.SignedUrl,
+			" err: ", err)
+		return err
+	}
+	Logger.WithContext(ctx).Debug(
+		"JCS:UploadFileWithSignedUrl finish.")
+
+	return err
+}
+
+func (o *JCS) NewMultipartUploadWithSignedUrl(
+	ctx context.Context,
+	objectPath string,
+	taskId int32) (output *JCSNewMultiPartUploadResponse, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:NewMultipartUploadWithSignedUrl start.",
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
+
+	createJCSPreSignedObjectNewMultipartUploadReq :=
+		new(CreateJCSPreSignedObjectNewMultipartUploadReq)
+	createJCSPreSignedObjectNewMultipartUploadReq.TaskId = taskId
+	createJCSPreSignedObjectNewMultipartUploadReq.Source = objectPath
+
+	err, createJCSPreSignedObjectNewMultipartUploadResp :=
+		UClient.CreateJCSPreSignedObjectNewMultipartUpload(
+			ctx,
+			createJCSPreSignedObjectNewMultipartUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectNewMultipartUpload"+
+				" failed.",
+			" err: ", err)
+		return output, err
+	}
+
+	// 初始化分段上传任务
+	err, output = o.jcsClient.NewMultiPartUploadWithSignedUrl(
+		ctx,
+		createJCSPreSignedObjectNewMultipartUploadResp.SignedUrl)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.NewMultiPartUploadWithSignedUrl failed.",
+			" signedUrl: ",
+			createJCSPreSignedObjectNewMultipartUploadResp.SignedUrl,
+			" err: ", err)
+		return output, err
+	}
+	Logger.WithContext(ctx).Debug(
+		"JCS:NewMultipartUploadWithSignedUrl finish.")
+
+	return output, err
+}
+
+func (o *JCS) CompleteMultipartUploadWithSignedUrl(
+	ctx context.Context,
+	objectId int32,
+	taskId int32,
+	indexes []int32) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:CompleteMultipartUploadWithSignedUrl start.",
+		" objectId: ", objectId,
+		" taskId: ", taskId)
+
+	// 合并段
+	createJCSPreSignedObjectCompleteMultipartUploadReq :=
+		new(CreateJCSPreSignedObjectCompleteMultipartUploadReq)
+	createJCSPreSignedObjectCompleteMultipartUploadReq.ObjectId = objectId
+	createJCSPreSignedObjectCompleteMultipartUploadReq.TaskId = taskId
+	createJCSPreSignedObjectCompleteMultipartUploadReq.Indexes = indexes
+
+	err, createCompleteMultipartUploadSignedUrlResp :=
+		UClient.CreateJCSPreSignedObjectCompleteMultipartUpload(
+			ctx,
+			createJCSPreSignedObjectCompleteMultipartUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient:CreateCompleteMultipartUploadSignedUrl"+
+				" failed.",
+			" err: ", err)
+		return err
+	}
+
+	err, _ = o.jcsClient.CompleteMultiPartUploadWithSignedUrl(
+		ctx,
+		createCompleteMultipartUploadSignedUrlResp.SignedUrl)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.CompleteMultipartUploadWithSignedUrl failed.",
+			" signedUrl: ",
+			createCompleteMultipartUploadSignedUrlResp.SignedUrl,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCS.CompleteMultipartUploadWithSignedUrl finish.")
+	return nil
+}
+
+func (o *JCS) ListObjectsWithSignedUrl(
+	ctx context.Context,
+	taskId int32,
+	continuationToken string) (
+	listObjectsData *JCSListData,
+	err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:ListObjectsWithSignedUrl start.",
+		" taskId: ", taskId,
+		" continuationToken: ", continuationToken)
+
+	createJCSPreSignedObjectListReq := new(CreateJCSPreSignedObjectListReq)
+	createJCSPreSignedObjectListReq.TaskId = taskId
+	if "" != continuationToken {
+		createJCSPreSignedObjectListReq.ContinuationToken = &continuationToken
+	}
+
+	err, createListObjectsSignedUrlResp :=
+		UClient.CreateJCSPreSignedObjectList(
+			ctx,
+			createJCSPreSignedObjectListReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectList failed.",
+			" err: ", err)
+		return listObjectsData, err
+	}
+
+	err, listObjectsResponse :=
+		o.jcsClient.ListWithSignedUrl(
+			ctx,
+			createListObjectsSignedUrlResp.SignedUrl)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.ListWithSignedUrl failed.",
+			" signedUrl: ", createListObjectsSignedUrlResp.SignedUrl,
+			" err: ", err)
+		return listObjectsData, err
+	}
+	listObjectsData = new(JCSListData)
+	listObjectsData = listObjectsResponse.Data
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:ListObjectsWithSignedUrl finish.")
+	return listObjectsData, nil
+}
+
+func (o *JCS) loadCheckpointFile(
 	ctx context.Context,
 	checkpointFile string,
 	result interface{}) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:loadCheckpointFile start.",
+		"JCS:loadCheckpointFile start.",
 		" checkpointFile: ", checkpointFile)
 
 	ret, err := os.ReadFile(checkpointFile)
@@ -76,17 +316,17 @@ func (o *StarLight) loadCheckpointFile(
 		return nil
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:loadCheckpointFile finish.")
+		"JCS:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
 
-func (o *StarLight) sliceObject(
+func (o *JCS) sliceObject(
 	ctx context.Context,
 	objectSize, partSize int64,
-	dfc *SLDownloadCheckpoint) {
+	dfc *JCSDownloadCheckpoint) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:sliceObject start.",
+		"JCS:sliceObject start.",
 		" objectSize: ", objectSize,
 		" partSize: ", partSize)
 
@@ -96,14 +336,14 @@ func (o *StarLight) sliceObject(
 	}
 
 	if cnt == 0 {
-		downloadPart := SLDownloadPartInfo{}
+		downloadPart := JCSDownloadPartInfo{}
 		downloadPart.PartNumber = 1
-		dfc.DownloadParts = []SLDownloadPartInfo{downloadPart}
+		dfc.DownloadParts = []JCSDownloadPartInfo{downloadPart}
 	} else {
-		downloadParts := make([]SLDownloadPartInfo, 0, cnt)
+		downloadParts := make([]JCSDownloadPartInfo, 0, cnt)
 		var i int64
 		for i = 0; i < cnt; i++ {
-			downloadPart := SLDownloadPartInfo{}
+			downloadPart := JCSDownloadPartInfo{}
 			downloadPart.PartNumber = i + 1
 			downloadPart.Offset = i * partSize
 			downloadPart.Length = partSize
@@ -115,16 +355,16 @@ func (o *StarLight) sliceObject(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:sliceObject finish.")
+		"JCS:sliceObject finish.")
 }
 
-func (o *StarLight) updateCheckpointFile(
+func (o *JCS) updateCheckpointFile(
 	ctx context.Context,
 	fc interface{},
 	checkpointFilePath string) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:updateCheckpointFile start.",
+		"JCS:updateCheckpointFile start.",
 		" checkpointFilePath: ", checkpointFilePath)
 
 	result, err := xml.Marshal(fc)
@@ -145,20 +385,20 @@ func (o *StarLight) updateCheckpointFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:updateCheckpointFile finish.")
+		"JCS:updateCheckpointFile finish.")
 	return err
 }
 
-func (o *StarLight) Upload(
+func (o *JCS) Upload(
 	ctx context.Context,
-	sourcePath,
-	targetPath string,
+	sourcePath string,
+	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:Upload start.",
+		"JCS:Upload start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
+		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	stat, err := os.Stat(sourcePath)
@@ -169,55 +409,104 @@ func (o *StarLight) Upload(
 			" err: ", err)
 		return err
 	}
-	objectPath := targetPath + filepath.Base(sourcePath)
+	var isDir = false
 	if stat.IsDir() {
-		err = o.slClient.Mkdir(ctx, objectPath)
+		isDir = true
+		err = o.uploadFolder(ctx, sourcePath, taskId, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"slClient.Mkdir failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
-			return err
-		}
-
-		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"StarLight.uploadFolder failed.",
+				"JCS.uploadFolder failed.",
 				" sourcePath: ", sourcePath,
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
 	} else {
+		objectPath := filepath.Base(sourcePath)
 		err = o.uploadFileResume(
 			ctx,
 			sourcePath,
 			objectPath,
+			taskId,
 			needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"StarLight.uploadFileResume failed.",
+				"JCS.uploadFileResume failed.",
 				" sourcePath: ", sourcePath,
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
+				" err: ", err)
+			return err
+		}
+	}
+
+	getTaskReq := new(GetTaskReq)
+	getTaskReq.TaskId = &taskId
+	getTaskReq.PageIndex = DefaultPageIndex
+	getTaskReq.PageSize = DefaultPageSize
+
+	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetTask failed.",
+			" err: ", err)
+		return err
+	}
+	if len(getTaskResp.Data.List) == 0 {
+		Logger.WithContext(ctx).Error(
+			"task not exist.",
+			" taskId: ", taskId)
+		return errors.New("task not exist")
+	}
+
+	task := getTaskResp.Data.List[0].Task
+	if TaskTypeMigrate == task.Type {
+		migrateObjectTaskParams := new(MigrateObjectTaskParams)
+		err = json.Unmarshal([]byte(task.Params), migrateObjectTaskParams)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"MigrateObjectTaskParams Unmarshal failed.",
+				" params: ", task.Params,
+				" err: ", err)
+			return err
+		}
+		objUuid := migrateObjectTaskParams.Request.ObjUuid
+		nodeName := migrateObjectTaskParams.Request.TargetNodeName
+		var location string
+		if isDir {
+			location = objUuid + "/" + filepath.Base(sourcePath) + "/"
+		} else {
+			location = objUuid + "/" + filepath.Base(sourcePath)
+		}
+
+		putObjectDeploymentReq := new(PutObjectDeploymentReq)
+		putObjectDeploymentReq.ObjUuid = objUuid
+		putObjectDeploymentReq.NodeName = nodeName
+		putObjectDeploymentReq.Location = &location
+
+		err, _ = UClient.PutObjectDeployment(ctx, putObjectDeploymentReq)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.PutObjectDeployment failed.",
 				" err: ", err)
 			return err
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:Upload finish.")
+		"JCS:Upload finish.")
 	return nil
 }
 
-func (o *StarLight) uploadFolder(
+func (o *JCS) uploadFolder(
 	ctx context.Context,
-	sourcePath,
-	targetPath string,
+	sourcePath string,
+	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:uploadFolder start.",
+		"JCS:uploadFolder start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
+		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	var fileMutex sync.Mutex
@@ -254,7 +543,16 @@ func (o *StarLight) uploadFolder(
 		}
 	}
 
-	pool, err := ants.NewPool(DefaultSLUploadFileTaskNum)
+	objectPath := filepath.Base(sourcePath) + "/"
+	err = o.NewFolderWithSignedUrl(ctx, objectPath, taskId)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"S3:NewFolderWithSignedUrl failed.",
+			" err: ", err)
+		return err
+	}
+
+	pool, err := ants.NewPool(DefaultJCSUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -276,41 +574,46 @@ func (o *StarLight) uploadFolder(
 					" err: ", err)
 				return err
 			}
-
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
 					if err := recover(); nil != err {
 						Logger.WithContext(ctx).Error(
-							"StarLight:uploadFileResume failed.",
+							"JCS:uploadFileResume failed.",
 							" err: ", err)
 						isAllSuccess = false
 					}
 				}()
-				relPath, err := filepath.Rel(sourcePath, filePath)
+				relFilePath, err := filepath.Rel(sourcePath, filePath)
 				if nil != err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
-						" relPath: ", relPath,
+						" relFilePath: ", relFilePath,
 						" err: ", err)
 					return
 				}
-				objectPath := targetPath + relPath
-				if _, exists := fileMap[objectPath]; exists {
+				objectKey := objectPath + relFilePath
+
+				if _, exists := fileMap[objectKey]; exists {
 					Logger.WithContext(ctx).Info(
-						"already finish. objectPath: ", objectPath)
+						"already finish.",
+						" objectKey: ", objectKey)
 					return
 				}
 				if fileInfo.IsDir() {
-					err = o.slClient.Mkdir(ctx, objectPath)
+					err = o.NewFolderWithSignedUrl(
+						ctx,
+						objectKey,
+						taskId)
 					if nil != err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"slClient.Mkdir failed.",
-							" objectPath: ", objectPath,
+							"JCS:NewFolderWithSignedUrl failed.",
+							" objectKey: ", objectKey,
 							" err: ", err)
 						return
 					}
@@ -318,14 +621,15 @@ func (o *StarLight) uploadFolder(
 					err = o.uploadFileResume(
 						ctx,
 						filePath,
-						objectPath,
+						objectKey,
+						taskId,
 						needPure)
 					if nil != err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"StarLight:uploadFileResume failed.",
+							"JCS:uploadFileResume failed.",
 							" filePath: ", filePath,
-							" objectPath: ", objectPath,
+							" objectKey: ", objectKey,
 							" err: ", err)
 						return
 					}
@@ -351,13 +655,13 @@ func (o *StarLight) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectPath + "\n"))
+				_, err = f.Write([]byte(objectKey + "\n"))
 				if nil != err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" objectPath: ", objectPath,
+						" objectKey: ", objectKey,
 						" err: ", err)
 					return
 				}
@@ -382,7 +686,7 @@ func (o *StarLight) uploadFolder(
 	}
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"StarLight:uploadFolder not all success.",
+			"JCS:uploadFolder not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("uploadFolder not all success")
 	} else {
@@ -398,29 +702,93 @@ func (o *StarLight) uploadFolder(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:uploadFolder finish.")
+		"JCS:uploadFolder finish.")
 	return nil
 }
 
-func (o *StarLight) uploadFileResume(
+func (o *JCS) uploadFile(
 	ctx context.Context,
 	sourceFile,
 	objectPath string,
+	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:uploadFileResume start.",
+		"JCS:uploadFile start.",
 		" sourceFile: ", sourceFile,
 		" objectPath: ", objectPath,
+		" taskId: ", taskId,
 		" needPure: ", needPure)
 
-	uploadFileInput := new(SLUploadFileInput)
+	sourceFileStat, err := os.Stat(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Stat failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+
+	if DefaultJCSUploadMultiSize < sourceFileStat.Size() {
+		err = o.uploadFileResume(
+			ctx,
+			sourceFile,
+			objectPath,
+			taskId,
+			needPure)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"JCS:uploadFileResume failed.",
+				" sourceFile: ", sourceFile,
+				" objectPath: ", objectPath,
+				" taskId: ", taskId,
+				" needPure: ", needPure,
+				" err: ", err)
+			return err
+		}
+	} else {
+		err = o.UploadFileWithSignedUrl(
+			ctx,
+			sourceFile,
+			objectPath,
+			taskId)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"JCS:UploadFileWithSignedUrl failed.",
+				" sourceFile: ", sourceFile,
+				" objectPath: ", objectPath,
+				" taskId: ", taskId,
+				" err: ", err)
+			return err
+		}
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:uploadFile finish.")
+	return err
+}
+
+func (o *JCS) uploadFileResume(
+	ctx context.Context,
+	sourceFile,
+	objectPath string,
+	taskId int32,
+	needPure bool) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:uploadFileResume start.",
+		" sourceFile: ", sourceFile,
+		" objectPath: ", objectPath,
+		" taskId: ", taskId,
+		" needPure: ", needPure)
+
+	uploadFileInput := new(JCSUploadFileInput)
 	uploadFileInput.ObjectPath = objectPath
 	uploadFileInput.UploadFile = sourceFile
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
 		uploadFileInput.UploadFile + ".upload_file_record"
-	uploadFileInput.TaskNum = DefaultSLUploadMultiTaskNum
+	uploadFileInput.TaskNum = DefaultJCSUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 
 	if needPure {
@@ -436,41 +804,45 @@ func (o *StarLight) uploadFileResume(
 		}
 	}
 
-	if uploadFileInput.PartSize < DefaultSLMinPartSize {
-		uploadFileInput.PartSize = DefaultSLMinPartSize
-	} else if uploadFileInput.PartSize > DefaultSLMaxPartSize {
-		uploadFileInput.PartSize = DefaultSLMaxPartSize
+	if uploadFileInput.PartSize < DefaultJCSMinPartSize {
+		uploadFileInput.PartSize = DefaultJCSMinPartSize
+	} else if uploadFileInput.PartSize > DefaultJCSMaxPartSize {
+		uploadFileInput.PartSize = DefaultJCSMaxPartSize
 	}
 
 	err = o.resumeUpload(
 		ctx,
 		sourceFile,
 		objectPath,
+		taskId,
 		uploadFileInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:resumeUpload failed.",
+			"JCS:resumeUpload failed.",
 			" sourceFile: ", sourceFile,
 			" objectPath: ", objectPath,
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:uploadFileResume finish.")
+		"JCS:uploadFileResume finish.")
 	return err
 }
 
-func (o *StarLight) resumeUpload(
+func (o *JCS) resumeUpload(
 	ctx context.Context,
 	sourceFile,
 	objectPath string,
-	input *SLUploadFileInput) (err error) {
+	taskId int32,
+	input *JCSUploadFileInput) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:resumeUpload start.",
+		"JCS:resumeUpload start.",
 		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath)
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
 
 	uploadFileStat, err := os.Stat(input.UploadFile)
 	if nil != err {
@@ -487,7 +859,7 @@ func (o *StarLight) resumeUpload(
 		return errors.New("uploadFile can not be a folder")
 	}
 
-	ufc := &SLUploadCheckpoint{}
+	ufc := &JCSUploadCheckpoint{}
 
 	var needCheckpoint = true
 	var checkpointFilePath = input.CheckpointFile
@@ -500,8 +872,9 @@ func (o *StarLight) resumeUpload(
 			input)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"StarLight:getUploadCheckpointFile failed.",
+				"JCS:getUploadCheckpointFile failed.",
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
@@ -510,13 +883,15 @@ func (o *StarLight) resumeUpload(
 		err = o.prepareUpload(
 			ctx,
 			objectPath,
+			taskId,
 			ufc,
 			uploadFileStat,
 			input)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"StarLight:prepareUpload failed.",
+				"JCS:prepareUpload failed.",
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
@@ -525,7 +900,7 @@ func (o *StarLight) resumeUpload(
 			err = o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"StarLight:updateCheckpointFile failed.",
+					"JCS:updateCheckpointFile failed.",
 					" checkpointFilePath: ", checkpointFilePath,
 					" err: ", err)
 				return err
@@ -536,42 +911,50 @@ func (o *StarLight) resumeUpload(
 	err = o.uploadPartConcurrent(
 		ctx,
 		sourceFile,
+		taskId,
 		ufc,
 		input)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:uploadPartConcurrent failed.",
+			"JCS:uploadPartConcurrent failed.",
 			" sourceFile: ", sourceFile,
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 
 	err = o.completeParts(
 		ctx,
+		taskId,
+		ufc,
 		enableCheckpoint,
 		checkpointFilePath)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:completeParts failed.",
+			"JCS:completeParts failed.",
+			" objectId: ", ufc.ObjectId,
+			" taskId: ", taskId,
 			" checkpointFilePath: ", checkpointFilePath,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:resumeUpload finish.")
+		"JCS:resumeUpload finish.")
 	return err
 }
 
-func (o *StarLight) uploadPartConcurrent(
+func (o *JCS) uploadPartConcurrent(
 	ctx context.Context,
 	sourceFile string,
-	ufc *SLUploadCheckpoint,
-	input *SLUploadFileInput) error {
+	taskId int32,
+	ufc *JCSUploadCheckpoint,
+	input *JCSUploadFileInput) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:uploadPartConcurrent start.",
-		" sourceFile: ", sourceFile)
+		"JCS:uploadPartConcurrent start.",
+		" sourceFile: ", sourceFile,
+		" taskId: ", taskId)
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
@@ -591,13 +974,13 @@ func (o *StarLight) uploadPartConcurrent(
 		if uploadPart.IsCompleted {
 			continue
 		}
-		task := SLUploadPartTask{
+		task := JCSUploadPartTask{
+			ObjectId:         ufc.ObjectId,
 			PartNumber:       uploadPart.PartNumber,
 			SourceFile:       input.UploadFile,
 			Offset:           uploadPart.Offset,
 			PartSize:         uploadPart.PartSize,
-			TotalSize:        ufc.FileInfo.Size,
-			SlClient:         o.slClient,
+			JcsClient:        o.jcsClient,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 		wg.Add(1)
@@ -605,7 +988,7 @@ func (o *StarLight) uploadPartConcurrent(
 			defer func() {
 				wg.Done()
 			}()
-			result := task.Run(ctx, sourceFile)
+			result := task.Run(ctx, sourceFile, taskId)
 			err = o.handleUploadTaskResult(
 				ctx,
 				result,
@@ -618,14 +1001,14 @@ func (o *StarLight) uploadPartConcurrent(
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 				Logger.WithContext(ctx).Error(
-					"StarLight:handleUploadTaskResult failed.",
+					"JCS:handleUploadTaskResult failed.",
 					" partNumber: ", task.PartNumber,
 					" checkpointFile: ", input.CheckpointFile,
 					" err: ", err)
 				uploadPartError.Store(err)
 			}
 			Logger.WithContext(ctx).Debug(
-				"StarLight:handleUploadTaskResult finish.")
+				"JCS:handleUploadTaskResult finish.")
 			return
 		})
 	}
@@ -637,18 +1020,18 @@ func (o *StarLight) uploadPartConcurrent(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:uploadPartConcurrent finish.")
+		"JCS:uploadPartConcurrent finish.")
 	return nil
 }
 
-func (o *StarLight) getUploadCheckpointFile(
+func (o *JCS) getUploadCheckpointFile(
 	ctx context.Context,
-	ufc *SLUploadCheckpoint,
+	ufc *JCSUploadCheckpoint,
 	uploadFileStat os.FileInfo,
-	input *SLUploadFileInput) (needCheckpoint bool, err error) {
+	input *JCSUploadFileInput) (needCheckpoint bool, err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:getUploadCheckpointFile start.")
+		"JCS:getUploadCheckpointFile start.")
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
@@ -674,7 +1057,7 @@ func (o *StarLight) getUploadCheckpointFile(
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, ufc)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:loadCheckpointFile failed.",
+			"JCS:loadCheckpointFile failed.",
 			" checkpointFilePath: ", checkpointFilePath,
 			" err: ", err)
 		return true, nil
@@ -690,51 +1073,67 @@ func (o *StarLight) getUploadCheckpointFile(
 		}
 	} else {
 		Logger.WithContext(ctx).Debug(
-			"StarLight:loadCheckpointFile finish.",
+			"JCS:loadCheckpointFile finish.",
 			" checkpointFilePath: ", checkpointFilePath)
 		return false, nil
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:getUploadCheckpointFile finish.")
+		"JCS:getUploadCheckpointFile finish.")
 	return true, nil
 }
 
-func (o *StarLight) prepareUpload(
+func (o *JCS) prepareUpload(
 	ctx context.Context,
 	objectPath string,
-	ufc *SLUploadCheckpoint,
+	taskId int32,
+	ufc *JCSUploadCheckpoint,
 	uploadFileStat os.FileInfo,
-	input *SLUploadFileInput) (err error) {
+	input *JCSUploadFileInput) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:prepareUpload start.",
-		" objectPath: ", objectPath)
+		"JCS:prepareUpload start.",
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
 
+	newMultipartUploadOutput, err := o.NewMultipartUploadWithSignedUrl(
+		ctx,
+		objectPath,
+		taskId)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"JCS:NewMultipartUploadWithSignedUrl failed.",
+			" objectPath: ", objectPath,
+			" taskId: ", taskId,
+			" err: ", err)
+		return err
+	}
+
+	ufc.ObjectId = newMultipartUploadOutput.Data.Object.ObjectID
 	ufc.ObjectPath = objectPath
 	ufc.UploadFile = input.UploadFile
-	ufc.FileInfo = SLFileStatus{}
+	ufc.FileInfo = JCSFileStatus{}
 	ufc.FileInfo.Size = uploadFileStat.Size()
 	ufc.FileInfo.LastModified = uploadFileStat.ModTime().Unix()
 
 	err = o.sliceFile(ctx, input.PartSize, ufc)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:sliceFile failed.",
+			"JCS:sliceFile failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:prepareUpload finish.")
+		"JCS:prepareUpload finish.")
 	return err
 }
 
-func (o *StarLight) sliceFile(
+func (o *JCS) sliceFile(
 	ctx context.Context,
 	partSize int64,
-	ufc *SLUploadCheckpoint) (err error) {
+	ufc *JCSUploadCheckpoint) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:sliceFile start.",
+		"JCS:sliceFile start.",
 		" partSize: ", partSize,
 		" fileSize: ", ufc.FileInfo.Size)
 	fileSize := ufc.FileInfo.Size
@@ -750,23 +1149,23 @@ func (o *StarLight) sliceFile(
 		cnt++
 	}
 
-	if partSize > DefaultSLMaxPartSize {
+	if partSize > DefaultJCSMaxPartSize {
 		Logger.WithContext(ctx).Error(
 			"upload file part too large.",
 			" partSize: ", partSize,
-			" maxPartSize: ", DefaultSLMaxPartSize)
+			" maxPartSize: ", DefaultJCSMaxPartSize)
 		return fmt.Errorf("upload file part too large")
 	}
 
 	if cnt == 0 {
-		uploadPart := SLUploadPartInfo{}
+		uploadPart := JCSUploadPartInfo{}
 		uploadPart.PartNumber = 1
-		ufc.UploadParts = []SLUploadPartInfo{uploadPart}
+		ufc.UploadParts = []JCSUploadPartInfo{uploadPart}
 	} else {
-		uploadParts := make([]SLUploadPartInfo, 0, cnt)
+		uploadParts := make([]JCSUploadPartInfo, 0, cnt)
 		var i int64
 		for i = 0; i < cnt; i++ {
-			uploadPart := SLUploadPartInfo{}
+			uploadPart := JCSUploadPartInfo{}
 			uploadPart.PartNumber = int32(i) + 1
 			uploadPart.PartSize = partSize
 			uploadPart.Offset = i * partSize
@@ -778,25 +1177,25 @@ func (o *StarLight) sliceFile(
 		ufc.UploadParts = uploadParts
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:sliceFile finish.")
+		"JCS:sliceFile finish.")
 	return nil
 }
 
-func (o *StarLight) handleUploadTaskResult(
+func (o *JCS) handleUploadTaskResult(
 	ctx context.Context,
 	result interface{},
-	ufc *SLUploadCheckpoint,
+	ufc *JCSUploadCheckpoint,
 	partNum int32,
 	enableCheckpoint bool,
 	checkpointFilePath string,
 	lock *sync.Mutex) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:handleUploadTaskResult start.",
+		"JCS:handleUploadTaskResult start.",
 		" checkpointFilePath: ", checkpointFilePath,
 		" partNum: ", partNum)
 
-	if _, ok := result.(*SLBaseResponse); ok {
+	if _, ok := result.(*JCSBaseResponse); ok {
 		lock.Lock()
 		defer lock.Unlock()
 		ufc.UploadParts[partNum-1].IsCompleted = true
@@ -805,7 +1204,7 @@ func (o *StarLight) handleUploadTaskResult(
 			_err := o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != _err {
 				Logger.WithContext(ctx).Error(
-					"StarLight:updateCheckpointFile failed.",
+					"JCS:updateCheckpointFile failed.",
 					" checkpointFilePath: ", checkpointFilePath,
 					" partNum: ", partNum,
 					" err: ", _err)
@@ -822,55 +1221,76 @@ func (o *StarLight) handleUploadTaskResult(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:handleUploadTaskResult finish.")
+		"JCS:handleUploadTaskResult finish.")
 	return
 }
 
-func (o *StarLight) completeParts(
+func (o *JCS) completeParts(
 	ctx context.Context,
+	taskId int32,
+	ufc *JCSUploadCheckpoint,
 	enableCheckpoint bool,
 	checkpointFilePath string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:completeParts start.",
-		" enableCheckpoint: ", enableCheckpoint,
+		"JCS:completeParts start.",
+		" objectId: ", ufc.ObjectId,
+		" taskId: ", taskId,
 		" checkpointFilePath: ", checkpointFilePath)
 
-	if enableCheckpoint {
-		_err := os.Remove(checkpointFilePath)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+	parts := make([]int32, 0, len(ufc.UploadParts))
+	for _, uploadPart := range ufc.UploadParts {
+		parts = append(parts, uploadPart.PartNumber)
+	}
+	err = o.CompleteMultipartUploadWithSignedUrl(
+		ctx,
+		ufc.ObjectId,
+		taskId,
+		parts)
+	if nil == err {
+		if enableCheckpoint {
+			_err := os.Remove(checkpointFilePath)
+			if nil != _err {
+				if !os.IsNotExist(_err) {
+					Logger.WithContext(ctx).Error(
+						"os.Remove failed.",
+						" checkpointFilePath: ", checkpointFilePath,
+						" err: ", _err)
+				}
 			}
 		}
+		Logger.WithContext(ctx).Debug(
+			"JCS:CompleteMultipartUploadWithSignedUrl finish.")
+		return err
 	}
-	Logger.WithContext(ctx).Debug(
-		"StarLight:completeParts finish.")
+	Logger.WithContext(ctx).Error(
+		"JCS.CompleteMultipartUpload failed.",
+		" objectId: ", ufc.ObjectId,
+		" taskId: ", taskId,
+		" err: ", err)
 	return err
 }
 
-type SLUploadPartTask struct {
+type JCSUploadPartTask struct {
+	ObjectId         int32
 	ObjectPath       string
 	PartNumber       int32
 	SourceFile       string
 	Offset           int64
 	PartSize         int64
-	TotalSize        int64
-	SlClient         *SLClient
+	JcsClient        *JCSClient
 	EnableCheckpoint bool
 }
 
-func (task *SLUploadPartTask) Run(
+func (task *JCSUploadPartTask) Run(
 	ctx context.Context,
-	sourceFile string) interface{} {
+	sourceFile string,
+	taskId int32) interface{} {
 
 	Logger.WithContext(ctx).Debug(
-		"SLUploadPartTask:Run start.",
+		"JCSUploadPartTask:Run start.",
 		" sourceFile: ", sourceFile,
-		" objectPath: ", task.ObjectPath)
+		" taskId: ", taskId)
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
@@ -898,111 +1318,148 @@ func (task *SLUploadPartTask) Run(
 	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
 		Logger.WithContext(ctx).Error(
 			"fd.Seek failed.",
-			" sourceFile: ", sourceFile, " err: ", err)
+			" sourceFile: ", sourceFile,
+			" err: ", err)
 		return err
 	}
 
-	contentRange := fmt.Sprintf("bytes=%d-%d/%d",
-		task.Offset,
-		task.Offset+task.PartSize,
-		task.TotalSize)
+	createJCSPreSignedObjectUploadPartReq :=
+		new(CreateJCSPreSignedObjectUploadPartReq)
 
-	err = task.SlClient.UploadChunks(
+	createJCSPreSignedObjectUploadPartReq.ObjectId = task.ObjectId
+	createJCSPreSignedObjectUploadPartReq.Index = task.PartNumber
+	createJCSPreSignedObjectUploadPartReq.TaskId = taskId
+	err, createUploadPartSignedUrlResp :=
+		UClient.CreateJCSPreSignedObjectUploadPart(
+			ctx,
+			createJCSPreSignedObjectUploadPartReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectUploadPart failed.",
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber,
+			" taskId: ", taskId,
+			" err: ", err)
+		return err
+	}
+
+	err, uploadPartOutput := task.JcsClient.UploadPartWithSignedUrl(
 		ctx,
-		task.ObjectPath,
-		contentRange,
+		createUploadPartSignedUrlResp.SignedUrl,
 		readerWrapper)
 
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"SlClient.UploadChunks failed.",
+			"JcsClient.UploadPartWithSignedUrl failed.",
+			" signedUrl: ", createUploadPartSignedUrlResp.SignedUrl,
+			" objectId: ", task.ObjectId,
 			" partNumber: ", task.PartNumber,
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"SLUploadPartTask:Run finish.")
-	return err
+		"JCSUploadPartTask:Run finish.")
+	return uploadPartOutput
 }
 
-func (o *StarLight) Download(
+func (o *JCS) Download(
 	ctx context.Context,
-	sourcePath,
-	targetPath string) (err error) {
+	targetPath string,
+	taskId int32,
+	bucketName string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:Download start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		"JCS:Download start.",
+		" targetPath: ", targetPath,
+		" taskId: ", taskId,
+		" bucketName: ", bucketName)
 
-	listOutput := new(SLListOutput)
-	err, listOutput = o.slClient.List(
-		ctx,
-		sourcePath)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"slClient:List start.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
-		return err
-	}
-
-	objects := make([]*SLObject, 0)
-	folders := make([]*SLObject, 0)
-	for _, object := range listOutput.Spec {
-		if SLObjectTypeFile == object.Type {
-			objects = append(objects, object)
-		} else {
-			folders = append(folders, object)
-		}
-	}
-	err = o.downloadObjects(
-		ctx,
-		sourcePath,
-		targetPath,
-		objects)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"StarLight:downloadObjects failed.",
-			" sourcePath: ", sourcePath,
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return err
-	}
-	for _, folder := range folders {
-		err = o.Download(ctx, folder.Path, targetPath)
+	continuationToken := ""
+	for {
+		listObjectsData, err := o.ListObjectsWithSignedUrl(
+			ctx,
+			taskId,
+			continuationToken)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"StarLight:Download failed.",
-				" sourcePath: ", folder.Path,
-				" targetPath: ", targetPath,
+				"JCS:ListObjectsWithSignedUrl start.",
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
+		err = o.downloadObjects(
+			ctx,
+			targetPath,
+			taskId,
+			listObjectsData)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"JCS:downloadObjects failed.",
+				" targetPath: ", targetPath,
+				" taskId: ", taskId,
+				" bucketName: ", bucketName,
+				" err: ", err)
+			return err
+		}
+		if listObjectsData.IsTruncated {
+			continuationToken = listObjectsData.NextContinuationToken
+		} else {
+			break
+		}
 	}
-
 	Logger.WithContext(ctx).Debug(
-		"StarLight:Download finish.",
-		" sourcePath: ", sourcePath)
+		"JCS:Download finish.")
 	return nil
 }
 
-func (o *StarLight) downloadObjects(
+func (o *JCS) downloadObjects(
 	ctx context.Context,
-	sourcePath,
 	targetPath string,
-	objects []*SLObject) (err error) {
+	taskId int32,
+	listObjectsData *JCSListData) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:downloadObjects start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		"JCS:downloadObjects start.",
+		" targetPath: ", targetPath,
+		" taskId: ", taskId)
+
+	getTaskReq := new(GetTaskReq)
+	getTaskReq.TaskId = &taskId
+	getTaskReq.PageIndex = DefaultPageIndex
+	getTaskReq.PageSize = DefaultPageSize
+
+	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetTask failed.",
+			" taskId: ", taskId,
+			" err: ", err)
+		return err
+	}
+	if len(getTaskResp.Data.List) == 0 {
+		Logger.WithContext(ctx).Error(
+			"task not exist. taskId: ", taskId)
+		return errors.New("task not exist")
+	}
+	task := getTaskResp.Data.List[0].Task
+	downloadObjectTaskParams := new(DownloadObjectTaskParams)
+	err = json.Unmarshal([]byte(task.Params), downloadObjectTaskParams)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"DownloadObjectTaskParams Unmarshal failed.",
+			" taskId: ", taskId,
+			" params: ", task.Params,
+			" err: ", err)
+		return err
+	}
+	uuid := downloadObjectTaskParams.Request.ObjUuid
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord := targetPath + sourcePath + ".download_folder_record"
+	downloadFolderRecord := targetPath + uuid + ".download_folder_record"
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
 		lines := strings.Split(string(fileData), "\n")
@@ -1019,7 +1476,7 @@ func (o *StarLight) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultSLDownloadFileTaskNum)
+	pool, err := ants.NewPool(DefaultJCSDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download Object  failed.",
@@ -1027,10 +1484,12 @@ func (o *StarLight) downloadObjects(
 		return err
 	}
 	defer pool.Release()
-	for index, object := range objects {
+	for index, object := range listObjectsData.Objects {
 		Logger.WithContext(ctx).Debug(
 			"object content.",
 			" index: ", index,
+			" ObjectID: ", object.ObjectID,
+			" PackageID: ", object.PackageID,
 			" Path: ", object.Path,
 			" size: ", object.Size)
 		// 处理文件
@@ -1052,16 +1511,18 @@ func (o *StarLight) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			err = o.downloadPart(
+			err = o.downloadPartWithSignedUrl(
 				ctx,
 				itemObject,
-				targetPath+itemObject.Path)
+				targetPath+uuid+"/"+itemObject.Path,
+				taskId)
 			if nil != err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
-					"StarLight:downloadPart failed.",
+					"JCS:downloadPartWithSignedUrl failed.",
 					" objectPath: ", itemObject.Path,
 					" targetFile: ", targetPath+itemObject.Path,
+					" taskId: ", taskId,
 					" err: ", err)
 				return
 			}
@@ -1093,7 +1554,7 @@ func (o *StarLight) downloadObjects(
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectPath: ", itemObject.Path,
+					" objectKey: ", itemObject.Path,
 					" err: ", err)
 				return
 			}
@@ -1108,8 +1569,8 @@ func (o *StarLight) downloadObjects(
 	wg.Wait()
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"StarLight:downloadObjects not all success.",
-			" sourcePath: ", sourcePath)
+			"JCS:downloadObjects not all success.",
+			" uuid: ", downloadObjectTaskParams.Request.ObjUuid)
 		return errors.New("downloadObjects not all success")
 	} else {
 		_err := os.Remove(downloadFolderRecord)
@@ -1124,53 +1585,62 @@ func (o *StarLight) downloadObjects(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:downloadObjects finish.")
+		"JCS:downloadObjects finish.")
 	return nil
 }
 
-func (o *StarLight) downloadPart(
+func (o *JCS) downloadPartWithSignedUrl(
 	ctx context.Context,
-	object *SLObject,
-	targetFile string) (err error) {
+	object *JCSObject,
+	targetFile string,
+	taskId int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:downloadPart start.",
+		"JCS:downloadPartWithSignedUrl start.",
+		" ObjectID: ", object.ObjectID,
+		" PackageID: ", object.PackageID,
 		" Path: ", object.Path,
-		" targetFile: ", targetFile)
+		" targetFile: ", targetFile,
+		" taskId: ", taskId)
 
-	downloadFileInput := new(SLDownloadFileInput)
+	downloadFileInput := new(JCSDownloadFileInput)
+	downloadFileInput.Path = object.Path
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + ".download_file_record"
-	downloadFileInput.TaskNum = DefaultSLDownloadMultiTaskNum
+	downloadFileInput.TaskNum = DefaultJCSDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
 	err = o.resumeDownload(
 		ctx,
+		taskId,
 		object,
 		downloadFileInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:resumeDownload failed.",
+			"JCS:resumeDownload failed.",
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:downloadPart finish.")
+		"JCS:downloadPartWithSignedUrl finish.")
 	return
 }
 
-func (o *StarLight) resumeDownload(
+func (o *JCS) resumeDownload(
 	ctx context.Context,
-	object *SLObject,
-	input *SLDownloadFileInput) (err error) {
+	taskId int32,
+	object *JCSObject,
+	input *JCSDownloadFileInput) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:resumeDownload start.")
+		"JCS:resumeDownload start.",
+		" taskId: ", taskId)
 
 	partSize := input.PartSize
-	dfc := &SLDownloadCheckpoint{}
+	dfc := &JCSDownloadCheckpoint{}
 
 	var needCheckpoint = true
 	var checkpointFilePath = input.CheckpointFile
@@ -1183,7 +1653,7 @@ func (o *StarLight) resumeDownload(
 			object)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"StarLight:getDownloadCheckpointFile failed.",
+				"JCS:getDownloadCheckpointFile failed.",
 				" checkpointFilePath: ", checkpointFilePath,
 				" err: ", err)
 			return err
@@ -1191,20 +1661,22 @@ func (o *StarLight) resumeDownload(
 	}
 
 	if needCheckpoint {
+		objectSize, _ := strconv.ParseInt(object.Size, 10, 64)
+		dfc.ObjectId = object.ObjectID
 		dfc.DownloadFile = input.DownloadFile
-		dfc.ObjectInfo = SLObjectInfo{}
-		dfc.ObjectInfo.Size = object.Size
-		dfc.TempFileInfo = SLTempFileInfo{}
+		dfc.ObjectInfo = JCSObjectInfo{}
+		dfc.ObjectInfo.Size = objectSize
+		dfc.TempFileInfo = JCSTempFileInfo{}
 		dfc.TempFileInfo.TempFileUrl = input.DownloadFile + ".tmp"
-		dfc.TempFileInfo.Size = object.Size
+		dfc.TempFileInfo.Size = objectSize
 
-		o.sliceObject(ctx, object.Size, partSize, dfc)
+		o.sliceObject(ctx, objectSize, partSize, dfc)
 		err = o.prepareTempFile(ctx,
 			dfc.TempFileInfo.TempFileUrl,
 			dfc.TempFileInfo.Size)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"StarLight:prepareTempFile failed.",
+				"JCS:prepareTempFile failed.",
 				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 				" Size: ", dfc.TempFileInfo.Size,
 				" err: ", err)
@@ -1215,7 +1687,7 @@ func (o *StarLight) resumeDownload(
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"StarLight:updateCheckpointFile failed.",
+					"JCS:updateCheckpointFile failed.",
 					" checkpointFilePath: ", checkpointFilePath,
 					" err: ", err)
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
@@ -1233,7 +1705,7 @@ func (o *StarLight) resumeDownload(
 	}
 
 	downloadFileError := o.downloadFileConcurrent(
-		ctx, input, dfc)
+		ctx, taskId, input, dfc)
 	err = o.handleDownloadFileResult(
 		ctx,
 		dfc.TempFileInfo.TempFileUrl,
@@ -1241,7 +1713,7 @@ func (o *StarLight) resumeDownload(
 		downloadFileError)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:handleDownloadFileResult failed.",
+			"JCS:handleDownloadFileResult failed.",
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" err: ", err)
 		return err
@@ -1268,17 +1740,19 @@ func (o *StarLight) resumeDownload(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:resumeDownload finish.")
+		"JCS:resumeDownload finish.")
 	return nil
 }
 
-func (o *StarLight) downloadFileConcurrent(
+func (o *JCS) downloadFileConcurrent(
 	ctx context.Context,
-	input *SLDownloadFileInput,
-	dfc *SLDownloadCheckpoint) error {
+	taskId int32,
+	input *JCSDownloadFileInput,
+	dfc *JCSDownloadCheckpoint) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:downloadFileConcurrent start.")
+		"JCS:downloadFileConcurrent start.",
+		" taskId: ", taskId)
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
@@ -1298,25 +1772,19 @@ func (o *StarLight) downloadFileConcurrent(
 		if downloadPart.IsCompleted {
 			continue
 		}
-
-		begin := downloadPart.Offset
-		end := downloadPart.Offset + downloadPart.Length - 1
-
-		contentRange := fmt.Sprintf("bytes=%d-%d", begin, end)
-
-		task := SLDownloadPartTask{
-			DownloadFile:     dfc.DownloadFile,
+		task := JCSDownloadPartTask{
+			ObjectId:         dfc.ObjectId,
 			Offset:           downloadPart.Offset,
 			Length:           downloadPart.Length,
-			Range:            contentRange,
-			SlClient:         o.slClient,
-			Sl:               o,
+			JcsClient:        o.jcsClient,
+			Jcs:              o,
 			PartNumber:       downloadPart.PartNumber,
 			TempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 		Logger.WithContext(ctx).Debug(
 			"DownloadPartTask params.",
+			" ObjectId: ", dfc.ObjectId,
 			" Offset: ", downloadPart.Offset,
 			" Length: ", downloadPart.Length,
 			" PartNumber: ", downloadPart.PartNumber,
@@ -1340,7 +1808,7 @@ func (o *StarLight) downloadFileConcurrent(
 						input.CheckpointFile)
 					if nil != err {
 						Logger.WithContext(ctx).Error(
-							"StarLight:updateCheckpointFile failed.",
+							"JCS:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
 							" err: ", err)
 						downloadPartError.Store(err)
@@ -1348,7 +1816,7 @@ func (o *StarLight) downloadFileConcurrent(
 				}
 				return
 			} else {
-				result := task.Run(ctx)
+				result := task.Run(ctx, taskId)
 				err = o.handleDownloadTaskResult(
 					ctx,
 					result,
@@ -1361,7 +1829,7 @@ func (o *StarLight) downloadFileConcurrent(
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
-						"StarLight:handleDownloadTaskResult failed.",
+						"JCS:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
 						" err: ", err)
@@ -1385,18 +1853,18 @@ func (o *StarLight) downloadFileConcurrent(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:downloadFileConcurrent finish.")
+		"JCS:downloadFileConcurrent finish.")
 	return nil
 }
 
-func (o *StarLight) getDownloadCheckpointFile(
+func (o *JCS) getDownloadCheckpointFile(
 	ctx context.Context,
-	dfc *SLDownloadCheckpoint,
-	input *SLDownloadFileInput,
-	object *SLObject) (needCheckpoint bool, err error) {
+	dfc *JCSDownloadCheckpoint,
+	input *JCSDownloadFileInput,
+	object *JCSObject) (needCheckpoint bool, err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:getDownloadCheckpointFile start.",
+		"JCS:getDownloadCheckpointFile start.",
 		" checkpointFile: ", input.CheckpointFile)
 
 	checkpointFilePath := input.CheckpointFile
@@ -1423,7 +1891,7 @@ func (o *StarLight) getDownloadCheckpointFile(
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"StarLight:loadCheckpointFile failed.",
+			"JCS:loadCheckpointFile failed.",
 			" checkpointFilePath: ", checkpointFilePath,
 			" err: ", err)
 		return true, nil
@@ -1458,13 +1926,13 @@ func (o *StarLight) getDownloadCheckpointFile(
 	return true, nil
 }
 
-func (o *StarLight) prepareTempFile(
+func (o *JCS) prepareTempFile(
 	ctx context.Context,
 	tempFileURL string,
 	fileSize int64) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:prepareTempFile start.",
+		"JCS:prepareTempFile start.",
 		" tempFileURL: ", tempFileURL,
 		" fileSize: ", fileSize)
 
@@ -1485,7 +1953,8 @@ func (o *StarLight) prepareTempFile(
 		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" parentDir: ", parentDir, " err: ", _err)
+				" parentDir: ", parentDir,
+				" err: ", _err)
 			return _err
 		}
 	} else if !stat.IsDir() {
@@ -1499,8 +1968,9 @@ func (o *StarLight) prepareTempFile(
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"StarLight:createFile finish.",
-			" tempFileURL: ", tempFileURL, " fileSize: ", fileSize)
+			"JCS:createFile finish.",
+			" tempFileURL: ", tempFileURL,
+			" fileSize: ", fileSize)
 		return nil
 	}
 	fd, err := os.OpenFile(
@@ -1510,7 +1980,8 @@ func (o *StarLight) prepareTempFile(
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" tempFileURL: ", tempFileURL, " err: ", err)
+			" tempFileURL: ", tempFileURL,
+			" err: ", err)
 		return err
 	}
 	defer func() {
@@ -1518,7 +1989,8 @@ func (o *StarLight) prepareTempFile(
 		if errMsg != nil {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
-				" tempFileURL: ", tempFileURL, " err: ", errMsg)
+				" tempFileURL: ", tempFileURL,
+				" err: ", errMsg)
 		}
 	}()
 	if fileSize > 0 {
@@ -1526,22 +1998,23 @@ func (o *StarLight) prepareTempFile(
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"write file failed.",
-				" tempFileURL: ", tempFileURL, " err: ", err)
+				" tempFileURL: ", tempFileURL,
+				" err: ", err)
 			return err
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:prepareTempFile finish.")
+		"JCS:prepareTempFile finish.")
 	return nil
 }
 
-func (o *StarLight) createFile(
+func (o *JCS) createFile(
 	ctx context.Context,
 	tempFileURL string,
 	fileSize int64) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:createFile start.",
+		"JCS:createFile start.",
 		" tempFileURL: ", tempFileURL,
 		" fileSize: ", fileSize)
 
@@ -1575,25 +2048,25 @@ func (o *StarLight) createFile(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:createFile finish.")
+		"JCS:createFile finish.")
 	return nil
 }
 
-func (o *StarLight) handleDownloadTaskResult(
+func (o *JCS) handleDownloadTaskResult(
 	ctx context.Context,
 	result interface{},
-	dfc *SLDownloadCheckpoint,
+	dfc *JCSDownloadCheckpoint,
 	partNum int64,
 	enableCheckpoint bool,
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:handleDownloadTaskResult start.",
+		"JCS:handleDownloadTaskResult start.",
 		" partNum: ", partNum,
 		" checkpointFile: ", checkpointFile)
 
-	if _, ok := result.(*SLDownloadPartOutput); ok {
+	if _, ok := result.(*JCSDownloadPartOutput); ok {
 		lock.Lock()
 		defer lock.Unlock()
 		dfc.DownloadParts[partNum-1].IsCompleted = true
@@ -1602,7 +2075,7 @@ func (o *StarLight) handleDownloadTaskResult(
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
 				Logger.WithContext(ctx).Warn(
-					"StarLight:updateCheckpointFile failed.",
+					"JCS:updateCheckpointFile failed.",
 					" checkpointFile: ", checkpointFile,
 					" err: ", _err)
 			}
@@ -1613,18 +2086,18 @@ func (o *StarLight) handleDownloadTaskResult(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"StarLight:handleDownloadTaskResult finish.")
+		"JCS:handleDownloadTaskResult finish.")
 	return
 }
 
-func (o *StarLight) handleDownloadFileResult(
+func (o *JCS) handleDownloadFileResult(
 	ctx context.Context,
 	tempFileURL string,
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:handleDownloadFileResult start.",
+		"JCS:handleDownloadFileResult start.",
 		" tempFileURL: ", tempFileURL)
 
 	if downloadFileError != nil {
@@ -1634,30 +2107,31 @@ func (o *StarLight) handleDownloadFileResult(
 				if !os.IsNotExist(_err) {
 					Logger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" tempFileURL: ", tempFileURL, " err: ", _err)
+						" tempFileURL: ", tempFileURL,
+						" err: ", _err)
 				}
 			}
 		}
 		Logger.WithContext(ctx).Debug(
-			"StarLight.handleDownloadFileResult finish.",
+			"JCS.handleDownloadFileResult finish.",
 			" tempFileURL: ", tempFileURL,
 			" downloadFileError: ", downloadFileError)
 		return downloadFileError
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight.handleDownloadFileResult finish.")
+		"JCS.handleDownloadFileResult finish.")
 	return nil
 }
 
-func (o *StarLight) UpdateDownloadFile(
+func (o *JCS) UpdateDownloadFile(
 	ctx context.Context,
 	filePath string,
 	offset int64,
-	downloadPartOutput *SLDownloadPartOutput) error {
+	downloadPartOutput *JCSDownloadPartOutput) error {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:UpdateDownloadFile start.",
+		"JCS:UpdateDownloadFile start.",
 		" filePath: ", filePath,
 		" offset: ", offset)
 
@@ -1674,7 +2148,8 @@ func (o *StarLight) UpdateDownloadFile(
 		if errMsg != nil {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
-				" filePath: ", filePath, " err: ", errMsg)
+				" filePath: ", filePath,
+				" err: ", errMsg)
 		}
 	}()
 	_, err = fd.Seek(offset, 0)
@@ -1697,7 +2172,8 @@ func (o *StarLight) UpdateDownloadFile(
 			if writeError != nil {
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
-					" filePath: ", filePath, " err: ", writeError)
+					" filePath: ", filePath,
+					" err: ", writeError)
 				return writeError
 			}
 			if writeCount != readCount {
@@ -1731,38 +2207,58 @@ func (o *StarLight) UpdateDownloadFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:UpdateDownloadFile finish. readTotal: ", readTotal)
+		"JCS:UpdateDownloadFile finish.",
+		" readTotal: ", readTotal)
 	return nil
 }
 
-type SLDownloadPartTask struct {
-	DownloadFile     string
+type JCSDownloadPartTask struct {
+	ObjectId         int32
 	Offset           int64
 	Length           int64
-	Range            string
-	SlClient         *SLClient
-	Sl               *StarLight
+	JcsClient        *JCSClient
+	Jcs              *JCS
 	PartNumber       int64
 	TempFileURL      string
 	EnableCheckpoint bool
 }
 
-func (task *SLDownloadPartTask) Run(
-	ctx context.Context) interface{} {
+func (task *JCSDownloadPartTask) Run(
+	ctx context.Context,
+	taskId int32) interface{} {
 
 	Logger.WithContext(ctx).Debug(
-		"SLDownloadPartTask:Run start.",
+		"JCSDownloadPartTask:Run start.",
+		" taskId: ", taskId,
 		" partNumber: ", task.PartNumber)
 
-	err, downloadPartOutput :=
-		task.SlClient.DownloadChunks(
+	createJCSPreSignedObjectDownloadReq :=
+		new(CreateJCSPreSignedObjectDownloadReq)
+
+	createJCSPreSignedObjectDownloadReq.Offset = task.Offset
+	createJCSPreSignedObjectDownloadReq.ObjectId = task.ObjectId
+	createJCSPreSignedObjectDownloadReq.Length = task.Length
+	createJCSPreSignedObjectDownloadReq.TaskId = taskId
+
+	err, createJCSPreSignedObjectDownloadResp :=
+		UClient.CreateJCSPreSignedObjectDownload(
 			ctx,
-			task.DownloadFile,
-			task.Range)
+			createJCSPreSignedObjectDownloadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateGetObjectSignedUrl failed.",
+			" err: ", err)
+		return err
+	}
+
+	err, downloadPartOutput :=
+		task.JcsClient.DownloadPartWithSignedUrl(
+			ctx,
+			createJCSPreSignedObjectDownloadResp.SignedUrl)
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"SlClient.DownloadChunks finish.")
+			"JcsClient.DownloadPartWithSignedUrl finish.")
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
@@ -1770,7 +2266,7 @@ func (task *SLDownloadPartTask) Run(
 					"close response body failed.")
 			}
 		}()
-		_err := task.Sl.UpdateDownloadFile(
+		_err := task.Jcs.UpdateDownloadFile(
 			ctx,
 			task.TempFileURL,
 			task.Offset,
@@ -1782,7 +2278,7 @@ func (task *SLDownloadPartTask) Run(
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
-				"SL.updateDownloadFile failed.",
+				"JCS.updateDownloadFile failed.",
 				" err: ", _err)
 			return _err
 		}
@@ -1792,7 +2288,8 @@ func (task *SLDownloadPartTask) Run(
 	}
 
 	Logger.WithContext(ctx).Error(
-		"SLDownloadPartTask:Run failed.",
+		"JCSDownloadPartTask:Run failed.",
+		" signedUrl: ", createJCSPreSignedObjectDownloadResp.SignedUrl,
 		" err: ", err)
 	return err
 }

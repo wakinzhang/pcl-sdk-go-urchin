@@ -1,23 +1,38 @@
 package adapter
 
 import (
+	"context"
 	"fmt"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
+	uuid "github.com/satori/go.uuid"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 )
 
 func UploadFile(
-	urchinServiceAddr, objUuid, objPath, sourcePath string,
+	urchinServiceAddr,
+	objUuid,
+	objPath,
+	sourcePath string,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "UploadFile start."+
-		" urchinServiceAddr: %s objUuid: %s, objPath: %s, sourcePath: %s, needPure: %t",
-		urchinServiceAddr, objUuid, objPath, sourcePath, needPure)
+	requestId := uuid.NewV4().String()
+	var ctx context.Context
+	ctx = context.Background()
+	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"UploadFile start.",
+		" objUuid: ", objUuid,
+		" objPath: ", objPath,
+		" sourcePath: ", sourcePath,
+		" needPure: ", needPure)
+
+	UClient.Init(
+		ctx,
+		urchinServiceAddr,
+		DefaultUClientReqTimeout,
+		DefaultUClientMaxConnection)
 
 	uploadFileReq := new(UploadFileReq)
 	uploadFileReq.UserId = "vg3yHwUa"
@@ -25,71 +40,82 @@ func UploadFile(
 	uploadFileReq.Source = objPath
 	uploadFileReq.SourceLocalPath = sourcePath
 
-	err, uploadFileResp := urchinService.UploadFile(uploadFileReq)
+	err, uploadFileResp := UClient.UploadFile(ctx, uploadFileReq)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UrchinService.UploadFile failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.UploadFile failed.",
+			" err: ", err)
 		return err
 	}
 
 	fmt.Printf("UploadFile TaskId: %d\n", uploadFileResp.TaskId)
 
 	err = ProcessUploadFile(
-		urchinServiceAddr,
+		ctx,
 		sourcePath,
 		uploadFileResp.TaskId,
 		uploadFileResp.NodeType,
 		needPure)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessUploadFile failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessUploadFile failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "UploadFile success.")
+	Logger.WithContext(ctx).Debug(
+		"UploadFile finish.")
 	return err
 }
 
 func ProcessUploadFile(
-	urchinServiceAddr, sourcePath string,
+	ctx context.Context,
+	sourcePath string,
 	taskId, nodeType int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessUploadFile start."+
-		" urchinServiceAddr: %s sourcePath: %s, taskId: %d, nodeType: %d, needPure: %t",
-		urchinServiceAddr, sourcePath, taskId, nodeType, needPure)
+	Logger.WithContext(ctx).Debug(
+		"ProcessUploadFile start.",
+		" sourcePath: ", sourcePath,
+		" taskId: ", taskId,
+		" nodeType: ", nodeType,
+		" needPure: ", needPure)
 
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
 		finishTaskReq.TaskId = taskId
-		if err != nil {
+		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = urchinService.FinishTask(finishTaskReq)
+		err, _ = UClient.FinishTask(ctx, finishTaskReq)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"UrchinService.FinishTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.FinishTask failed.",
+				" err: ", err)
 		}
 	}()
 
-	err, storage := NewStorage(nodeType)
+	err, storage := NewStorage(ctx, nodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "NewStorage failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"NewStorage failed.",
+			" err: ", err)
 		return err
 	}
 	err = storage.Upload(
-		urchinServiceAddr,
+		ctx,
 		sourcePath,
 		taskId,
 		needPure)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "storage.Upload failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"storage.Upload failed.",
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessUploadFile success.")
+	Logger.WithContext(ctx).Debug(
+		"ProcessUploadFile finish.")
 	return nil
 }

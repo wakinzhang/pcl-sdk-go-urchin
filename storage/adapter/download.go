@@ -1,93 +1,117 @@
 package adapter
 
 import (
+	"context"
 	"fmt"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
+	uuid "github.com/satori/go.uuid"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 )
 
-func Download(urchinServiceAddr, objUuid, targetPath string) (err error) {
+func Download(
+	urchinServiceAddr,
+	objUuid,
+	targetPath string) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"Download start. urchinServiceAddr: %s, targetPath: %s, objUuid: %s",
-		urchinServiceAddr, targetPath, objUuid)
+	requestId := uuid.NewV4().String()
+	var ctx context.Context
+	ctx = context.Background()
+	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"Download start.",
+		" targetPath: ", targetPath,
+		" objUuid: ", objUuid)
+
+	UClient.Init(
+		ctx,
+		urchinServiceAddr,
+		DefaultUClientReqTimeout,
+		DefaultUClientMaxConnection)
 
 	downloadObjectReq := new(DownloadObjectReq)
 	downloadObjectReq.UserId = "vg3yHwUa"
 	downloadObjectReq.ObjUuid = objUuid
 	downloadObjectReq.TargetLocalPath = targetPath
 
-	err, downloadObjectResp := urchinService.DownloadObject(downloadObjectReq)
+	err, downloadObjectResp := UClient.DownloadObject(
+		ctx, downloadObjectReq)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UrchinService.DownloadObject failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.DownloadObject  failed.",
+			" err: ", err)
 		return err
 	}
 
 	fmt.Printf("Download TaskId: %d\n", downloadObjectResp.TaskId)
 
 	err = ProcessDownload(
-		urchinServiceAddr,
+		ctx,
 		targetPath,
 		downloadObjectResp.BucketName,
 		downloadObjectResp.TaskId,
 		downloadObjectResp.NodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessDownload failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessDownload failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "Download success.")
+	Logger.WithContext(ctx).Debug(
+		"Download finish.")
 	return err
 }
 
 func ProcessDownload(
-	urchinServiceAddr, targetPath, bucketName string,
+	ctx context.Context,
+	targetPath, bucketName string,
 	taskId, nodeType int32) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessDownload start."+
-		" urchinServiceAddr: %s targetPath: %s, bucketName: %s, taskId: %d, nodeType: %d",
-		urchinServiceAddr, targetPath, bucketName, taskId, nodeType)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"ProcessDownload start.",
+		" targetPath: ", targetPath,
+		" bucketName: ", bucketName,
+		" taskId: ", taskId,
+		" nodeType: ", nodeType)
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
 		finishTaskReq.TaskId = taskId
-		if err != nil {
+		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = urchinService.FinishTask(finishTaskReq)
+		err, _ = UClient.FinishTask(ctx, finishTaskReq)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"UrchinService.FinishTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.FinishTask failed.",
+				" err: ", err)
 		}
 	}()
 
-	err, storage := NewStorage(nodeType)
+	err, storage := NewStorage(ctx, nodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "NewStorage failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"NewStorage failed.",
+			" err: ", err)
 		return err
 	}
 	err = storage.Download(
-		urchinServiceAddr,
+		ctx,
 		targetPath,
 		taskId,
 		bucketName)
 
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "storage.Download failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"storage.Download failed.",
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessDownload success.")
+	Logger.WithContext(ctx).Debug(
+		"ProcessDownload finish.")
 	return nil
 }

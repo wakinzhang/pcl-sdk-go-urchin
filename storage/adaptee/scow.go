@@ -3,6 +3,8 @@ package adaptee
 import (
 	"bufio"
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -19,41 +21,49 @@ import (
 	"syscall"
 )
 
-type ParaCloud struct {
-	pcClient *ParaCloudClient
+type Scow struct {
+	sClient *ScowClient
 }
 
-func (o *ParaCloud) Init(
+func (o *Scow) Init(
 	ctx context.Context,
 	username,
 	password,
-	endpoint string) (err error) {
+	endpoint,
+	url,
+	clusterId string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:Init start.",
+		"Scow:Init start.",
 		" username: ", "***",
 		" password: ", "***",
-		" endpoint: ", endpoint)
+		" endpoint: ", endpoint,
+		" url: ", url,
+		" clusterId: ", clusterId)
 
-	o.pcClient = new(ParaCloudClient)
-	o.pcClient.Init(
+	o.sClient = new(ScowClient)
+	o.sClient.Init(
 		ctx,
 		username,
 		password,
-		endpoint)
+		endpoint,
+		url,
+		clusterId,
+		DefaultScowClientReqTimeout,
+		DefaultScowClientMaxConnection)
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:Init finish.")
+		"Scow:Init finish.")
 	return nil
 }
 
-func (o *ParaCloud) loadCheckpointFile(
+func (o *Scow) loadCheckpointFile(
 	ctx context.Context,
 	checkpointFile string,
 	result interface{}) error {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:loadCheckpointFile start.",
+		"Scow:loadCheckpointFile start.",
 		" checkpointFile: ", checkpointFile)
 
 	ret, err := os.ReadFile(checkpointFile)
@@ -71,17 +81,17 @@ func (o *ParaCloud) loadCheckpointFile(
 		return nil
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:loadCheckpointFile finish.")
+		"Scow:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
 
-func (o *ParaCloud) sliceObject(
+func (o *Scow) sliceObject(
 	ctx context.Context,
 	objectSize, partSize int64,
-	dfc *PCDownloadCheckpoint) {
+	dfc *ScowDownloadCheckpoint) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:sliceObject start.",
+		"Scow:sliceObject start.",
 		" objectSize: ", objectSize,
 		" partSize: ", partSize)
 
@@ -91,14 +101,14 @@ func (o *ParaCloud) sliceObject(
 	}
 
 	if cnt == 0 {
-		downloadPart := PCDownloadPartInfo{}
+		downloadPart := ScowDownloadPartInfo{}
 		downloadPart.PartNumber = 1
-		dfc.DownloadParts = []PCDownloadPartInfo{downloadPart}
+		dfc.DownloadParts = []ScowDownloadPartInfo{downloadPart}
 	} else {
-		downloadParts := make([]PCDownloadPartInfo, 0, cnt)
+		downloadParts := make([]ScowDownloadPartInfo, 0, cnt)
 		var i int64
 		for i = 0; i < cnt; i++ {
-			downloadPart := PCDownloadPartInfo{}
+			downloadPart := ScowDownloadPartInfo{}
 			downloadPart.PartNumber = i + 1
 			downloadPart.Offset = i * partSize
 			downloadPart.Length = partSize
@@ -110,16 +120,16 @@ func (o *ParaCloud) sliceObject(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:sliceObject finish.")
+		"Scow:sliceObject finish.")
 }
 
-func (o *ParaCloud) updateCheckpointFile(
+func (o *Scow) updateCheckpointFile(
 	ctx context.Context,
 	fc interface{},
 	checkpointFilePath string) error {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:updateCheckpointFile start.",
+		"Scow:updateCheckpointFile start.",
 		" checkpointFilePath: ", checkpointFilePath)
 
 	result, err := xml.Marshal(fc)
@@ -140,18 +150,18 @@ func (o *ParaCloud) updateCheckpointFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:updateCheckpointFile finish.")
+		"Scow:updateCheckpointFile finish.")
 	return err
 }
 
-func (o *ParaCloud) Upload(
+func (o *Scow) Upload(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:Upload start.",
+		"Scow:Upload start.",
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath,
 		" needPure: ", needPure)
@@ -166,11 +176,10 @@ func (o *ParaCloud) Upload(
 	}
 	objectPath := targetPath + filepath.Base(sourcePath)
 	if stat.IsDir() {
-		err = o.pcClient.Mkdir(ctx, sourcePath, objectPath)
+		err = o.sClient.Mkdir(ctx, objectPath)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"pcClient.Mkdir failed.",
-				" sourcePath: ", sourcePath,
+				"sClient.Mkdir failed.",
 				" objectPath: ", objectPath,
 				" err: ", err)
 			return err
@@ -179,16 +188,20 @@ func (o *ParaCloud) Upload(
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"ParaCloud.uploadFolder failed.",
+				"Scow.uploadFolder failed.",
 				" sourcePath: ", sourcePath,
 				" err: ", err)
 			return err
 		}
 	} else {
-		err = o.pcClient.Upload(ctx, sourcePath, objectPath)
+		err = o.uploadFile(
+			ctx,
+			sourcePath,
+			objectPath,
+			needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"pcClient.Upload failed.",
+				"Scow.uploadFile failed.",
 				" sourcePath: ", sourcePath,
 				" objectPath: ", objectPath,
 				" err: ", err)
@@ -196,18 +209,18 @@ func (o *ParaCloud) Upload(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:Upload finish.")
+		"Scow:Upload finish.")
 	return nil
 }
 
-func (o *ParaCloud) uploadFolder(
+func (o *Scow) uploadFolder(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:uploadFolder start.",
+		"Scow:uploadFolder start.",
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath,
 		" needPure: ", needPure)
@@ -246,7 +259,7 @@ func (o *ParaCloud) uploadFolder(
 		}
 	}
 
-	pool, err := ants.NewPool(DefaultParaCloudUploadFileTaskNum)
+	pool, err := ants.NewPool(DefaultScowUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -274,12 +287,11 @@ func (o *ParaCloud) uploadFolder(
 					wg.Done()
 					if err := recover(); nil != err {
 						Logger.WithContext(ctx).Error(
-							"pcClient.Upload failed.",
+							"Scow:uploadFileResume failed.",
 							" err: ", err)
 						isAllSuccess = false
 					}
 				}()
-
 				relPath, err := filepath.Rel(sourcePath, filePath)
 				if nil != err {
 					isAllSuccess = false
@@ -297,22 +309,25 @@ func (o *ParaCloud) uploadFolder(
 						"already finish. objectPath: ", objectPath)
 					return
 				}
-
 				if fileInfo.IsDir() {
-					err = o.pcClient.Mkdir(ctx, filePath, objectPath)
+					err = o.sClient.Mkdir(ctx, objectPath)
 					if nil != err {
 						Logger.WithContext(ctx).Error(
-							"pcClient.Mkdir failed.",
-							" filePath: ", filePath,
+							"sClient.Mkdir failed.",
 							" objectPath: ", objectPath,
 							" err: ", err)
 						return
 					}
 				} else {
-					err = o.pcClient.Upload(ctx, filePath, objectPath)
+					err = o.uploadFile(
+						ctx,
+						filePath,
+						objectPath,
+						needPure)
 					if nil != err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"pcClient.Upload failed.",
+							"Scow:uploadFile failed.",
 							" filePath: ", filePath,
 							" objectPath: ", objectPath,
 							" err: ", err)
@@ -371,7 +386,7 @@ func (o *ParaCloud) uploadFolder(
 	}
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"ParaCloud:uploadFolder not all success.",
+			"Scow:uploadFolder not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("uploadFolder not all success")
 	} else {
@@ -387,45 +402,720 @@ func (o *ParaCloud) uploadFolder(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:uploadFolder finish.")
+		"Scow:uploadFolder finish.")
 	return nil
 }
 
-func (o *ParaCloud) Download(
+func (o *Scow) uploadFile(
+	ctx context.Context,
+	sourceFile,
+	objectPath string,
+	needPure bool) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadFile start.",
+		" sourceFile: ", sourceFile,
+		" objectPath: ", objectPath,
+		" needPure: ", needPure)
+
+	sourceFileStat, err := os.Stat(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Stat failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+
+	if DefaultScowUploadMultiSize < sourceFileStat.Size() {
+		err = o.uploadFileResume(
+			ctx,
+			sourceFile,
+			objectPath,
+			needPure)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"Scow:uploadFileResume failed.",
+				" sourceFile: ", sourceFile,
+				" objectPath: ", objectPath,
+				" needPure: ", needPure,
+				" err: ", err)
+			return err
+		}
+	} else {
+		err = o.uploadFileStream(
+			ctx,
+			sourceFile,
+			objectPath)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"Scow:uploadFileStream failed.",
+				" sourceFile: ", sourceFile,
+				" objectPath: ", objectPath,
+				" err: ", err)
+			return err
+		}
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadFile finish.")
+	return err
+}
+
+func (o *Scow) uploadFileStream(
+	ctx context.Context,
+	sourceFile,
+	objectPath string) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadFileStream start.",
+		" sourceFile: ", sourceFile,
+		" objectPath: ", objectPath)
+
+	fd, err := os.Open(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Open failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+	defer func() {
+		errMsg := fd.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" sourceFile: ", sourceFile,
+				" err: ", errMsg)
+		}
+	}()
+
+	err = o.sClient.Upload(
+		ctx,
+		sourceFile,
+		objectPath,
+		fd)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sClient.Upload failed.",
+			" sourceFile: ", sourceFile,
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadFileStream finish.")
+	return err
+}
+
+func (o *Scow) uploadFileResume(
+	ctx context.Context,
+	sourceFile,
+	objectPath string,
+	needPure bool) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadFileResume start.",
+		" sourceFile: ", sourceFile,
+		" objectPath: ", objectPath,
+		" needPure: ", needPure)
+
+	uploadFileInput := new(ScowUploadFileInput)
+	uploadFileInput.ObjectPath = objectPath
+	uploadFileInput.UploadFile = sourceFile
+	uploadFileInput.FileName = filepath.Base(sourceFile)
+	uploadFileInput.EnableCheckpoint = true
+	uploadFileInput.CheckpointFile =
+		uploadFileInput.UploadFile + ".upload_file_record"
+	uploadFileInput.TaskNum = DefaultScowUploadMultiTaskNum
+	uploadFileInput.PartSize = DefaultPartSize
+
+	fd, err := os.Open(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Open failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+	defer func() {
+		errMsg := fd.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" sourceFile: ", sourceFile,
+				" err: ", errMsg)
+		}
+	}()
+	hash := md5.New()
+	if _, err = io.Copy(hash, fd); nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.Copy failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+	md5Value := hex.EncodeToString(hash.Sum(nil))
+	uploadFileInput.Md5 = md5Value
+
+	if needPure {
+		err = os.Remove(uploadFileInput.CheckpointFile)
+		if nil != err {
+			if !os.IsNotExist(err) {
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" CheckpointFile: ", uploadFileInput.CheckpointFile,
+					" err: ", err)
+				return err
+			}
+		}
+	}
+
+	if uploadFileInput.PartSize < DefaultScowMinPartSize {
+		uploadFileInput.PartSize = DefaultScowMinPartSize
+	} else if uploadFileInput.PartSize > DefaultScowMaxPartSize {
+		uploadFileInput.PartSize = DefaultScowMaxPartSize
+	}
+
+	err = o.resumeUpload(
+		ctx,
+		sourceFile,
+		objectPath,
+		uploadFileInput)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Scow:resumeUpload failed.",
+			" sourceFile: ", sourceFile,
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadFileResume finish.")
+	return err
+}
+
+func (o *Scow) resumeUpload(
+	ctx context.Context,
+	sourceFile,
+	objectPath string,
+	input *ScowUploadFileInput) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:resumeUpload start.",
+		" sourceFile: ", sourceFile,
+		" objectPath: ", objectPath)
+
+	uploadFileStat, err := os.Stat(input.UploadFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Stat failed.",
+			" uploadFile: ", input.UploadFile,
+			" err: ", err)
+		return err
+	}
+	if uploadFileStat.IsDir() {
+		Logger.WithContext(ctx).Error(
+			"uploadFile can not be a folder.",
+			" uploadFile: ", input.UploadFile)
+		return errors.New("uploadFile can not be a folder")
+	}
+
+	ufc := &ScowUploadCheckpoint{}
+
+	var needCheckpoint = true
+	var checkpointFilePath = input.CheckpointFile
+	var enableCheckpoint = input.EnableCheckpoint
+	if enableCheckpoint {
+		needCheckpoint, err = o.getUploadCheckpointFile(
+			ctx,
+			ufc,
+			uploadFileStat,
+			input)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"Scow:getUploadCheckpointFile failed.",
+				" objectPath: ", objectPath,
+				" err: ", err)
+			return err
+		}
+	}
+	if needCheckpoint {
+		err = o.prepareUpload(
+			ctx,
+			objectPath,
+			ufc,
+			uploadFileStat,
+			input)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"Scow:prepareUpload failed.",
+				" objectPath: ", objectPath,
+				" err: ", err)
+			return err
+		}
+
+		if enableCheckpoint {
+			err = o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"Scow:updateCheckpointFile failed.",
+					" checkpointFilePath: ", checkpointFilePath,
+					" err: ", err)
+				return err
+			}
+		}
+	}
+
+	err = o.uploadPartConcurrent(
+		ctx,
+		sourceFile,
+		ufc,
+		input)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Scow:uploadPartConcurrent failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+
+	err = o.completeParts(
+		ctx,
+		input,
+		enableCheckpoint,
+		checkpointFilePath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Scow:completeParts failed.",
+			" checkpointFilePath: ", checkpointFilePath,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:resumeUpload finish.")
+	return err
+}
+
+func (o *Scow) uploadPartConcurrent(
+	ctx context.Context,
+	sourceFile string,
+	ufc *ScowUploadCheckpoint,
+	input *ScowUploadFileInput) error {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadPartConcurrent start.",
+		" sourceFile: ", sourceFile)
+
+	var wg sync.WaitGroup
+	pool, err := ants.NewPool(input.TaskNum)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ants.NewPool failed.",
+			" err: ", err)
+		return err
+	}
+	defer pool.Release()
+
+	var uploadPartError atomic.Value
+	var errFlag int32
+	lock := new(sync.Mutex)
+
+	for _, uploadPart := range ufc.UploadParts {
+		if uploadPart.IsCompleted {
+			continue
+		}
+		task := ScowUploadPartTask{
+			PartNumber:       uploadPart.PartNumber,
+			FileName:         input.FileName,
+			Md5:              input.Md5,
+			SourceFile:       input.UploadFile,
+			Offset:           uploadPart.Offset,
+			PartSize:         uploadPart.PartSize,
+			TotalSize:        ufc.FileInfo.Size,
+			SClient:          o.sClient,
+			EnableCheckpoint: input.EnableCheckpoint,
+		}
+		wg.Add(1)
+		err = pool.Submit(func() {
+			defer func() {
+				wg.Done()
+			}()
+			result := task.Run(ctx, sourceFile)
+			err = o.handleUploadTaskResult(
+				ctx,
+				result,
+				ufc,
+				task.PartNumber,
+				input.EnableCheckpoint,
+				input.CheckpointFile,
+				lock)
+			if nil != err &&
+				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
+
+				Logger.WithContext(ctx).Error(
+					"Scow:handleUploadTaskResult failed.",
+					" partNumber: ", task.PartNumber,
+					" checkpointFile: ", input.CheckpointFile,
+					" err: ", err)
+				uploadPartError.Store(err)
+			}
+			Logger.WithContext(ctx).Debug(
+				"Scow:handleUploadTaskResult finish.")
+			return
+		})
+	}
+	wg.Wait()
+	if err, ok := uploadPartError.Load().(error); ok {
+		Logger.WithContext(ctx).Error(
+			"uploadPartError load failed.",
+			" err: ", err)
+		return err
+	}
+	Logger.WithContext(ctx).Debug(
+		"Scow:uploadPartConcurrent finish.")
+	return nil
+}
+
+func (o *Scow) getUploadCheckpointFile(
+	ctx context.Context,
+	ufc *ScowUploadCheckpoint,
+	uploadFileStat os.FileInfo,
+	input *ScowUploadFileInput) (needCheckpoint bool, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:getUploadCheckpointFile start.")
+
+	checkpointFilePath := input.CheckpointFile
+	checkpointFileStat, err := os.Stat(checkpointFilePath)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			Logger.WithContext(ctx).Error(
+				"os.Stat failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", err)
+			return false, err
+		}
+		Logger.WithContext(ctx).Debug(
+			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		return true, nil
+	}
+	if checkpointFileStat.IsDir() {
+		Logger.WithContext(ctx).Error(
+			"checkpoint file can not be a folder.",
+			" checkpointFilePath: ", checkpointFilePath)
+		return false,
+			errors.New("checkpoint file can not be a folder")
+	}
+	err = o.loadCheckpointFile(ctx, checkpointFilePath, ufc)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Scow:loadCheckpointFile failed.",
+			" checkpointFilePath: ", checkpointFilePath,
+			" err: ", err)
+		return true, nil
+	} else if !ufc.IsValid(ctx, input.UploadFile, uploadFileStat) {
+		_err := os.Remove(checkpointFilePath)
+		if nil != _err {
+			if !os.IsNotExist(_err) {
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" checkpointFilePath: ", checkpointFilePath,
+					" err: ", _err)
+			}
+		}
+	} else {
+		Logger.WithContext(ctx).Debug(
+			"Scow:loadCheckpointFile finish.",
+			" checkpointFilePath: ", checkpointFilePath)
+		return false, nil
+	}
+	Logger.WithContext(ctx).Debug(
+		"Scow:getUploadCheckpointFile finish.")
+	return true, nil
+}
+
+func (o *Scow) prepareUpload(
+	ctx context.Context,
+	objectPath string,
+	ufc *ScowUploadCheckpoint,
+	uploadFileStat os.FileInfo,
+	input *ScowUploadFileInput) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:prepareUpload start.",
+		" objectPath: ", objectPath)
+
+	ufc.ObjectPath = objectPath
+	ufc.UploadFile = input.UploadFile
+	ufc.FileInfo = ScowFileStatus{}
+	ufc.FileInfo.Size = uploadFileStat.Size()
+	ufc.FileInfo.LastModified = uploadFileStat.ModTime().Unix()
+
+	err = o.sliceFile(ctx, input.PartSize, ufc)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Scow:sliceFile failed.",
+			" err: ", err)
+		return err
+	}
+	Logger.WithContext(ctx).Debug(
+		"Scow:prepareUpload finish.")
+	return err
+}
+
+func (o *Scow) sliceFile(
+	ctx context.Context,
+	partSize int64,
+	ufc *ScowUploadCheckpoint) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:sliceFile start.",
+		" partSize: ", partSize,
+		" fileSize: ", ufc.FileInfo.Size)
+	fileSize := ufc.FileInfo.Size
+	cnt := fileSize / partSize
+	if cnt >= 10000 {
+		partSize = fileSize / 10000
+		if fileSize%10000 != 0 {
+			partSize++
+		}
+		cnt = fileSize / partSize
+	}
+	if fileSize%partSize != 0 {
+		cnt++
+	}
+
+	if partSize > DefaultScowMaxPartSize {
+		Logger.WithContext(ctx).Error(
+			"upload file part too large.",
+			" partSize: ", partSize,
+			" maxPartSize: ", DefaultScowMaxPartSize)
+		return fmt.Errorf("upload file part too large")
+	}
+
+	if cnt == 0 {
+		uploadPart := ScowUploadPartInfo{}
+		uploadPart.PartNumber = 1
+		ufc.UploadParts = []ScowUploadPartInfo{uploadPart}
+	} else {
+		uploadParts := make([]ScowUploadPartInfo, 0, cnt)
+		var i int64
+		for i = 0; i < cnt; i++ {
+			uploadPart := ScowUploadPartInfo{}
+			uploadPart.PartNumber = int32(i) + 1
+			uploadPart.PartSize = partSize
+			uploadPart.Offset = i * partSize
+			uploadParts = append(uploadParts, uploadPart)
+		}
+		if value := fileSize % partSize; value != 0 {
+			uploadParts[cnt-1].PartSize = value
+		}
+		ufc.UploadParts = uploadParts
+	}
+	Logger.WithContext(ctx).Debug(
+		"Scow:sliceFile finish.")
+	return nil
+}
+
+func (o *Scow) handleUploadTaskResult(
+	ctx context.Context,
+	result interface{},
+	ufc *ScowUploadCheckpoint,
+	partNum int32,
+	enableCheckpoint bool,
+	checkpointFilePath string,
+	lock *sync.Mutex) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:handleUploadTaskResult start.",
+		" checkpointFilePath: ", checkpointFilePath,
+		" partNum: ", partNum)
+
+	if _, ok := result.(*ScowBaseResponse); ok {
+		lock.Lock()
+		defer lock.Unlock()
+		ufc.UploadParts[partNum-1].IsCompleted = true
+
+		if enableCheckpoint {
+			_err := o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"Scow:updateCheckpointFile failed.",
+					" checkpointFilePath: ", checkpointFilePath,
+					" partNum: ", partNum,
+					" err: ", _err)
+			}
+		}
+	} else if result != errAbort {
+		if _err, ok := result.(error); ok {
+			Logger.WithContext(ctx).Error(
+				"upload task result failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" partNum: ", partNum,
+				" err: ", _err)
+			err = _err
+		}
+	}
+	Logger.WithContext(ctx).Debug(
+		"Scow:handleUploadTaskResult finish.")
+	return
+}
+
+func (o *Scow) completeParts(
+	ctx context.Context,
+	input *ScowUploadFileInput,
+	enableCheckpoint bool,
+	checkpointFilePath string) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:completeParts start.",
+		" enableCheckpoint: ", enableCheckpoint,
+		" checkpointFilePath: ", checkpointFilePath,
+		" FileName: ", input.FileName,
+		" ObjectPath: ", input.ObjectPath,
+		" Md5: ", input.Md5)
+
+	err = o.sClient.MergeChunks(
+		ctx,
+		input.FileName,
+		input.ObjectPath,
+		input.Md5)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sClient.MergeChunks failed.",
+			" FileName: ", input.FileName,
+			" ObjectPath: ", input.ObjectPath,
+			" Md5: ", input.Md5,
+			" err: ", err)
+		return err
+	}
+	if enableCheckpoint {
+		_err := os.Remove(checkpointFilePath)
+		if nil != _err {
+			if !os.IsNotExist(_err) {
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" checkpointFilePath: ", checkpointFilePath,
+					" err: ", _err)
+			}
+		}
+	}
+	Logger.WithContext(ctx).Debug(
+		"Scow:completeParts finish.")
+	return err
+}
+
+type ScowUploadPartTask struct {
+	ObjectPath       string
+	FileName         string
+	Md5              string
+	PartNumber       int32
+	SourceFile       string
+	Offset           int64
+	PartSize         int64
+	TotalSize        int64
+	SClient          *ScowClient
+	EnableCheckpoint bool
+}
+
+func (task *ScowUploadPartTask) Run(
+	ctx context.Context,
+	sourceFile string) interface{} {
+
+	Logger.WithContext(ctx).Debug(
+		"ScowUploadPartTask:Run start.",
+		" sourceFile: ", sourceFile)
+
+	fd, err := os.Open(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Open failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+	defer func() {
+		errMsg := fd.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" sourceFile: ", sourceFile,
+				" err: ", errMsg)
+		}
+	}()
+
+	readerWrapper := new(ReaderWrapper)
+	readerWrapper.Reader = fd
+
+	readerWrapper.TotalCount = task.PartSize
+	readerWrapper.Mark = task.Offset
+	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
+		Logger.WithContext(ctx).Error(
+			"fd.Seek failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+
+	err = task.SClient.UploadChunks(
+		ctx,
+		task.FileName,
+		task.ObjectPath,
+		task.Md5,
+		task.PartNumber,
+		readerWrapper)
+
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"SClient.UploadChunks failed.",
+			" task.FileName: ", task.FileName,
+			" task.ObjectPath: ", task.ObjectPath,
+			" task.Md5: ", task.Md5,
+			" task.PartNumber: ", task.PartNumber,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"ScowUploadPartTask:Run finish.")
+	return err
+}
+
+func (o *Scow) Download(
 	ctx context.Context,
 	sourcePath,
 	targetPath string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:Download start.",
+		"Scow:Download start.",
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath)
 
-	fileInfoList := make([]os.FileInfo, 0)
-	err, fileInfoList = o.pcClient.List(
+	scowListResponseBody := new(ScowListResponseBody)
+	err, scowListResponseBody = o.sClient.List(
 		ctx,
 		sourcePath)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"pcClient:List start.",
+			"sClient:List start.",
 			" sourcePath: ", sourcePath,
 			" err: ", err)
 		return err
 	}
 
-	objects := make([]*PCObject, 0)
-	folders := make([]*PCObject, 0)
-	for _, file := range fileInfoList {
-		pcObject := new(PCObject)
-		pcObject.ObjectPath = sourcePath + file.Name()
-		pcObject.ObjectFileInfo = file
-		if file.IsDir() {
-			folders = append(folders, pcObject)
+	objects := make([]*ScowObject, 0)
+	folders := make([]*ScowObject, 0)
+	for _, object := range scowListResponseBody.ScowObjects {
+		if ScowObjectTypeFile == object.Type {
+			objects = append(objects, object)
 		} else {
-			objects = append(objects, pcObject)
+			folders = append(folders, object)
 		}
 	}
-
 	err = o.downloadObjects(
 		ctx,
 		sourcePath,
@@ -433,18 +1123,18 @@ func (o *ParaCloud) Download(
 		objects)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ParaCloud:downloadObjects failed.",
+			"Scow:downloadObjects failed.",
 			" sourcePath: ", sourcePath,
 			" targetPath: ", targetPath,
 			" err: ", err)
 		return err
 	}
 	for _, folder := range folders {
-		err = o.Download(ctx, folder.ObjectPath, targetPath)
+		err = o.Download(ctx, folder.Name, targetPath)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"ParaCloud:Download failed.",
-				" sourcePath: ", folder.ObjectPath,
+				"Scow:Download failed.",
+				" sourcePath: ", folder.Name,
 				" targetPath: ", targetPath,
 				" err: ", err)
 			return err
@@ -452,26 +1142,28 @@ func (o *ParaCloud) Download(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:Download finish.",
+		"Scow:Download finish.",
 		" sourcePath: ", sourcePath)
 	return nil
 }
 
-func (o *ParaCloud) downloadObjects(
+func (o *Scow) downloadObjects(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
-	objects []*PCObject) (err error) {
+	objects []*ScowObject) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:downloadObjects start.",
+		"Scow:downloadObjects start.",
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath)
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord := targetPath + sourcePath + ".download_folder_record"
+	downloadFolderRecord :=
+		targetPath + sourcePath + ".download_folder_record"
+
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
 		lines := strings.Split(string(fileData), "\n")
@@ -488,7 +1180,7 @@ func (o *ParaCloud) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultParaCloudDownloadFileTaskNum)
+	pool, err := ants.NewPool(DefaultScowDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download object failed.",
@@ -500,14 +1192,14 @@ func (o *ParaCloud) downloadObjects(
 		Logger.WithContext(ctx).Debug(
 			"object content.",
 			" index: ", index,
-			" Path: ", object.ObjectPath,
-			" size: ", object.ObjectFileInfo.Size())
+			" Name: ", object.Name,
+			" size: ", object.Size)
 		// 处理文件
 		itemObject := object
-		if _, exists := fileMap[itemObject.ObjectPath]; exists {
+		if _, exists := fileMap[itemObject.Name]; exists {
 			Logger.WithContext(ctx).Info(
 				"file already success.",
-				" objectPath: ", itemObject.ObjectPath)
+				" Name: ", itemObject.Name)
 			continue
 		}
 		wg.Add(1)
@@ -521,17 +1213,16 @@ func (o *ParaCloud) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			targetFile := targetPath + itemObject.ObjectPath
 			err = o.downloadPart(
 				ctx,
 				itemObject,
-				targetFile)
+				targetPath+itemObject.Name)
 			if nil != err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
-					"ParaCloud:downloadPart failed.",
-					" objectPath: ", itemObject.ObjectPath,
-					" targetFile: ", targetFile,
+					"Scow:downloadPart failed.",
+					" objectName: ", itemObject.Name,
+					" targetFile: ", targetPath+itemObject.Name,
 					" err: ", err)
 				return
 			}
@@ -557,13 +1248,13 @@ func (o *ParaCloud) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.ObjectPath + "\n"))
+			_, err = f.Write([]byte(itemObject.Name + "\n"))
 			if nil != err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectPath: ", itemObject.ObjectPath,
+					" objectName: ", itemObject.Name,
 					" err: ", err)
 				return
 			}
@@ -578,7 +1269,7 @@ func (o *ParaCloud) downloadObjects(
 	wg.Wait()
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"ParaCloud:downloadObjects not all success.",
+			"Scow:downloadObjects not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("downloadObjects not all success")
 	} else {
@@ -594,26 +1285,26 @@ func (o *ParaCloud) downloadObjects(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:downloadObjects finish.")
+		"Scow:downloadObjects finish.")
 	return nil
 }
 
-func (o *ParaCloud) downloadPart(
+func (o *Scow) downloadPart(
 	ctx context.Context,
-	object *PCObject,
+	object *ScowObject,
 	targetFile string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:downloadPart start.",
-		" Path: ", object.ObjectPath,
+		"Scow:downloadPart start.",
+		" Name: ", object.Name,
 		" targetFile: ", targetFile)
 
-	downloadFileInput := new(PCDownloadFileInput)
+	downloadFileInput := new(ScowDownloadFileInput)
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + ".download_file_record"
-	downloadFileInput.TaskNum = DefaultParaCloudDownloadMultiTaskNum
+	downloadFileInput.TaskNum = DefaultScowDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
 	err = o.resumeDownload(
@@ -622,25 +1313,25 @@ func (o *ParaCloud) downloadPart(
 		downloadFileInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ParaCloud:resumeDownload failed.",
+			"Scow:resumeDownload failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:downloadPart finish.")
+		"Scow:downloadPart finish.")
 	return
 }
 
-func (o *ParaCloud) resumeDownload(
+func (o *Scow) resumeDownload(
 	ctx context.Context,
-	object *PCObject,
-	input *PCDownloadFileInput) (err error) {
+	object *ScowObject,
+	input *ScowDownloadFileInput) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:resumeDownload start.")
+		"Scow:resumeDownload start.")
 
 	partSize := input.PartSize
-	dfc := &PCDownloadCheckpoint{}
+	dfc := &ScowDownloadCheckpoint{}
 
 	var needCheckpoint = true
 	var checkpointFilePath = input.CheckpointFile
@@ -653,7 +1344,7 @@ func (o *ParaCloud) resumeDownload(
 			object)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"ParaCloud:getDownloadCheckpointFile failed.",
+				"Scow:getDownloadCheckpointFile failed.",
 				" checkpointFilePath: ", checkpointFilePath,
 				" err: ", err)
 			return err
@@ -662,19 +1353,19 @@ func (o *ParaCloud) resumeDownload(
 
 	if needCheckpoint {
 		dfc.DownloadFile = input.DownloadFile
-		dfc.ObjectInfo = PCObjectInfo{}
-		dfc.ObjectInfo.Size = object.ObjectFileInfo.Size()
-		dfc.TempFileInfo = PCTempFileInfo{}
+		dfc.ObjectInfo = ScowObjectInfo{}
+		dfc.ObjectInfo.Size = object.Size
+		dfc.TempFileInfo = ScowTempFileInfo{}
 		dfc.TempFileInfo.TempFileUrl = input.DownloadFile + ".tmp"
-		dfc.TempFileInfo.Size = object.ObjectFileInfo.Size()
+		dfc.TempFileInfo.Size = object.Size
 
-		o.sliceObject(ctx, object.ObjectFileInfo.Size(), partSize, dfc)
+		o.sliceObject(ctx, object.Size, partSize, dfc)
 		err = o.prepareTempFile(ctx,
 			dfc.TempFileInfo.TempFileUrl,
 			dfc.TempFileInfo.Size)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"ParaCloud:prepareTempFile failed.",
+				"Scow:prepareTempFile failed.",
 				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 				" Size: ", dfc.TempFileInfo.Size,
 				" err: ", err)
@@ -685,7 +1376,7 @@ func (o *ParaCloud) resumeDownload(
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"ParaCloud:updateCheckpointFile failed.",
+					"Scow:updateCheckpointFile failed.",
 					" checkpointFilePath: ", checkpointFilePath,
 					" err: ", err)
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
@@ -711,7 +1402,7 @@ func (o *ParaCloud) resumeDownload(
 		downloadFileError)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ParaCloud:handleDownloadFileResult failed.",
+			"Scow:handleDownloadFileResult failed.",
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" err: ", err)
 		return err
@@ -738,17 +1429,17 @@ func (o *ParaCloud) resumeDownload(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:resumeDownload finish.")
+		"Scow:resumeDownload finish.")
 	return nil
 }
 
-func (o *ParaCloud) downloadFileConcurrent(
+func (o *Scow) downloadFileConcurrent(
 	ctx context.Context,
-	input *PCDownloadFileInput,
-	dfc *PCDownloadCheckpoint) error {
+	input *ScowDownloadFileInput,
+	dfc *ScowDownloadCheckpoint) error {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:downloadFileConcurrent start.")
+		"Scow:downloadFileConcurrent start.")
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
@@ -774,13 +1465,13 @@ func (o *ParaCloud) downloadFileConcurrent(
 
 		contentRange := fmt.Sprintf("bytes=%d-%d", begin, end)
 
-		task := ParaCloudDownloadPartTask{
+		task := ScowDownloadPartTask{
 			DownloadFile:     dfc.DownloadFile,
 			Offset:           downloadPart.Offset,
 			Length:           downloadPart.Length,
 			Range:            contentRange,
-			PCClient:         o.pcClient,
-			PC:               o,
+			SClient:          o.sClient,
+			S:                o,
 			PartNumber:       downloadPart.PartNumber,
 			TempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			EnableCheckpoint: input.EnableCheckpoint,
@@ -810,7 +1501,7 @@ func (o *ParaCloud) downloadFileConcurrent(
 						input.CheckpointFile)
 					if nil != err {
 						Logger.WithContext(ctx).Error(
-							"ParaCloud:updateCheckpointFile failed.",
+							"Scow:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
 							" err: ", err)
 						downloadPartError.Store(err)
@@ -831,7 +1522,7 @@ func (o *ParaCloud) downloadFileConcurrent(
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
-						"ParaCloud:handleDownloadTaskResult failed.",
+						"Scow:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
 						" err: ", err)
@@ -855,18 +1546,18 @@ func (o *ParaCloud) downloadFileConcurrent(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:downloadFileConcurrent finish.")
+		"Scow:downloadFileConcurrent finish.")
 	return nil
 }
 
-func (o *ParaCloud) getDownloadCheckpointFile(
+func (o *Scow) getDownloadCheckpointFile(
 	ctx context.Context,
-	dfc *PCDownloadCheckpoint,
-	input *PCDownloadFileInput,
-	object *PCObject) (needCheckpoint bool, err error) {
+	dfc *ScowDownloadCheckpoint,
+	input *ScowDownloadFileInput,
+	object *ScowObject) (needCheckpoint bool, err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:getDownloadCheckpointFile start.",
+		"Scow:getDownloadCheckpointFile start.",
 		" checkpointFile: ", input.CheckpointFile)
 
 	checkpointFilePath := input.CheckpointFile
@@ -893,7 +1584,7 @@ func (o *ParaCloud) getDownloadCheckpointFile(
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ParaCloud:loadCheckpointFile failed.",
+			"Scow:loadCheckpointFile failed.",
 			" checkpointFilePath: ", checkpointFilePath,
 			" err: ", err)
 		return true, nil
@@ -928,13 +1619,13 @@ func (o *ParaCloud) getDownloadCheckpointFile(
 	return true, nil
 }
 
-func (o *ParaCloud) prepareTempFile(
+func (o *Scow) prepareTempFile(
 	ctx context.Context,
 	tempFileURL string,
 	fileSize int64) error {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:prepareTempFile start.",
+		"Scow:prepareTempFile start.",
 		" tempFileURL: ", tempFileURL,
 		" fileSize: ", fileSize)
 
@@ -970,8 +1661,9 @@ func (o *ParaCloud) prepareTempFile(
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"ParaCloud:createFile finish.",
-			" tempFileURL: ", tempFileURL, " fileSize: ", fileSize)
+			"Scow:createFile finish.",
+			" tempFileURL: ", tempFileURL,
+			" fileSize: ", fileSize)
 		return nil
 	}
 	fd, err := os.OpenFile(
@@ -981,7 +1673,8 @@ func (o *ParaCloud) prepareTempFile(
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" tempFileURL: ", tempFileURL, " err: ", err)
+			" tempFileURL: ", tempFileURL,
+			" err: ", err)
 		return err
 	}
 	defer func() {
@@ -989,7 +1682,8 @@ func (o *ParaCloud) prepareTempFile(
 		if errMsg != nil {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
-				" tempFileURL: ", tempFileURL, " err: ", errMsg)
+				" tempFileURL: ", tempFileURL,
+				" err: ", errMsg)
 		}
 	}()
 	if fileSize > 0 {
@@ -997,22 +1691,23 @@ func (o *ParaCloud) prepareTempFile(
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"write file failed.",
-				" tempFileURL: ", tempFileURL, " err: ", err)
+				" tempFileURL: ", tempFileURL,
+				" err: ", err)
 			return err
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:prepareTempFile finish.")
+		"Scow:prepareTempFile finish.")
 	return nil
 }
 
-func (o *ParaCloud) createFile(
+func (o *Scow) createFile(
 	ctx context.Context,
 	tempFileURL string,
 	fileSize int64) error {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:createFile start.",
+		"Scow:createFile start.",
 		" tempFileURL: ", tempFileURL,
 		" fileSize: ", fileSize)
 
@@ -1046,25 +1741,25 @@ func (o *ParaCloud) createFile(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:createFile finish.")
+		"Scow:createFile finish.")
 	return nil
 }
 
-func (o *ParaCloud) handleDownloadTaskResult(
+func (o *Scow) handleDownloadTaskResult(
 	ctx context.Context,
 	result interface{},
-	dfc *PCDownloadCheckpoint,
+	dfc *ScowDownloadCheckpoint,
 	partNum int64,
 	enableCheckpoint bool,
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:handleDownloadTaskResult start.",
+		"Scow:handleDownloadTaskResult start.",
 		" partNum: ", partNum,
 		" checkpointFile: ", checkpointFile)
 
-	if _, ok := result.(*PCDownloadPartOutput); ok {
+	if _, ok := result.(*ScowDownloadPartOutput); ok {
 		lock.Lock()
 		defer lock.Unlock()
 		dfc.DownloadParts[partNum-1].IsCompleted = true
@@ -1073,7 +1768,7 @@ func (o *ParaCloud) handleDownloadTaskResult(
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
 				Logger.WithContext(ctx).Warn(
-					"ParaCloud:updateCheckpointFile failed.",
+					"Scow:updateCheckpointFile failed.",
 					" checkpointFile: ", checkpointFile,
 					" err: ", _err)
 			}
@@ -1084,18 +1779,18 @@ func (o *ParaCloud) handleDownloadTaskResult(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:handleDownloadTaskResult finish.")
+		"Scow:handleDownloadTaskResult finish.")
 	return
 }
 
-func (o *ParaCloud) handleDownloadFileResult(
+func (o *Scow) handleDownloadFileResult(
 	ctx context.Context,
 	tempFileURL string,
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:handleDownloadFileResult start.",
+		"Scow:handleDownloadFileResult start.",
 		" tempFileURL: ", tempFileURL)
 
 	if downloadFileError != nil {
@@ -1105,30 +1800,31 @@ func (o *ParaCloud) handleDownloadFileResult(
 				if !os.IsNotExist(_err) {
 					Logger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" tempFileURL: ", tempFileURL, " err: ", _err)
+						" tempFileURL: ", tempFileURL,
+						" err: ", _err)
 				}
 			}
 		}
 		Logger.WithContext(ctx).Debug(
-			"ParaCloud.handleDownloadFileResult finish.",
+			"Scow.handleDownloadFileResult finish.",
 			" tempFileURL: ", tempFileURL,
 			" downloadFileError: ", downloadFileError)
 		return downloadFileError
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud.handleDownloadFileResult finish.")
+		"Scow.handleDownloadFileResult finish.")
 	return nil
 }
 
-func (o *ParaCloud) UpdateDownloadFile(
+func (o *Scow) UpdateDownloadFile(
 	ctx context.Context,
 	filePath string,
 	offset int64,
-	downloadPartOutput *PCDownloadPartOutput) error {
+	downloadPartOutput *ScowDownloadPartOutput) error {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:UpdateDownloadFile start.",
+		"Scow:UpdateDownloadFile start.",
 		" filePath: ", filePath,
 		" offset: ", offset)
 
@@ -1145,7 +1841,8 @@ func (o *ParaCloud) UpdateDownloadFile(
 		if errMsg != nil {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
-				" filePath: ", filePath, " err: ", errMsg)
+				" filePath: ", filePath,
+				" err: ", errMsg)
 		}
 	}()
 	_, err = fd.Seek(offset, 0)
@@ -1168,7 +1865,8 @@ func (o *ParaCloud) UpdateDownloadFile(
 			if writeError != nil {
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
-					" filePath: ", filePath, " err: ", writeError)
+					" filePath: ", filePath,
+					" err: ", writeError)
 				return writeError
 			}
 			if writeCount != readCount {
@@ -1202,39 +1900,39 @@ func (o *ParaCloud) UpdateDownloadFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:UpdateDownloadFile finish. readTotal: ", readTotal)
+		"Scow:UpdateDownloadFile finish.",
+		" readTotal: ", readTotal)
 	return nil
 }
 
-type ParaCloudDownloadPartTask struct {
+type ScowDownloadPartTask struct {
 	DownloadFile     string
 	Offset           int64
 	Length           int64
 	Range            string
-	PCClient         *ParaCloudClient
-	PC               *ParaCloud
+	SClient          *ScowClient
+	S                *Scow
 	PartNumber       int64
 	TempFileURL      string
 	EnableCheckpoint bool
 }
 
-func (task *ParaCloudDownloadPartTask) Run(
+func (task *ScowDownloadPartTask) Run(
 	ctx context.Context) interface{} {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloudDownloadPartTask:Run start.",
+		"ScowDownloadPartTask:Run start.",
 		" partNumber: ", task.PartNumber)
 
 	err, downloadPartOutput :=
-		task.PCClient.Download(
+		task.SClient.DownloadChunks(
 			ctx,
 			task.DownloadFile,
-			task.Offset,
-			task.Length)
+			task.Range)
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"PCClient.Download finish.")
+			"SClient.DownloadChunks finish.")
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
@@ -1242,7 +1940,7 @@ func (task *ParaCloudDownloadPartTask) Run(
 					"close response body failed.")
 			}
 		}()
-		_err := task.PC.UpdateDownloadFile(
+		_err := task.S.UpdateDownloadFile(
 			ctx,
 			task.TempFileURL,
 			task.Offset,
@@ -1254,7 +1952,7 @@ func (task *ParaCloudDownloadPartTask) Run(
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
-				"ParaCloud.updateDownloadFile failed.",
+				"Scow.updateDownloadFile failed.",
 				" err: ", _err)
 			return _err
 		}
@@ -1264,7 +1962,7 @@ func (task *ParaCloudDownloadPartTask) Run(
 	}
 
 	Logger.WithContext(ctx).Error(
-		"ParaCloudDownloadPartTask:Run failed.",
+		"ScowDownloadPartTask:Run failed.",
 		" err: ", err)
 	return err
 }

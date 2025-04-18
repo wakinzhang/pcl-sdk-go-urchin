@@ -4,6 +4,62 @@ import (
 	"encoding/xml"
 )
 
+const (
+	DefaultUClientReqTimeout    = 10
+	DefaultUClientMaxConnection = 500
+
+	UrchinClientHeaderUserId    = "X-User-Id"
+	UrchinClientHeaderToken     = "X-Token"
+	UrchinClientHeaderRequestId = "X-Request-Id"
+
+	UrchinClientCreateInitiateMultipartUploadSignedUrlInterface          = "/v1/object/auth/create_init_multi_part_upload_signed_url"
+	UrchinClientCreateUploadPartSignedUrlInterface                       = "/v1/object/auth/create_upload_part_signed_url"
+	UrchinClientCreateCompleteMultipartUploadSignedUrlInterface          = "/v1/object/auth/create_complete_multi_part_upload_signed_url"
+	UrchinClientCreateAbortMultipartUploadSignedUrlInterface             = "/v1/object/auth/create_abort_multi_part_upload_signed_url"
+	UrchinClientCreatePutObjectSignedUrlInterface                        = "/v1/object/auth/create_put_object_signed_url"
+	UrchinClientCreateGetObjectMetadataSignedUrlInterface                = "/v1/object/auth/create_get_object_metadata_signed_url"
+	UrchinClientCreateGetObjectSignedUrlInterface                        = "/v1/object/auth/create_get_object_signed_url"
+	UrchinClientCreateListObjectsSignedUrlInterface                      = "/v1/object/auth/create_list_objects_signed_url"
+	UrchinClientGetIpfsTokenInterface                                    = "/v1/object/auth/get_ipfs_token"
+	UrchinClientCreateJCSPreSignedObjectListInterface                    = "/v1/object/auth/create_jcs_pre_signed_list"
+	UrchinClientCreateJCSPreSignedObjectUploadInterface                  = "/v1/object/auth/create_jcs_pre_signed_object_upload"
+	UrchinClientCreateJCSPreSignedObjectNewMultipartUploadInterface      = "/v1/object/auth/create_jcs_pre_signed_new_multi_part_upload"
+	UrchinClientCreateJCSPreSignedObjectUploadPartInterface              = "/v1/object/auth/create_jcs_pre_signed_upload_part"
+	UrchinClientCreateJCSPreSignedObjectCompleteMultipartUploadInterface = "/v1/object/auth/create_jcs_pre_signed_complete_multi_part_upload"
+	UrchinClientCreateJCSPreSignedObjectDownloadInterface                = "/v1/object/auth/create_jcs_pre_signed_download"
+
+	UrchinClientUploadObjectInterface        = "/v1/object/upload"
+	UrchinClientDownloadObjectInterface      = "/v1/object/download"
+	UrchinClientMigrateObjectInterface       = "/v1/object/migrate"
+	UrchinClientGetObjectInterface           = "/v1/object"
+	UrchinClientPutObjectDeploymentInterface = "/v1/object/deployment"
+
+	UrchinClientUploadFileInterface   = "/v1/object/file/upload"
+	UrchinClientDownloadFileInterface = "/v1/object/file/download"
+
+	UrchinClientGetTaskInterface    = "/v1/task"
+	UrchinClientFinishTaskInterface = "/v1/task/finish"
+	UrchinClientRetryTaskInterface  = "/v1/task/retry"
+
+	StorageCategoryEIpfs  = 1
+	StorageCategoryEObs   = 2
+	StorageCategoryEMinio = 3
+	StorageCategoryEJcs   = 4
+
+	DataObjectTypeEFile   = 1
+	DataObjectTypeEFolder = 2
+
+	TaskTypeUpload       = 1
+	TaskTypeDownload     = 2
+	TaskTypeMigrate      = 3
+	TaskTypeCopy         = 4
+	TaskTypeUploadFile   = 5
+	TaskTypeDownloadFile = 6
+
+	TaskFResultESuccess = 1
+	TaskFResultEFailed  = 2
+)
+
 type BaseResp struct {
 	// @inject_tag: json:"code"
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
@@ -47,7 +103,7 @@ type CreateAbortMultipartUploadSignedUrlReq struct {
 	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
 }
 
-type CreateNewFolderSignedUrlReq struct {
+type CreatePutObjectSignedUrlReq struct {
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"source"
@@ -75,6 +131,8 @@ type CreateGetObjectSignedUrlReq struct {
 type CreateListObjectsSignedUrlReq struct {
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"marker"
+	Marker *string `protobuf:"bytes,2,opt,name=marker,proto3,oneof" json:"marker"`
 }
 
 type CreateSignedUrlResp struct {
@@ -107,6 +165,56 @@ type GetIpfsTokenResp struct {
 	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url"`
 	// @inject_tag: json:"token"
 	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token"`
+}
+
+type CreateJCSPreSignedObjectListReq struct {
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"continuation_token"
+	ContinuationToken *string `protobuf:"bytes,2,opt,name=continuation_token,proto3,oneof" json:"continuation_token"`
+}
+
+type CreateJCSPreSignedObjectUploadReq struct {
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source"`
+}
+
+type CreateJCSPreSignedObjectNewMultipartUploadReq struct {
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source"`
+}
+
+type CreateJCSPreSignedObjectUploadPartReq struct {
+	// @inject_tag: json:"object_id"
+	ObjectId int32 `protobuf:"varint,1,opt,name=object_id,proto3" json:"object_id"`
+	// @inject_tag: json:"index"
+	Index int32 `protobuf:"varint,2,opt,name=index,proto3" json:"index"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+}
+
+type CreateJCSPreSignedObjectCompleteMultipartUploadReq struct {
+	// @inject_tag: json:"object_id"
+	ObjectId int32 `protobuf:"varint,1,opt,name=object_id,proto3" json:"object_id"`
+	// @inject_tag: json:"indexes"
+	Indexes []int32 `protobuf:"varint,2,rep,packed,name=indexes,proto3" json:"indexes"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+}
+
+type CreateJCSPreSignedObjectDownloadReq struct {
+	// @inject_tag: json:"object_id"
+	ObjectId int32 `protobuf:"varint,1,opt,name=object_id,proto3" json:"object_id"`
+	// @inject_tag: json:"offset"
+	Offset int64 `protobuf:"varint,2,opt,name=offset,proto3" json:"offset"`
+	// @inject_tag: json:"length"
+	Length int64 `protobuf:"varint,3,opt,name=length,proto3" json:"length"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 }
 
 type UploadObjectReq struct {
@@ -270,9 +378,9 @@ type GetObjectRespData struct {
 type DataObj struct {
 	// @inject_tag: json:"id" xorm:"pk autoincr"
 	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id" xorm:"pk autoincr"`
-	// @inject_tag: json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"
+	// @inject_tag: json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象唯一标识')"
 	Uuid string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"`
-	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"
+	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象名称')"
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"`
 	// @inject_tag: json:"source" xorm:"VARCHAR(1024) NOT NULL DEFAULT ” comment('数据对象资源')"
 	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source" xorm:"VARCHAR(1024) NOT NULL DEFAULT ” comment('数据对象资源')"`
@@ -284,7 +392,7 @@ type DataObj struct {
 	Size int32 `protobuf:"varint,7,opt,name=size,proto3" json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"`
 	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"
 	Status int32 `protobuf:"varint,8,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"`
-	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"
+	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象关联用户id')"
 	UserId string `protobuf:"bytes,9,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"`
 	// @inject_tag: json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"
 	Version int32 `protobuf:"varint,10,opt,name=version,proto3" json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"`
@@ -438,7 +546,7 @@ type Task struct {
 	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id" xorm:"pk autoincr"`
 	// @inject_tag: json:"type" xorm:"INT notnull default(0) comment('任务类型，1：上传；2：下载；3：迁移；4：删除')"
 	Type int32 `protobuf:"varint,2,opt,name=type,proto3" json:"type" xorm:"INT notnull default(0) comment('任务类型，1：上传；2：下载；3：迁移；4：删除')"`
-	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('任务名称')"
+	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('任务名称')"
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('任务名称')"`
 	// @inject_tag: json:"params" xorm:"TEXT comment('任务参数')"
 	Params string `protobuf:"bytes,4,opt,name=params,proto3" json:"params" xorm:"TEXT comment('任务参数')"`
@@ -452,7 +560,7 @@ type Task struct {
 	Return string `protobuf:"bytes,8,opt,name=return,proto3" json:"return" xorm:"TEXT comment('任务返回信息')"`
 	// @inject_tag: json:"obj_uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"
 	ObjUuid string `protobuf:"bytes,9,opt,name=obj_uuid,proto3" json:"obj_uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"`
-	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('任务关联用户id')"
+	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('任务关联用户id')"
 	UserId string `protobuf:"bytes,10,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('任务关联用户id')"`
 	// @inject_tag: json:"start_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务开始时间')"
 	StartTime string `protobuf:"bytes,11,opt,name=start_time,proto3" json:"start_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务开始时间')"`

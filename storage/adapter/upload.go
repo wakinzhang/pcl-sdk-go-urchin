@@ -1,31 +1,44 @@
 package adapter
 
 import (
+	"context"
 	"fmt"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
+	uuid "github.com/satori/go.uuid"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 	"os"
 	"path/filepath"
 )
 
-func Upload(urchinServiceAddr, sourcePath string) (err error) {
-	obs.DoLog(obs.LEVEL_DEBUG, "Upload start."+
-		" urchinServiceAddr: %s sourcePath: %s",
-		urchinServiceAddr, sourcePath)
+func Upload(
+	urchinServiceAddr,
+	sourcePath string) (err error) {
 
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	requestId := uuid.NewV4().String()
+	var ctx context.Context
+	ctx = context.Background()
+	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
+
+	Logger.WithContext(ctx).Debug(
+		"Upload start. sourcePath: ", sourcePath)
+
+	UClient.Init(
+		ctx,
+		urchinServiceAddr,
+		DefaultUClientReqTimeout,
+		DefaultUClientMaxConnection)
 
 	uploadObjectReq := new(UploadObjectReq)
 	uploadObjectReq.UserId = "vg3yHwUa"
 	uploadObjectReq.Name = "wakinzhang-test-obj"
 
 	stat, err := os.Stat(sourcePath)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"os.Stat failed. sourcePath: %s, err: %v", sourcePath, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Stat failed.",
+			" sourcePath: ", sourcePath,
+			" err: ", err)
 		return err
 	}
 	if stat.IsDir() {
@@ -36,72 +49,80 @@ func Upload(urchinServiceAddr, sourcePath string) (err error) {
 	uploadObjectReq.Source = filepath.Base(sourcePath)
 	uploadObjectReq.SourceLocalPath = sourcePath
 
-	err, uploadObjectResp := urchinService.UploadObject(uploadObjectReq)
+	err, uploadObjectResp := UClient.UploadObject(ctx, uploadObjectReq)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UrchinService.UploadObject failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.UploadObject  failed.",
+			" err: ", err)
 		return err
 	}
 
 	fmt.Printf("Upload TaskId: %d\n", uploadObjectResp.TaskId)
 
 	err = ProcessUpload(
-		urchinServiceAddr,
+		ctx,
 		sourcePath,
 		uploadObjectResp.TaskId,
 		uploadObjectResp.NodeType,
 		true)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessUpload failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessUpload failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "Upload success.")
+	Logger.WithContext(ctx).Debug(
+		"Upload success.")
 	return err
 }
 
 func ProcessUpload(
-	urchinServiceAddr, sourcePath string,
+	ctx context.Context,
+	sourcePath string,
 	taskId, nodeType int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessUpload start."+
-		" urchinServiceAddr: %s sourcePath: %s, taskId: %d, nodeType: %d, needPure: %t",
-		urchinServiceAddr, sourcePath, taskId, nodeType, needPure)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"ProcessUpload start.",
+		" sourcePath: ", sourcePath, " taskId: ", taskId,
+		" nodeType: ", nodeType, " needPure: ", needPure)
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
 		finishTaskReq.TaskId = taskId
-		if err != nil {
+		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = urchinService.FinishTask(finishTaskReq)
+		err, _ = UClient.FinishTask(ctx, finishTaskReq)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"UrchinService.FinishTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.FinishTask failed.",
+				" err: ", err)
 		}
 	}()
 
-	err, storage := NewStorage(nodeType)
+	err, storage := NewStorage(ctx, nodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "NewStorage failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"NewStorage failed.",
+			" err: ", err)
 		return err
 	}
 	err = storage.Upload(
-		urchinServiceAddr,
+		ctx,
 		sourcePath,
 		taskId,
 		needPure)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR, "storage.Upload failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"storage.Upload failed.",
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "ProcessUpload success.")
+	Logger.WithContext(ctx).Debug(
+		"ProcessUpload success.")
 	return nil
 }

@@ -1,39 +1,40 @@
 package operation
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/adapter"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 )
 
 func RetryTask(
-	urchinServiceAddr string,
+	ctx context.Context,
 	taskId int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "RetryTask start."+
-		" urchinServiceAddr: %s, taskId: %d, needPure: %t",
-		urchinServiceAddr, taskId, needPure)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"RetryTask start.",
+		" taskId: ", taskId,
+		" needPure: ", needPure)
 
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
 
-	err, getTaskResp := urchinService.GetTask(getTaskReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "GetTask failed. err: %v", err)
+	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetTask failed.",
+			" err: ", err)
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		obs.DoLog(obs.LEVEL_ERROR, "task not exist. taskId: %d", taskId)
+		Logger.WithContext(ctx).Error(
+			"task not exist. taskId: ", taskId)
 		return errors.New("task not exist")
 	}
 	task := getTaskResp.Data.List[0].Task
@@ -41,244 +42,276 @@ func RetryTask(
 	retryTaskReq := new(RetryTaskReq)
 	retryTaskReq.TaskId = taskId
 
-	err, _ = urchinService.RetryTask(retryTaskReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "RetryTask failed. err: %v", err)
+	err, _ = UClient.RetryTask(ctx, retryTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.RetryTask failed.",
+			" err: ", err)
 		return err
 	}
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
 		finishTaskReq.TaskId = taskId
-		if err != nil {
+		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = urchinService.FinishTask(finishTaskReq)
+		err, _ = UClient.FinishTask(ctx, finishTaskReq)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"UrchinService.FinishTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.FinishTask failed.",
+				" err: ", err)
 		}
 	}()
 
 	switch task.Type {
 	case TaskTypeUpload:
 		err = processRetryUploadTask(
+			ctx,
 			task,
-			urchinServiceAddr,
 			taskId,
 			needPure)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"processRetryUploadTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"processRetryUploadTask failed.",
+				" err: ", err)
 			return err
 		}
 	case TaskTypeUploadFile:
 		err = processRetryUploadFileTask(
+			ctx,
 			task,
-			urchinServiceAddr,
 			taskId,
 			needPure)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"processRetryUploadFileTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"processRetryUploadFileTask failed.",
+				" err: ", err)
 			return err
 		}
 	case TaskTypeDownload:
 		err = processRetryDownloadTask(
+			ctx,
 			task,
-			urchinServiceAddr,
 			taskId)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"processRetryDownloadTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"processRetryDownloadTask failed.",
+				" err: ", err)
 			return err
 		}
 	case TaskTypeDownloadFile:
 		err = processRetryDownloadFileTask(
+			ctx,
 			task,
-			urchinServiceAddr,
 			taskId)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"processRetryDownloadFileTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"processRetryDownloadFileTask failed.",
+				" err: ", err)
 			return err
 		}
 	case TaskTypeMigrate:
 		err = processRetryMigrateTask(
+			ctx,
 			task,
-			urchinServiceAddr,
 			taskId,
 			needPure)
 		if nil != err {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"processRetryMigrateTask failed. error: %v", err)
+			Logger.WithContext(ctx).Error(
+				"processRetryMigrateTask failed.",
+				" err: ", err)
 			return err
 		}
 	default:
-		obs.DoLog(obs.LEVEL_ERROR,
-			"task type invalid."+
-				" taskId: %d, taskType: %d", task.Id, task.Type)
+		Logger.WithContext(ctx).Error(
+			"task type invalid.",
+			" taskId: ", task.Id, " taskType: ", task.Type)
 		return errors.New("task type invalid")
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "RetryTask success.")
+
+	Logger.WithContext(ctx).Debug(
+		"RetryTask finish.")
 	return err
 }
 
 func processRetryUploadTask(
+	ctx context.Context,
 	task *Task,
-	urchinServiceAddr string,
 	taskId int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryUploadTask start."+
-		" urchinServiceAddr: %s, taskId: %d, taskParams: %s, needPure: %t",
-		urchinServiceAddr, taskId, task.Params, needPure)
+	Logger.WithContext(ctx).Debug(
+		"processRetryUploadTask start.",
+		" taskId: ", taskId,
+		" needPure: ", needPure,
+		" taskParams: ", task.Params)
+
 	uploadObjectTaskParams := new(UploadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), uploadObjectTaskParams)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UploadObjectTaskParams Unmarshal failed."+
-				" params: %s, error: %v", task.Params, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UploadObjectTaskParams Unmarshal failed.",
+			" err: ", err)
 		return err
 	}
 
 	err = ProcessUpload(
-		urchinServiceAddr,
+		ctx,
 		uploadObjectTaskParams.Request.SourceLocalPath,
 		taskId,
 		uploadObjectTaskParams.NodeType,
 		needPure)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessUpload failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessUpload failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryUploadTask success.")
+
+	Logger.WithContext(ctx).Debug(
+		"processRetryUploadTask finish.")
 	return err
 }
 
 func processRetryUploadFileTask(
+	ctx context.Context,
 	task *Task,
-	urchinServiceAddr string,
 	taskId int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryUploadFileTask start."+
-		" urchinServiceAddr: %s, taskId: %d, taskParams: %s, needPure: %t",
-		urchinServiceAddr, taskId, task.Params, needPure)
+	Logger.WithContext(ctx).Debug(
+		"processRetryUploadFileTask start.",
+		" taskId: ", taskId,
+		" needPure: ", needPure,
+		" taskParams: ", task.Params)
+
 	uploadFileTaskParams := new(UploadFileTaskParams)
 	err = json.Unmarshal([]byte(task.Params), uploadFileTaskParams)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UploadFileTaskParams Unmarshal failed."+
-				" params: %s, error: %v", task.Params, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UploadFileTaskParams Unmarshal failed.",
+			" err: ", err)
 		return err
 	}
 
 	err = ProcessUploadFile(
-		urchinServiceAddr,
+		ctx,
 		uploadFileTaskParams.Request.SourceLocalPath,
 		taskId,
 		uploadFileTaskParams.NodeType,
 		needPure)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessUploadFile failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessUploadFile failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryUploadFileTask success.")
+
+	Logger.WithContext(ctx).Debug(
+		"processRetryUploadFileTask finish.")
 	return err
 }
 
 func processRetryDownloadTask(
+	ctx context.Context,
 	task *Task,
-	urchinServiceAddr string,
 	taskId int32) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryDownloadTask start."+
-		" urchinServiceAddr: %s, taskId: %d, taskParams: %s",
-		urchinServiceAddr, taskId, task.Params)
+	Logger.WithContext(ctx).Debug(
+		"processRetryDownloadTask start.",
+		" taskId: ", taskId,
+		" taskParams: ", task.Params)
+
 	downloadObjectTaskParams := new(DownloadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), downloadObjectTaskParams)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"DownloadObjectTaskParams Unmarshal failed."+
-				" params: %s, error: %v", task.Params, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"DownloadObjectTaskParams Unmarshal failed.",
+			" err: ", err)
 		return err
 	}
 
 	err = ProcessDownload(
-		urchinServiceAddr,
+		ctx,
 		downloadObjectTaskParams.Request.TargetLocalPath,
 		downloadObjectTaskParams.BucketName,
 		taskId,
 		downloadObjectTaskParams.NodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessDownload failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessDownload failed.",
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryDownloadTask success.")
+	Logger.WithContext(ctx).Debug(
+		"processRetryDownloadTask finish.")
 	return err
 }
 
 func processRetryDownloadFileTask(
+	ctx context.Context,
 	task *Task,
-	urchinServiceAddr string,
 	taskId int32) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryDownloadFileTask start."+
-		" urchinServiceAddr: %s, taskId: %d, taskParams: %s",
-		urchinServiceAddr, taskId, task.Params)
+	Logger.WithContext(ctx).Debug(
+		"processRetryDownloadFileTask start.",
+		" taskId: ", taskId,
+		" taskParams: ", task.Params)
+
 	downloadFileTaskParams := new(DownloadFileTaskParams)
 	err = json.Unmarshal([]byte(task.Params), downloadFileTaskParams)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"DownloadFileTaskParams Unmarshal failed."+
-				" params: %s, error: %v", task.Params, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"DownloadFileTaskParams Unmarshal failed.",
+			" err: ", err)
 		return err
 	}
 
 	err = ProcessDownload(
-		urchinServiceAddr,
+		ctx,
 		downloadFileTaskParams.Request.TargetLocalPath,
 		downloadFileTaskParams.BucketName,
 		taskId,
 		downloadFileTaskParams.NodeType)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessDownload failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessDownload failed.",
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryDownloadFileTask success.")
+	Logger.WithContext(ctx).Debug(
+		"processRetryDownloadFileTask finish.")
 	return err
 }
 
 func processRetryMigrateTask(
+	ctx context.Context,
 	task *Task,
-	urchinServiceAddr string,
 	taskId int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryMigrateTask start."+
-		" urchinServiceAddr: %s, taskId: %d, taskParams: %s, needPure: %t",
-		urchinServiceAddr, taskId, task.Params, needPure)
+	Logger.WithContext(ctx).Debug(
+		"processRetryMigrateTask start.",
+		" taskId: ", taskId,
+		" needPure: ", needPure,
+		" taskParams: ", task.Params)
 
 	migrateObjectTaskParams := new(MigrateObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), migrateObjectTaskParams)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"MigrateObjectTaskParams Unmarshal failed."+
-				" params: %s, error: %v", task.Params, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"MigrateObjectTaskParams Unmarshal failed.",
+			" err: ", err)
 		return err
 	}
 
 	err = ProcessMigrate(
-		urchinServiceAddr,
+		ctx,
 		migrateObjectTaskParams.Request.CacheLocalPath,
 		migrateObjectTaskParams.Request.ObjUuid,
 		migrateObjectTaskParams.SourceBucketName,
@@ -287,11 +320,13 @@ func processRetryMigrateTask(
 		migrateObjectTaskParams.TargetNodeType,
 		needPure)
 	if nil != err {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"ProcessMigrate failed. error: %v", err)
+		Logger.WithContext(ctx).Error(
+			"ProcessMigrate failed.",
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "processRetryMigrateTask success.")
+	Logger.WithContext(ctx).Debug(
+		"processRetryMigrateTask finish.")
 	return err
 }

@@ -57,10 +57,10 @@ func (rw *ReaderWrapper) Read(p []byte) (n int, err error) {
 	}
 	if rw.TotalCount > 0 {
 		n, err = rw.Reader.Read(p)
-		readedOnce := int64(n)
+		readOnce := int64(n)
 		remainCount := rw.TotalCount - rw.ReadedCount
-		if remainCount > readedOnce {
-			rw.ReadedCount += readedOnce
+		if remainCount > readOnce {
+			rw.ReadedCount += readOnce
 			return n, err
 		}
 		rw.ReadedCount += remainCount

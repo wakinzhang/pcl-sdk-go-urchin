@@ -4,11 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"github.com/urchinfs/go-urchin2-sdk/ipfs_api"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/service"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,78 +17,86 @@ type IPFS struct {
 }
 
 func (o *IPFS) Upload(
-	urchinServiceAddr, sourcePath string,
+	ctx context.Context,
+	sourcePath string,
 	taskId int32,
 	needPure bool) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"IPFS:Upload start."+
-			" urchinServiceAddr: %s, sourcePath: %s, taskId: %d, needPure: %t",
-		urchinServiceAddr, sourcePath, taskId, needPure)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"IPFS:Upload start.",
+		" sourcePath: ", sourcePath,
+		" taskId: ", taskId,
+		" needPure: ", needPure)
 
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
 
-	err, getTaskResp := urchinService.GetTask(getTaskReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "GetTask failed. err: %v", err)
+	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetTask failed.",
+			" err: ", err)
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		obs.DoLog(obs.LEVEL_ERROR, "task not exist. taskId: %d", taskId)
+		Logger.WithContext(ctx).Error(
+			"task not exist. taskId: ", taskId)
 		return errors.New("task not exist")
 	}
 	if TaskTypeUpload == getTaskResp.Data.List[0].Task.Type ||
 		TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
 		err = o.uploadObject(
-			urchinServiceAddr,
+			ctx,
 			sourcePath,
 			getTaskResp.Data.List[0].Task)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR, "IPFS:uploadObject failed. err: %v", err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"IPFS:uploadObject failed.",
+				" err: ", err)
 			return err
 		}
 	} else if TaskTypeUploadFile == getTaskResp.Data.List[0].Task.Type {
 		err = o.uploadFile(
-			urchinServiceAddr,
+			ctx,
 			sourcePath,
 			getTaskResp.Data.List[0].Task)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR, "IPFS:uploadFile failed. err: %v", err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"IPFS:uploadFile failed.",
+				" err: ", err)
 			return err
 		}
 	} else {
-		obs.DoLog(obs.LEVEL_ERROR, "task type invalid. taskId: %d", taskId)
+		Logger.WithContext(ctx).Error(
+			"task type invalid. taskId: ", taskId)
 		return errors.New("task type invalid")
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:Upload finish.")
+	Logger.WithContext(ctx).Debug(
+		"IPFS:Upload finish.")
 	return err
 }
 
 func (o *IPFS) uploadObject(
-	urchinServiceAddr, sourcePath string, task *Task) (err error) {
+	ctx context.Context,
+	sourcePath string,
+	task *Task) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"IPFS:uploadObject start. urchinServiceAddr: %s, sourcePath: %s",
-		urchinServiceAddr, sourcePath)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"IPFS:uploadObject start.",
+		" sourcePath: ", sourcePath)
 
 	var objUuid, nodeName string
 	if TaskTypeUpload == task.Type {
 		uploadObjectTaskParams := new(UploadObjectTaskParams)
 		err = json.Unmarshal([]byte(task.Params), uploadObjectTaskParams)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"UploadObjectTaskParams Unmarshal failed. params: %s, error: %v",
-				task.Params, err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"UploadObjectTaskParams Unmarshal failed.",
+				" params: ", task.Params,
+				" err: ", err)
 			return err
 		}
 		objUuid = uploadObjectTaskParams.Uuid
@@ -97,69 +104,81 @@ func (o *IPFS) uploadObject(
 	} else if TaskTypeMigrate == task.Type {
 		migrateObjectTaskParams := new(MigrateObjectTaskParams)
 		err = json.Unmarshal([]byte(task.Params), migrateObjectTaskParams)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"MigrateObjectTaskParams Unmarshal failed. params: %s, error: %v",
-				task.Params, err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"MigrateObjectTaskParams Unmarshal failed.",
+				" params: ", task.Params,
+				" err: ", err)
 			return err
 		}
 		objUuid = migrateObjectTaskParams.Request.ObjUuid
 		nodeName = migrateObjectTaskParams.Request.TargetNodeName
 	} else {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"task type invalid. taskId: %d, taskType: %d", task.Id, task.Type)
+		Logger.WithContext(ctx).Error(
+			"task type invalid.",
+			" taskId: ", task.Id,
+			" taskType: ", task.Type)
 		return errors.New("task type invalid")
 	}
 
 	getIpfsTokenReq := new(GetIpfsTokenReq)
 	getIpfsTokenReq.NodeName = nodeName
 
-	err, getIpfsTokenResp := urchinService.GetIpfsToken(getIpfsTokenReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "GetIpfsToken failed. err: %v", err)
+	err, getIpfsTokenResp := UClient.GetIpfsToken(ctx, getIpfsTokenReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"GetIpfsToken failed.",
+			" err: ", err)
 		return err
 	}
 	ipfsClient := ipfs_api.NewClient(getIpfsTokenResp.Url, getIpfsTokenResp.Token)
 
 	stat, err := os.Stat(sourcePath)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"os.Stat failed. sourcePath: %s, err: %v",
-			sourcePath, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Stat failed.",
+			" sourcePath: ", sourcePath,
+			" err: ", err)
 		return err
 	}
 
 	ch := make(chan XIpfsUpload)
 	go func() {
 		if stat.IsDir() {
-			obs.DoLog(obs.LEVEL_DEBUG,
-				"IPFS:AddDir start. sourcePath: %s", sourcePath)
+			Logger.WithContext(ctx).Debug(
+				"IPFS:AddDir start.",
+				" sourcePath: ", sourcePath)
 			cid, _err := ipfsClient.AddDir(context.Background(), sourcePath)
-			if _err != nil {
-				obs.DoLog(obs.LEVEL_ERROR,
-					"IPFS.AddDir failed. sourcePath: %s, err: %v",
-					sourcePath, _err)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"IPFS:AddDir failed.",
+					" sourcePath: ", sourcePath,
+					" err: ", _err)
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
-			obs.DoLog(obs.LEVEL_DEBUG,
-				"IPFS:AddDir finish. sourcePath: %s", sourcePath)
+			Logger.WithContext(ctx).Debug(
+				"IPFS:AddDir finish.",
+				" sourcePath: ", sourcePath)
 			ch <- XIpfsUpload{
 				CId:    cid,
 				Result: ChanResultSuccess}
 		} else {
-			obs.DoLog(obs.LEVEL_DEBUG,
-				"IPFS:Add start. sourcePath: %s", sourcePath)
+			Logger.WithContext(ctx).Debug(
+				"IPFS:Add start.",
+				" sourcePath: ", sourcePath)
 			cid, _err := ipfsClient.Add(context.Background(), sourcePath)
-			if _err != nil {
-				obs.DoLog(obs.LEVEL_ERROR, "IPFS.Add failed."+
-					" urchinServiceAddr: %s, sourcePath: %s, err: %v",
-					urchinServiceAddr, sourcePath, _err)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"IPFS:Add failed.",
+					" sourcePath: ", sourcePath,
+					" err: ", _err)
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
-			obs.DoLog(obs.LEVEL_DEBUG,
-				"IPFS:Add finish. sourcePath: %s", sourcePath)
+			Logger.WithContext(ctx).Debug(
+				"IPFS:Add finish.",
+				" sourcePath: ", sourcePath)
 			ch <- XIpfsUpload{
 				CId:    cid,
 				Result: ChanResultSuccess}
@@ -172,8 +191,9 @@ func (o *IPFS) uploadObject(
 			break
 		}
 		if ChanResultFailed == uploadResult.Result {
-			obs.DoLog(obs.LEVEL_ERROR, "IPFS:uploadObject failed."+
-				" urchinServiceAddr: %s, sourcePath: %s", urchinServiceAddr, sourcePath)
+			Logger.WithContext(ctx).Error(
+				"IPFS:uploadObject failed.",
+				" sourcePath: ", sourcePath)
 			return errors.New("IPFS:Upload failed")
 		}
 		cid = uploadResult.CId
@@ -190,79 +210,88 @@ func (o *IPFS) uploadObject(
 	putObjectDeploymentReq.NodeName = nodeName
 	putObjectDeploymentReq.Location = &location
 
-	err, _ = urchinService.PutObjectDeployment(putObjectDeploymentReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "PutObjectDeployment failed. err: %v", err)
+	err, _ = UClient.PutObjectDeployment(ctx, putObjectDeploymentReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"PutObjectDeployment failed.",
+			" err: ", err)
 		return err
 	}
-	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:uploadObject finish.")
+	Logger.WithContext(ctx).Debug(
+		"IPFS:uploadObject finish.")
 	return nil
 }
 
 func (o *IPFS) uploadFile(
-	urchinServiceAddr, sourcePath string, task *Task) (err error) {
+	ctx context.Context,
+	sourcePath string,
+	task *Task) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG,
-		"IPFS:uploadFile start. urchinServiceAddr: %s, sourcePath: %s",
-		urchinServiceAddr, sourcePath)
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
+	Logger.WithContext(ctx).Debug(
+		"IPFS:uploadFile start.",
+		" sourcePath: ", sourcePath)
 
 	taskParams := new(UploadFileTaskParams)
 	err = json.Unmarshal([]byte(task.Params), taskParams)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"UploadFileTaskParams Unmarshal failed. params: %s, error: %v",
-			task.Params, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UploadFileTaskParams Unmarshal failed.",
+			" param: ", task.Params,
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:uploadFile finish.")
+	Logger.WithContext(ctx).Debug(
+		"IPFS:uploadFile finish.")
 	return nil
 }
 
 func (o *IPFS) Download(
-	urchinServiceAddr, targetPath string,
+	ctx context.Context,
+	targetPath string,
 	taskId int32,
 	bucketName string) (err error) {
 
-	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:Download start."+
-		" urchinServiceAddr: %s, targetPath: %s, taskId: %d, bucketName: %s",
-		urchinServiceAddr, targetPath, taskId, bucketName)
+	Logger.WithContext(ctx).Debug(
+		"IPFS:Download start.",
+		" targetPath: ", targetPath,
+		" taskId: ", taskId,
+		" bucketName: ", bucketName)
 
 	err = os.MkdirAll(targetPath, os.ModePerm)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "Failed to make dir. error: %v", err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.MkdirAll failed.",
+			" err: ", err)
 		return err
 	}
-
-	urchinService := new(UrchinService)
-	urchinService.Init(urchinServiceAddr, 10, 10)
 
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
 
-	err, getTaskResp := urchinService.GetTask(getTaskReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "GetTask failed. err: %v", err)
+	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetTask failed.",
+			" err: ", err)
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		obs.DoLog(obs.LEVEL_ERROR, "task invalid. taskId: %d", taskId)
+		Logger.WithContext(ctx).Error(
+			"task invalid. taskId: ", taskId)
 		return errors.New("task invalid")
 	}
 	var nodeName, hash, prePath, postPath string
 	if TaskTypeDownload == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(DownloadObjectTaskParams)
 		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"DownloadObjectTaskParams Unmarshal failed."+
-					" params: %s, error: %v",
-				getTaskResp.Data.List[0].Task.Params, err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"DownloadObjectTaskParams Unmarshal failed.",
+				" params: ", getTaskResp.Data.List[0].Task.Params,
+				" err: ", err)
 			return err
 		}
 		nodeName = taskParams.NodeName
@@ -272,11 +301,11 @@ func (o *IPFS) Download(
 	} else if TaskTypeDownloadFile == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(DownloadFileTaskParams)
 		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"DownloadFileTaskParams Unmarshal failed."+
-					" params: %s, error: %v",
-				getTaskResp.Data.List[0].Task.Params, err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"DownloadFileTaskParams Unmarshal failed.",
+				" params: ", getTaskResp.Data.List[0].Task.Params,
+				" err: ", err)
 			return err
 		}
 		nodeName = taskParams.NodeName
@@ -287,11 +316,11 @@ func (o *IPFS) Download(
 	} else if TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(MigrateObjectTaskParams)
 		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
-		if err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"MigrateObjectTaskParams Unmarshal failed."+
-					" params: %s, error: %v",
-				getTaskResp.Data.List[0].Task.Params, err)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"MigrateObjectTaskParams Unmarshal failed.",
+				" params: ", getTaskResp.Data.List[0].Task.Params,
+				" err: ", err)
 			return err
 		}
 		nodeName = taskParams.SourceNodeName
@@ -299,33 +328,42 @@ func (o *IPFS) Download(
 		prePath = targetPath + "/" + hash
 		postPath = targetPath + "/" + taskParams.Request.ObjUuid
 	} else {
-		obs.DoLog(obs.LEVEL_ERROR, "task type invalid. taskId: %d", taskId)
+		Logger.WithContext(ctx).Error(
+			"task type invalid. taskId: ", taskId)
 		return errors.New("task type invalid")
 	}
 
 	getIpfsTokenReq := new(GetIpfsTokenReq)
 	getIpfsTokenReq.NodeName = nodeName
 
-	err, getIpfsTokenResp := urchinService.GetIpfsToken(getIpfsTokenReq)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR, "GetIpfsToken failed. err: %v", err)
+	err, getIpfsTokenResp := UClient.GetIpfsToken(ctx, getIpfsTokenReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetIpfsToken failed.",
+			" err: ", err)
 		return err
 	}
 	ipfsClient := ipfs_api.NewClient(getIpfsTokenResp.Url, getIpfsTokenResp.Token)
 	ch := make(chan XIpfsDownload)
 	go func() {
-		obs.DoLog(obs.LEVEL_DEBUG,
-			"IPFS:Get start. hash: %s, targetPath: %s", hash, targetPath)
+		Logger.WithContext(ctx).Debug(
+			"IPFS:Get start.",
+			" hash: ", hash,
+			" targetPath: ", targetPath)
 		_err := ipfsClient.Get(hash, targetPath)
-		if _err != nil {
-			obs.DoLog(obs.LEVEL_ERROR,
-				"IPFS.Get failed. hash: %s, targetPath: %s, err: %v",
-				hash, targetPath, _err)
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"IPFS:Get failed.",
+				" hash: ", hash,
+				" targetPath: ", targetPath,
+				" err: ", _err)
 			ch <- XIpfsDownload{
 				Result: ChanResultFailed}
 		}
-		obs.DoLog(obs.LEVEL_DEBUG,
-			"IPFS:Get finish. hash: %s, targetPath: %s", hash, targetPath)
+		Logger.WithContext(ctx).Debug(
+			"IPFS:Get finish.",
+			" hash: ", hash,
+			" targetPath: ", targetPath)
 		ch <- XIpfsDownload{
 			Result: ChanResultSuccess}
 	}()
@@ -336,21 +374,25 @@ func (o *IPFS) Download(
 			break
 		}
 		if ChanResultFailed == downloadResult.Result {
-			obs.DoLog(obs.LEVEL_ERROR, "IPFS:Download failed."+
-				" urchinServiceAddr: %s, targetPath: %s, taskId: %d",
-				urchinServiceAddr, targetPath, taskId)
+			Logger.WithContext(ctx).Error(
+				"IPFS:Download failed.",
+				" targetPath: ", targetPath,
+				" taskId: ", taskId)
 			return errors.New("IPFS:Download failed")
 		}
 		close(ch)
 	}
 	err = os.Rename(prePath, postPath)
-	if err != nil {
-		obs.DoLog(obs.LEVEL_ERROR,
-			"os.Rename failed. prePath: %s, postPath: %s, error: %v",
-			prePath, postPath, err)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Rename failed.",
+			" prePath: ", prePath,
+			" postPath: ", postPath,
+			" err: ", err)
 		return err
 	}
 
-	obs.DoLog(obs.LEVEL_DEBUG, "IPFS:Download finish.")
+	Logger.WithContext(ctx).Debug(
+		"IPFS:Download finish.")
 	return nil
 }
