@@ -35,7 +35,7 @@ func UploadFile(
 		DefaultUClientMaxConnection)
 
 	uploadFileReq := new(UploadFileReq)
-	uploadFileReq.UserId = "vg3yHwUa"
+	uploadFileReq.UserId = DefaultUrchinClientUserId
 	uploadFileReq.ObjUuid = objUuid
 	uploadFileReq.Source = objPath
 	uploadFileReq.SourceLocalPath = sourcePath

@@ -1,9 +1,9 @@
 package main
 
 import (
-	. "pcl-sdk-go-urchin/storage/adapter"
-	. "pcl-sdk-go-urchin/storage/common"
-	//. "pcl-sdk-go-urchin/storage/operation"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/adapter"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
+	//. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/operation"
 )
 
 var urchinServiceAddr = "https://127.0.0.1:39256"

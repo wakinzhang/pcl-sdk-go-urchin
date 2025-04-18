@@ -12,6 +12,9 @@ var LogLevelMap = map[int64]logrus.Level{
 	6: logrus.TraceLevel}
 
 const (
+	DefaultUrchinClientUserId = "test"
+	DefaultUrchinClientToken  = "test"
+
 	DefaultPartSize = 100 * 1024 * 1024
 
 	DefaultPageIndex = 1
@@ -22,8 +25,7 @@ const (
 	HttpHeaderContentTypeText       = "text/plain"
 	HttpHeaderContentTypeStream     = "application/octet-stream"
 	HttpHeaderContentTypeData       = "multipart/form-data"
-	HttpHeaderContentTypeUrlEncoded = "multipart/application/x-www-from" +
-		"-urlencoded"
+	HttpHeaderContentTypeUrlEncoded = "multipart/application/x-www-from-urlencoded"
 
 	HttpHeaderRange        = "Range"
 	HttpHeaderContentRange = "Content-Range"

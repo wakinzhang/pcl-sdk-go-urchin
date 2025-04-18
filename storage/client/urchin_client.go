@@ -63,8 +63,8 @@ func (u *UrchinClient) Init(
 	u.urchinClient.HTTPClient.Transport = transport
 	u.urchinClient.HTTPClient.Timeout = timeout
 
-	userId := "test"
-	token := "test"
+	userId := DefaultUrchinClientUserId
+	token := DefaultUrchinClientToken
 	requestId := ctx.Value("X-Request-Id").(string)
 	u.header = make(http.Header)
 	u.header.Add(UrchinClientHeaderUserId, userId)

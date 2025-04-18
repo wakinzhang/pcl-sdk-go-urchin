@@ -31,7 +31,7 @@ func Download(
 		DefaultUClientMaxConnection)
 
 	downloadObjectReq := new(DownloadObjectReq)
-	downloadObjectReq.UserId = "vg3yHwUa"
+	downloadObjectReq.UserId = DefaultUrchinClientUserId
 	downloadObjectReq.ObjUuid = objUuid
 	downloadObjectReq.TargetLocalPath = targetPath
 

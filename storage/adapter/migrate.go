@@ -38,7 +38,7 @@ func Migrate(
 		DefaultUClientMaxConnection)
 
 	migrateObjectReq := new(MigrateObjectReq)
-	migrateObjectReq.UserId = "vg3yHwUa"
+	migrateObjectReq.UserId = DefaultUrchinClientUserId
 	migrateObjectReq.ObjUuid = objUuid
 	if nil != sourceNodeName {
 		migrateObjectReq.SourceNodeName = sourceNodeName

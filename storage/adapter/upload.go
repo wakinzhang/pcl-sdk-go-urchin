@@ -30,7 +30,7 @@ func Upload(
 		DefaultUClientMaxConnection)
 
 	uploadObjectReq := new(UploadObjectReq)
-	uploadObjectReq.UserId = "vg3yHwUa"
+	uploadObjectReq.UserId = DefaultUrchinClientUserId
 	uploadObjectReq.Name = "wakinzhang-test-obj"
 
 	stat, err := os.Stat(sourcePath)

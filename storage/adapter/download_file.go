@@ -33,7 +33,7 @@ func DownloadFile(
 		DefaultUClientMaxConnection)
 
 	downloadFileReq := new(DownloadFileReq)
-	downloadFileReq.UserId = "vg3yHwUa"
+	downloadFileReq.UserId = DefaultUrchinClientUserId
 	downloadFileReq.ObjUuid = objUuid
 	downloadFileReq.Source = source
 	downloadFileReq.TargetLocalPath = targetPath
