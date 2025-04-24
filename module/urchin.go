@@ -41,10 +41,15 @@ const (
 	UrchinClientFinishTaskInterface = "/v1/task/finish"
 	UrchinClientRetryTaskInterface  = "/v1/task/retry"
 
-	StorageCategoryEIpfs  = 1
-	StorageCategoryEObs   = 2
-	StorageCategoryEMinio = 3
-	StorageCategoryEJcs   = 4
+	StorageCategoryEIpfs      = 1
+	StorageCategoryEObs       = 2
+	StorageCategoryEMinio     = 3
+	StorageCategoryEJcs       = 4
+	StorageCategoryEEos       = 5
+	StorageCategoryEStarLight = 6
+	StorageCategoryEParaCloud = 7
+	StorageCategoryEScow      = 8
+	StorageCategoryESugon     = 9
 
 	DataObjectTypeEFile   = 1
 	DataObjectTypeEFolder = 2
@@ -618,4 +623,39 @@ type XIpfsUpload struct {
 type XIpfsDownload struct {
 	XMLName xml.Name `xml:"IpfsDownload"`
 	Result  int      `xml:"Result"`
+}
+
+type StorageNodeConfig struct {
+	// @inject_tag: json:"endpoint"
+	Endpoint string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint"`
+	// @inject_tag: json:"access_key"
+	AccessKey string `protobuf:"bytes,2,opt,name=access_key,proto3" json:"access_key"`
+	// @inject_tag: json:"secret_key"
+	SecretKey string `protobuf:"bytes,3,opt,name=secret_key,proto3" json:"secret_key"`
+	// @inject_tag: json:"user"
+	User string `protobuf:"bytes,4,opt,name=user,proto3" json:"user"`
+	// @inject_tag: json:"pass"
+	Pass string `protobuf:"bytes,5,opt,name=pass,proto3" json:"pass"`
+	// @inject_tag: json:"bucket_name"
+	BucketName string `protobuf:"bytes,6,opt,name=bucket_name,proto3" json:"bucket_name"`
+	// @inject_tag: json:"auth_service"
+	AuthService string `protobuf:"bytes,7,opt,name=auth_service,proto3" json:"auth_service"`
+	// @inject_tag: json:"auth_region"
+	AuthRegion string `protobuf:"bytes,8,opt,name=auth_region,proto3" json:"auth_region"`
+	// @inject_tag: json:"user_id"
+	UserId int32 `protobuf:"varint,9,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"bucket_id"
+	BucketId int32 `protobuf:"varint,10,opt,name=bucket_id,proto3" json:"bucket_id"`
+	// @inject_tag: json:"lustre_type"
+	LustreType string `protobuf:"bytes,11,opt,name=lustre_type,proto3" json:"lustre_type"`
+	// @inject_tag: json:"url"
+	Url string `protobuf:"bytes,12,opt,name=url,proto3" json:"url"`
+	// @inject_tag: json:"cluster_id"
+	ClusterId string `protobuf:"bytes,13,opt,name=cluster_id,proto3" json:"cluster_id"`
+	// @inject_tag: json:"org_id"
+	OrgId string `protobuf:"bytes,14,opt,name=org_id,proto3" json:"org_id"`
+	// @inject_tag: json:"req_timeout"
+	ReqTimeout int32 `protobuf:"varint,15,opt,name=req_timeout,proto3" json:"req_timeout"`
+	// @inject_tag: json:"max_connection"
+	MaxConnection int32 `protobuf:"varint,16,opt,name=max_connection,proto3" json:"max_connection"`
 }

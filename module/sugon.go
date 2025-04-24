@@ -3,9 +3,9 @@ package module
 import (
 	"context"
 	"encoding/xml"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	"io"
 	"os"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 )
 
 const (
@@ -21,8 +21,6 @@ const (
 	DefaultSugonDownloadMultiTaskNum = 20
 	DefaultSugonMaxPartSize          = 5 * 1024 * 1024 * 1024
 	DefaultSugonMinPartSize          = 100 * 1024
-	DefaultSugonClientReqTimeout     = 3600
-	DefaultSugonClientMaxConnection  = 50
 
 	DefaultSugonListLimit = 100
 
@@ -56,6 +54,17 @@ const (
 
 	SugonMultiPartFormFiledCoverECover = "cover"
 )
+
+type SugonUploadInput struct {
+	SourcePath string
+	TargetPath string
+	NeedPure   bool
+}
+
+type SugonDownloadInput struct {
+	SourcePath string
+	TargetPath string
+}
 
 type SugonBaseResponse struct {
 	Code string      `json:"code"`

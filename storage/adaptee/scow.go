@@ -9,12 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/panjf2000/ants/v2"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"io"
 	"os"
 	"path/filepath"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -31,7 +31,9 @@ func (o *Scow) Init(
 	password,
 	endpoint,
 	url,
-	clusterId string) (err error) {
+	clusterId string,
+	reqTimeout,
+	maxConnection int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:Init start.",
@@ -39,7 +41,9 @@ func (o *Scow) Init(
 		" password: ", "***",
 		" endpoint: ", endpoint,
 		" url: ", url,
-		" clusterId: ", clusterId)
+		" clusterId: ", clusterId,
+		" reqTimeout: ", reqTimeout,
+		" maxConnection: ", maxConnection)
 
 	o.sClient = new(ScowClient)
 	o.sClient.Init(
@@ -49,8 +53,8 @@ func (o *Scow) Init(
 		endpoint,
 		url,
 		clusterId,
-		DefaultScowClientReqTimeout,
-		DefaultScowClientMaxConnection)
+		reqTimeout,
+		maxConnection)
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:Init finish.")
@@ -156,9 +160,19 @@ func (o *Scow) updateCheckpointFile(
 
 func (o *Scow) Upload(
 	ctx context.Context,
-	sourcePath,
-	targetPath string,
-	needPure bool) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	var needPure bool
+	if scowUploadInput, ok := input.(ScowUploadInput); ok {
+		sourcePath = scowUploadInput.SourcePath
+		targetPath = scowUploadInput.TargetPath
+		needPure = scowUploadInput.NeedPure
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:Upload start.",
@@ -530,6 +544,11 @@ func (o *Scow) uploadFileResume(
 		uploadFileInput.UploadFile + ".upload_file_record"
 	uploadFileInput.TaskNum = DefaultScowUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
+	if uploadFileInput.PartSize < DefaultScowMinPartSize {
+		uploadFileInput.PartSize = DefaultScowMinPartSize
+	} else if uploadFileInput.PartSize > DefaultScowMaxPartSize {
+		uploadFileInput.PartSize = DefaultScowMaxPartSize
+	}
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
@@ -570,12 +589,6 @@ func (o *Scow) uploadFileResume(
 				return err
 			}
 		}
-	}
-
-	if uploadFileInput.PartSize < DefaultScowMinPartSize {
-		uploadFileInput.PartSize = DefaultScowMinPartSize
-	} else if uploadFileInput.PartSize > DefaultScowMaxPartSize {
-		uploadFileInput.PartSize = DefaultScowMaxPartSize
 	}
 
 	err = o.resumeUpload(
@@ -950,7 +963,7 @@ func (o *Scow) handleUploadTaskResult(
 					" err: ", _err)
 			}
 		}
-	} else if result != errAbort {
+	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
 			Logger.WithContext(ctx).Error(
 				"upload task result failed.",
@@ -1087,8 +1100,17 @@ func (task *ScowUploadPartTask) Run(
 
 func (o *Scow) Download(
 	ctx context.Context,
-	sourcePath,
-	targetPath string) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	if scowDownloadInput, ok := input.(ScowDownloadInput); ok {
+		sourcePath = scowDownloadInput.SourcePath
+		targetPath = scowDownloadInput.TargetPath
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:Download start.",
@@ -1130,7 +1152,11 @@ func (o *Scow) Download(
 		return err
 	}
 	for _, folder := range folders {
-		err = o.Download(ctx, folder.Name, targetPath)
+		var scowDownloadInput ScowDownloadInput
+		scowDownloadInput.SourcePath = folder.Name
+		scowDownloadInput.TargetPath = targetPath
+
+		err = o.Download(ctx, scowDownloadInput)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"Scow:Download failed.",
@@ -1194,7 +1220,6 @@ func (o *Scow) downloadObjects(
 			" index: ", index,
 			" Name: ", object.Name,
 			" size: ", object.Size)
-		// 处理文件
 		itemObject := object
 		if _, exists := fileMap[itemObject.Name]; exists {
 			Logger.WithContext(ctx).Info(
@@ -1773,7 +1798,7 @@ func (o *Scow) handleDownloadTaskResult(
 					" err: ", _err)
 			}
 		}
-	} else if result != errAbort {
+	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
 			err = _err
 		}

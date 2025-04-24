@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"os"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 )
 
-func Migrate(
+func MigrateByProxy(
 	urchinServiceAddr,
 	objUuid string,
 	sourceNodeName *string,
@@ -24,7 +24,7 @@ func Migrate(
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
 	Logger.WithContext(ctx).Debug(
-		"Migrate start.",
+		"MigrateByProxy start.",
 		" objUuid: ", objUuid,
 		" sourceNodeName: ", *sourceNodeName,
 		" targetNodeName: ", targetNodeName,
@@ -56,7 +56,7 @@ func Migrate(
 
 	fmt.Printf("Migrate TaskId: %d\n", migrateObjectResp.TaskId)
 
-	err = ProcessMigrate(
+	err = ProcessMigrateByProxy(
 		ctx,
 		cachePath,
 		objUuid,
@@ -67,23 +67,27 @@ func Migrate(
 		needPure)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessMigrate failed.",
+			"ProcessMigrateByProxy failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"Migrate finish.")
+		"MigrateByProxy finish.")
 	return err
 }
 
-func ProcessMigrate(
+func ProcessMigrateByProxy(
 	ctx context.Context,
-	cachePath, objUuid, sourceBucketName string,
-	taskId, sourceNodeType, targetNodeType int32,
+	cachePath,
+	objUuid,
+	sourceBucketName string,
+	taskId,
+	sourceNodeType,
+	targetNodeType int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessMigrate start.",
+		"ProcessMigrateByProxy start.",
 		" cachePath: ", cachePath,
 		" objUuid: ", objUuid,
 		" sourceBucketName: ", sourceBucketName,
@@ -170,10 +174,10 @@ func ProcessMigrate(
 	_, err = os.Stat(migrateDownloadFinishFile)
 	if nil != err {
 		if os.IsNotExist(err) {
-			err, sourceStorage := NewStorage(ctx, sourceNodeType)
+			err, sourceStorage := NewStorageProxy(ctx, sourceNodeType)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"source NewStorage failed.",
+					"source NewStorageProxy failed.",
 					" err: ", err)
 				return err
 			}
@@ -209,10 +213,10 @@ func ProcessMigrate(
 	_, err = os.Stat(migrateUploadFinishFile)
 	if nil != err {
 		if os.IsNotExist(err) {
-			err, targetStorage := NewStorage(ctx, targetNodeType)
+			err, targetStorage := NewStorageProxy(ctx, targetNodeType)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"target NewStorage failed.",
+					"target NewStorageProxy failed.",
 					" err: ", err)
 				return err
 			}
@@ -258,6 +262,6 @@ func ProcessMigrate(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"ProcessMigrate finish.")
+		"ProcessMigrateByProxy finish.")
 	return nil
 }

@@ -3,9 +3,9 @@ package module
 import (
 	"context"
 	"encoding/xml"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	"io"
 	"os"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 )
 
 const (
@@ -17,9 +17,6 @@ const (
 	DefaultSLDownloadMultiTaskNum = 20
 	DefaultSLMaxPartSize          = 5 * 1024 * 1024 * 1024
 	DefaultSLMinPartSize          = 100 * 1024
-
-	DefaultSLClientReqTimeout    = 3600
-	DefaultSLClientMaxConnection = 50
 
 	DefaultStarLightTokenExpireHours = 12
 
@@ -37,6 +34,17 @@ const (
 	SLObjectTypeFile   = 0
 	SLObjectTypeFolder = 1
 )
+
+type StarLightUploadInput struct {
+	SourcePath string
+	TargetPath string
+	NeedPure   bool
+}
+
+type StarLightDownloadInput struct {
+	SourcePath string
+	TargetPath string
+}
 
 type SLBaseResponse struct {
 	Uuid  string `json:"uuid"`

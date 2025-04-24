@@ -3,6 +3,7 @@ package adaptee
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -20,59 +21,285 @@ import (
 	"syscall"
 )
 
-type JCS struct {
-	jcsClient *JCSClient
+type JCSProxy struct {
+	jcsProxyClient *JCSProxyClient
 }
 
-func (o *JCS) Init(
+func (o *JCSProxy) Init(
 	ctx context.Context,
-	accessKey,
-	secretKey,
-	endPoint,
-	authService,
-	authRegion string,
-	userID,
-	bucketID,
 	reqTimeout,
-	maxConnection int32) (err error) {
+	maxConnection int) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:Init start.",
-		" accessKey: ", "***",
-		" secretKey: ", "***",
-		" endPoint: ", endPoint,
-		" authService: ", authService,
-		" authRegion: ", authRegion,
-		" userID: ", userID,
-		" bucketID: ", bucketID,
+		"JCSProxy:Init start.",
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
 
-	o.jcsClient = new(JCSClient)
-	o.jcsClient.Init(
-		ctx,
-		accessKey,
-		secretKey,
-		endPoint,
-		authService,
-		authRegion,
-		userID,
-		bucketID,
-		reqTimeout,
-		maxConnection)
+	o.jcsProxyClient = new(JCSProxyClient)
+	o.jcsProxyClient.Init(ctx, reqTimeout, maxConnection)
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:Init finish.")
+		"JCSProxy:Init finish.")
 	return nil
 }
 
-func (o *JCS) loadCheckpointFile(
+func (o *JCSProxy) NewFolderWithSignedUrl(
+	ctx context.Context,
+	objectPath string,
+	taskId int32) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:NewFolderWithSignedUrl start.",
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
+
+	createJCSPreSignedObjectUploadReq :=
+		new(CreateJCSPreSignedObjectUploadReq)
+	createJCSPreSignedObjectUploadReq.TaskId = taskId
+	createJCSPreSignedObjectUploadReq.Source = objectPath
+
+	err, createJCSPreSignedObjectUploadResp :=
+		UClient.CreateJCSPreSignedObjectUpload(
+			ctx,
+			createJCSPreSignedObjectUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectUpload"+
+				" failed.",
+			" err: ", err)
+		return err
+	}
+
+	err = o.jcsProxyClient.UploadFileWithSignedUrl(
+		ctx,
+		createJCSPreSignedObjectUploadResp.SignedUrl,
+		nil)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsProxyClient.UploadFileWithSignedUrl failed.",
+			" signedUrl: ", createJCSPreSignedObjectUploadResp.SignedUrl,
+			" err: ", err)
+		return err
+	}
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:NewFolderWithSignedUrl finish.")
+
+	return err
+}
+
+func (o *JCSProxy) UploadFileWithSignedUrl(
+	ctx context.Context,
+	sourceFile,
+	objectPath string,
+	taskId int32) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:UploadFileWithSignedUrl start.",
+		" sourceFile: ", sourceFile,
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
+
+	createJCSPreSignedObjectUploadReq :=
+		new(CreateJCSPreSignedObjectUploadReq)
+	createJCSPreSignedObjectUploadReq.TaskId = taskId
+	createJCSPreSignedObjectUploadReq.Source = objectPath
+
+	err, createJCSPreSignedObjectUploadResp :=
+		UClient.CreateJCSPreSignedObjectUpload(
+			ctx,
+			createJCSPreSignedObjectUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectUpload"+
+				" failed.",
+			" err: ", err)
+		return err
+	}
+
+	fd, err := os.Open(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Open failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+	defer func() {
+		errMsg := fd.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" sourceFile: ", sourceFile,
+				" err: ", errMsg)
+		}
+	}()
+
+	err = o.jcsProxyClient.UploadFileWithSignedUrl(
+		ctx,
+		createJCSPreSignedObjectUploadResp.SignedUrl,
+		fd)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsProxyClient.UploadFileWithSignedUrl failed.",
+			" sourceFile: ", sourceFile,
+			" signedUrl: ", createJCSPreSignedObjectUploadResp.SignedUrl,
+			" err: ", err)
+		return err
+	}
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:UploadFileWithSignedUrl finish.")
+
+	return err
+}
+
+func (o *JCSProxy) NewMultipartUploadWithSignedUrl(
+	ctx context.Context,
+	objectPath string,
+	taskId int32) (output *JCSNewMultiPartUploadResponse, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:NewMultipartUploadWithSignedUrl start.",
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
+
+	createJCSPreSignedObjectNewMultipartUploadReq :=
+		new(CreateJCSPreSignedObjectNewMultipartUploadReq)
+	createJCSPreSignedObjectNewMultipartUploadReq.TaskId = taskId
+	createJCSPreSignedObjectNewMultipartUploadReq.Source = objectPath
+
+	err, createJCSPreSignedObjectNewMultipartUploadResp :=
+		UClient.CreateJCSPreSignedObjectNewMultipartUpload(
+			ctx,
+			createJCSPreSignedObjectNewMultipartUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectNewMultipartUpload"+
+				" failed.",
+			" err: ", err)
+		return output, err
+	}
+
+	// 初始化分段上传任务
+	err, output = o.jcsProxyClient.NewMultiPartUploadWithSignedUrl(
+		ctx,
+		createJCSPreSignedObjectNewMultipartUploadResp.SignedUrl)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsProxyClient.NewMultiPartUploadWithSignedUrl failed.",
+			" signedUrl: ",
+			createJCSPreSignedObjectNewMultipartUploadResp.SignedUrl,
+			" err: ", err)
+		return output, err
+	}
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:NewMultipartUploadWithSignedUrl finish.")
+
+	return output, err
+}
+
+func (o *JCSProxy) CompleteMultipartUploadWithSignedUrl(
+	ctx context.Context,
+	objectId int32,
+	taskId int32,
+	indexes []int32) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:CompleteMultipartUploadWithSignedUrl start.",
+		" objectId: ", objectId,
+		" taskId: ", taskId)
+
+	// 合并段
+	createJCSPreSignedObjectCompleteMultipartUploadReq :=
+		new(CreateJCSPreSignedObjectCompleteMultipartUploadReq)
+	createJCSPreSignedObjectCompleteMultipartUploadReq.ObjectId = objectId
+	createJCSPreSignedObjectCompleteMultipartUploadReq.TaskId = taskId
+	createJCSPreSignedObjectCompleteMultipartUploadReq.Indexes = indexes
+
+	err, createCompleteMultipartUploadSignedUrlResp :=
+		UClient.CreateJCSPreSignedObjectCompleteMultipartUpload(
+			ctx,
+			createJCSPreSignedObjectCompleteMultipartUploadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient:CreateCompleteMultipartUploadSignedUrl"+
+				" failed.",
+			" err: ", err)
+		return err
+	}
+
+	err, _ = o.jcsProxyClient.CompleteMultiPartUploadWithSignedUrl(
+		ctx,
+		createCompleteMultipartUploadSignedUrlResp.SignedUrl)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsProxyClient.CompleteMultipartUploadWithSignedUrl"+
+				" failed.",
+			" signedUrl: ",
+			createCompleteMultipartUploadSignedUrlResp.SignedUrl,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy.CompleteMultipartUploadWithSignedUrl finish.")
+	return nil
+}
+
+func (o *JCSProxy) ListObjectsWithSignedUrl(
+	ctx context.Context,
+	taskId int32,
+	continuationToken string) (
+	listObjectsData *JCSListData,
+	err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:ListObjectsWithSignedUrl start.",
+		" taskId: ", taskId,
+		" continuationToken: ", continuationToken)
+
+	createJCSPreSignedObjectListReq := new(CreateJCSPreSignedObjectListReq)
+	createJCSPreSignedObjectListReq.TaskId = taskId
+	if "" != continuationToken {
+		createJCSPreSignedObjectListReq.ContinuationToken = &continuationToken
+	}
+
+	err, createListObjectsSignedUrlResp :=
+		UClient.CreateJCSPreSignedObjectList(
+			ctx,
+			createJCSPreSignedObjectListReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectList failed.",
+			" err: ", err)
+		return listObjectsData, err
+	}
+
+	err, listObjectsResponse :=
+		o.jcsProxyClient.ListWithSignedUrl(
+			ctx,
+			createListObjectsSignedUrlResp.SignedUrl)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsProxyClient.ListWithSignedUrl failed.",
+			" signedUrl: ", createListObjectsSignedUrlResp.SignedUrl,
+			" err: ", err)
+		return listObjectsData, err
+	}
+	listObjectsData = new(JCSListData)
+	listObjectsData = listObjectsResponse.Data
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:ListObjectsWithSignedUrl finish.")
+	return listObjectsData, nil
+}
+
+func (o *JCSProxy) loadCheckpointFile(
 	ctx context.Context,
 	checkpointFile string,
 	result interface{}) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:loadCheckpointFile start.",
+		"JCSProxy:loadCheckpointFile start.",
 		" checkpointFile: ", checkpointFile)
 
 	ret, err := os.ReadFile(checkpointFile)
@@ -90,17 +317,17 @@ func (o *JCS) loadCheckpointFile(
 		return nil
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:loadCheckpointFile finish.")
+		"JCSProxy:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
 
-func (o *JCS) sliceObject(
+func (o *JCSProxy) sliceObject(
 	ctx context.Context,
 	objectSize, partSize int64,
 	dfc *JCSDownloadCheckpoint) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:sliceObject start.",
+		"JCSProxy:sliceObject start.",
 		" objectSize: ", objectSize,
 		" partSize: ", partSize)
 
@@ -129,16 +356,16 @@ func (o *JCS) sliceObject(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:sliceObject finish.")
+		"JCSProxy:sliceObject finish.")
 }
 
-func (o *JCS) updateCheckpointFile(
+func (o *JCSProxy) updateCheckpointFile(
 	ctx context.Context,
 	fc interface{},
 	checkpointFilePath string) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:updateCheckpointFile start.",
+		"JCSProxy:updateCheckpointFile start.",
 		" checkpointFilePath: ", checkpointFilePath)
 
 	result, err := xml.Marshal(fc)
@@ -159,33 +386,20 @@ func (o *JCS) updateCheckpointFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:updateCheckpointFile finish.")
+		"JCSProxy:updateCheckpointFile finish.")
 	return err
 }
 
-func (o *JCS) Upload(
+func (o *JCSProxy) Upload(
 	ctx context.Context,
-	input interface{}) (err error) {
-
-	var sourcePath, targetPath string
-	var packageId int32
-	var needPure bool
-	if jcsUploadInput, ok := input.(JCSUploadInput); ok {
-		sourcePath = jcsUploadInput.SourcePath
-		targetPath = jcsUploadInput.TargetPath
-		packageId = jcsUploadInput.PackageId
-		needPure = jcsUploadInput.NeedPure
-	} else {
-		Logger.WithContext(ctx).Error(
-			"input param invalid.")
-		return errors.New("input param invalid")
-	}
+	sourcePath string,
+	taskId int32,
+	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:Upload start.",
+		"JCSProxy:Upload start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" packageId: ", packageId,
+		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	stat, err := os.Stat(sourcePath)
@@ -196,71 +410,104 @@ func (o *JCS) Upload(
 			" err: ", err)
 		return err
 	}
-	objectPath := targetPath + filepath.Base(sourcePath)
+	var isDir = false
 	if stat.IsDir() {
-		err = o.jcsClient.UploadFile(
-			ctx,
-			packageId,
-			objectPath,
-			nil)
+		isDir = true
+		err = o.uploadFolder(ctx, sourcePath, taskId, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"jcsClient.UploadFile  mkdir failed.",
-				" packageId: ", packageId,
-				" objectPath: ", objectPath,
-				" err: ", err)
-			return err
-		}
-
-		err = o.uploadFolder(
-			ctx,
-			packageId,
-			sourcePath,
-			targetPath,
-			needPure)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"JCS.uploadFolder failed.",
-				" packageId: ", packageId,
+				"JCSProxy.uploadFolder failed.",
 				" sourcePath: ", sourcePath,
-				" targetPath: ", targetPath,
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
 	} else {
-		err = o.uploadFile(
+		objectPath := filepath.Base(sourcePath)
+		err = o.uploadFileResume(
 			ctx,
-			packageId,
 			sourcePath,
 			objectPath,
+			taskId,
 			needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS.uploadFile failed.",
-				" packageId: ", packageId,
+				"JCSProxy.uploadFileResume failed.",
 				" sourcePath: ", sourcePath,
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
+				" err: ", err)
+			return err
+		}
+	}
+
+	getTaskReq := new(GetTaskReq)
+	getTaskReq.TaskId = &taskId
+	getTaskReq.PageIndex = DefaultPageIndex
+	getTaskReq.PageSize = DefaultPageSize
+
+	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetTask failed.",
+			" err: ", err)
+		return err
+	}
+	if len(getTaskResp.Data.List) == 0 {
+		Logger.WithContext(ctx).Error(
+			"task not exist.",
+			" taskId: ", taskId)
+		return errors.New("task not exist")
+	}
+
+	task := getTaskResp.Data.List[0].Task
+	if TaskTypeMigrate == task.Type {
+		migrateObjectTaskParams := new(MigrateObjectTaskParams)
+		err = json.Unmarshal([]byte(task.Params), migrateObjectTaskParams)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"MigrateObjectTaskParams Unmarshal failed.",
+				" params: ", task.Params,
+				" err: ", err)
+			return err
+		}
+		objUuid := migrateObjectTaskParams.Request.ObjUuid
+		nodeName := migrateObjectTaskParams.Request.TargetNodeName
+		var location string
+		if isDir {
+			location = objUuid + "/" + filepath.Base(sourcePath) + "/"
+		} else {
+			location = objUuid + "/" + filepath.Base(sourcePath)
+		}
+
+		putObjectDeploymentReq := new(PutObjectDeploymentReq)
+		putObjectDeploymentReq.ObjUuid = objUuid
+		putObjectDeploymentReq.NodeName = nodeName
+		putObjectDeploymentReq.Location = &location
+
+		err, _ = UClient.PutObjectDeployment(ctx, putObjectDeploymentReq)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"UrchinClient.PutObjectDeployment failed.",
 				" err: ", err)
 			return err
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:Upload finish.")
+		"JCSProxy:Upload finish.")
 	return nil
 }
 
-func (o *JCS) uploadFolder(
+func (o *JCSProxy) uploadFolder(
 	ctx context.Context,
-	packageId int32,
-	sourcePath,
-	targetPath string,
+	sourcePath string,
+	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFolder start.",
-		" packageId: ", packageId,
+		"JCSProxy:uploadFolder start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
+		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	var fileMutex sync.Mutex
@@ -297,6 +544,15 @@ func (o *JCS) uploadFolder(
 		}
 	}
 
+	objectPath := filepath.Base(sourcePath) + "/"
+	err = o.NewFolderWithSignedUrl(ctx, objectPath, taskId)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"S3:NewFolderWithSignedUrl failed.",
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultJCSUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -325,56 +581,56 @@ func (o *JCS) uploadFolder(
 					wg.Done()
 					if err := recover(); nil != err {
 						Logger.WithContext(ctx).Error(
-							"JCS:uploadFileResume failed.",
+							"JCSProxy:uploadFileResume failed.",
 							" err: ", err)
 						isAllSuccess = false
 					}
 				}()
-				relPath, err := filepath.Rel(sourcePath, filePath)
+				relFilePath, err := filepath.Rel(sourcePath, filePath)
 				if nil != err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
-						" relPath: ", relPath,
+						" relFilePath: ", relFilePath,
 						" err: ", err)
 					return
 				}
-				objectPath := targetPath + relPath
-				if _, exists := fileMap[objectPath]; exists {
+				objectKey := objectPath + relFilePath
+
+				if _, exists := fileMap[objectKey]; exists {
 					Logger.WithContext(ctx).Info(
-						"already finish. objectPath: ", objectPath)
+						"already finish.",
+						" objectKey: ", objectKey)
 					return
 				}
 				if fileInfo.IsDir() {
-					err = o.jcsClient.UploadFile(
+					err = o.NewFolderWithSignedUrl(
 						ctx,
-						packageId,
-						objectPath,
-						nil)
+						objectKey,
+						taskId)
 					if nil != err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"jcsClient.UploadFile mkdir failed.",
-							" packageId: ", packageId,
-							" objectPath: ", objectPath,
+							"JCSProxy:NewFolderWithSignedUrl failed.",
+							" objectKey: ", objectKey,
 							" err: ", err)
 						return
 					}
 				} else {
-					err = o.uploadFile(
+					err = o.uploadFileResume(
 						ctx,
-						packageId,
 						filePath,
-						objectPath,
+						objectKey,
+						taskId,
 						needPure)
 					if nil != err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"JCS:uploadFile failed.",
-							" packageId: ", packageId,
+							"JCSProxy:uploadFileResume failed.",
 							" filePath: ", filePath,
-							" objectPath: ", objectPath,
+							" objectKey: ", objectKey,
 							" err: ", err)
 						return
 					}
@@ -400,13 +656,13 @@ func (o *JCS) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectPath + "\n"))
+				_, err = f.Write([]byte(objectKey + "\n"))
 				if nil != err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" objectPath: ", objectPath,
+						" objectKey: ", objectKey,
 						" err: ", err)
 					return
 				}
@@ -431,7 +687,7 @@ func (o *JCS) uploadFolder(
 	}
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"JCS:uploadFolder not all success.",
+			"JCSProxy:uploadFolder not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("uploadFolder not all success")
 	} else {
@@ -447,22 +703,22 @@ func (o *JCS) uploadFolder(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFolder finish.")
+		"JCSProxy:uploadFolder finish.")
 	return nil
 }
 
-func (o *JCS) uploadFile(
+func (o *JCSProxy) uploadFile(
 	ctx context.Context,
-	packageId int32,
 	sourceFile,
 	objectPath string,
+	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFile start.",
-		" packageId: ", packageId,
+		"JCSProxy:uploadFile start.",
 		" sourceFile: ", sourceFile,
 		" objectPath: ", objectPath,
+		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	sourceFileStat, err := os.Stat(sourceFile)
@@ -477,103 +733,54 @@ func (o *JCS) uploadFile(
 	if DefaultJCSUploadMultiSize < sourceFileStat.Size() {
 		err = o.uploadFileResume(
 			ctx,
-			packageId,
 			sourceFile,
 			objectPath,
+			taskId,
 			needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS:uploadFileResume failed.",
-				" packageId: ", packageId,
+				"JCSProxy:uploadFileResume failed.",
 				" sourceFile: ", sourceFile,
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
 				" needPure: ", needPure,
 				" err: ", err)
 			return err
 		}
 	} else {
-		err = o.uploadFileStream(
+		err = o.UploadFileWithSignedUrl(
 			ctx,
-			packageId,
 			sourceFile,
-			objectPath)
+			objectPath,
+			taskId)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS:uploadFileStream failed.",
-				" packageId: ", packageId,
+				"JCSProxy:UploadFileWithSignedUrl failed.",
 				" sourceFile: ", sourceFile,
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFile finish.")
+		"JCSProxy:uploadFile finish.")
 	return err
 }
 
-func (o *JCS) uploadFileStream(
+func (o *JCSProxy) uploadFileResume(
 	ctx context.Context,
-	packageId int32,
-	sourceFile,
-	objectPath string) (err error) {
-
-	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFileStream start.",
-		" packageId: ", packageId,
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath)
-
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return err
-	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
-		}
-	}()
-
-	err = o.jcsClient.UploadFile(
-		ctx,
-		packageId,
-		objectPath,
-		fd)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"jcsClient.UploadFile failed.",
-			" packageId: ", packageId,
-			" objectPath: ", objectPath,
-			" err: ", err)
-		return err
-	}
-
-	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFileStream finish.")
-	return err
-}
-
-func (o *JCS) uploadFileResume(
-	ctx context.Context,
-	packageId int32,
 	sourceFile,
 	objectPath string,
+	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFileResume start.",
-		" packageId: ", packageId,
+		"JCSProxy:uploadFileResume start.",
 		" sourceFile: ", sourceFile,
 		" objectPath: ", objectPath,
+		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	uploadFileInput := new(JCSUploadFileInput)
@@ -605,37 +812,37 @@ func (o *JCS) uploadFileResume(
 
 	err = o.resumeUpload(
 		ctx,
-		packageId,
 		sourceFile,
 		objectPath,
+		taskId,
 		uploadFileInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:resumeUpload failed.",
-			" packageId: ", packageId,
+			"JCSProxy:resumeUpload failed.",
 			" sourceFile: ", sourceFile,
 			" objectPath: ", objectPath,
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadFileResume finish.")
+		"JCSProxy:uploadFileResume finish.")
 	return err
 }
 
-func (o *JCS) resumeUpload(
+func (o *JCSProxy) resumeUpload(
 	ctx context.Context,
-	packageId int32,
 	sourceFile,
 	objectPath string,
+	taskId int32,
 	input *JCSUploadFileInput) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:resumeUpload start.",
-		" packageId: ", packageId,
+		"JCSProxy:resumeUpload start.",
 		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath)
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
 
 	uploadFileStat, err := os.Stat(input.UploadFile)
 	if nil != err {
@@ -665,8 +872,9 @@ func (o *JCS) resumeUpload(
 			input)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS:getUploadCheckpointFile failed.",
+				"JCSProxy:getUploadCheckpointFile failed.",
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
@@ -675,13 +883,15 @@ func (o *JCS) resumeUpload(
 		err = o.prepareUpload(
 			ctx,
 			objectPath,
+			taskId,
 			ufc,
 			uploadFileStat,
 			input)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS:prepareUpload failed.",
+				"JCSProxy:prepareUpload failed.",
 				" objectPath: ", objectPath,
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
@@ -690,7 +900,7 @@ func (o *JCS) resumeUpload(
 			err = o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"JCS:updateCheckpointFile failed.",
+					"JCSProxy:updateCheckpointFile failed.",
 					" checkpointFilePath: ", checkpointFilePath,
 					" err: ", err)
 				return err
@@ -701,43 +911,50 @@ func (o *JCS) resumeUpload(
 	err = o.uploadPartConcurrent(
 		ctx,
 		sourceFile,
+		taskId,
 		ufc,
 		input)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:uploadPartConcurrent failed.",
+			"JCSProxy:uploadPartConcurrent failed.",
 			" sourceFile: ", sourceFile,
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 
 	err = o.completeParts(
 		ctx,
+		taskId,
 		ufc,
 		enableCheckpoint,
 		checkpointFilePath)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:completeParts failed.",
+			"JCSProxy:completeParts failed.",
+			" objectId: ", ufc.ObjectId,
+			" taskId: ", taskId,
 			" checkpointFilePath: ", checkpointFilePath,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:resumeUpload finish.")
+		"JCSProxy:resumeUpload finish.")
 	return err
 }
 
-func (o *JCS) uploadPartConcurrent(
+func (o *JCSProxy) uploadPartConcurrent(
 	ctx context.Context,
 	sourceFile string,
+	taskId int32,
 	ufc *JCSUploadCheckpoint,
 	input *JCSUploadFileInput) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadPartConcurrent start.",
-		" sourceFile: ", sourceFile)
+		"JCSProxy:uploadPartConcurrent start.",
+		" sourceFile: ", sourceFile,
+		" taskId: ", taskId)
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
@@ -757,13 +974,13 @@ func (o *JCS) uploadPartConcurrent(
 		if uploadPart.IsCompleted {
 			continue
 		}
-		task := JCSUploadPartTask{
+		task := JCSProxyUploadPartTask{
 			ObjectId:         ufc.ObjectId,
 			PartNumber:       uploadPart.PartNumber,
 			SourceFile:       input.UploadFile,
 			Offset:           uploadPart.Offset,
 			PartSize:         uploadPart.PartSize,
-			JcsClient:        o.jcsClient,
+			JcsProxyClient:   o.jcsProxyClient,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 		wg.Add(1)
@@ -771,7 +988,7 @@ func (o *JCS) uploadPartConcurrent(
 			defer func() {
 				wg.Done()
 			}()
-			result := task.Run(ctx, sourceFile)
+			result := task.Run(ctx, sourceFile, taskId)
 			err = o.handleUploadTaskResult(
 				ctx,
 				result,
@@ -784,14 +1001,14 @@ func (o *JCS) uploadPartConcurrent(
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 				Logger.WithContext(ctx).Error(
-					"JCS:handleUploadTaskResult failed.",
-					" PartNumber: ", task.PartNumber,
+					"JCSProxy:handleUploadTaskResult failed.",
+					" partNumber: ", task.PartNumber,
 					" checkpointFile: ", input.CheckpointFile,
 					" err: ", err)
 				uploadPartError.Store(err)
 			}
 			Logger.WithContext(ctx).Debug(
-				"JCS:handleUploadTaskResult finish.")
+				"JCSProxy:handleUploadTaskResult finish.")
 			return
 		})
 	}
@@ -803,18 +1020,18 @@ func (o *JCS) uploadPartConcurrent(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:uploadPartConcurrent finish.")
+		"JCSProxy:uploadPartConcurrent finish.")
 	return nil
 }
 
-func (o *JCS) getUploadCheckpointFile(
+func (o *JCSProxy) getUploadCheckpointFile(
 	ctx context.Context,
 	ufc *JCSUploadCheckpoint,
 	uploadFileStat os.FileInfo,
 	input *JCSUploadFileInput) (needCheckpoint bool, err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:getUploadCheckpointFile start.")
+		"JCSProxy:getUploadCheckpointFile start.")
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
@@ -840,7 +1057,7 @@ func (o *JCS) getUploadCheckpointFile(
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, ufc)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:loadCheckpointFile failed.",
+			"JCSProxy:loadCheckpointFile failed.",
 			" checkpointFilePath: ", checkpointFilePath,
 			" err: ", err)
 		return true, nil
@@ -856,26 +1073,42 @@ func (o *JCS) getUploadCheckpointFile(
 		}
 	} else {
 		Logger.WithContext(ctx).Debug(
-			"JCS:loadCheckpointFile finish.",
+			"JCSProxy:loadCheckpointFile finish.",
 			" checkpointFilePath: ", checkpointFilePath)
 		return false, nil
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:getUploadCheckpointFile finish.")
+		"JCSProxy:getUploadCheckpointFile finish.")
 	return true, nil
 }
 
-func (o *JCS) prepareUpload(
+func (o *JCSProxy) prepareUpload(
 	ctx context.Context,
 	objectPath string,
+	taskId int32,
 	ufc *JCSUploadCheckpoint,
 	uploadFileStat os.FileInfo,
 	input *JCSUploadFileInput) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:prepareUpload start.",
-		" objectPath: ", objectPath)
+		"JCSProxy:prepareUpload start.",
+		" objectPath: ", objectPath,
+		" taskId: ", taskId)
 
+	newMultipartUploadOutput, err := o.NewMultipartUploadWithSignedUrl(
+		ctx,
+		objectPath,
+		taskId)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"JCSProxy:NewMultipartUploadWithSignedUrl failed.",
+			" objectPath: ", objectPath,
+			" taskId: ", taskId,
+			" err: ", err)
+		return err
+	}
+
+	ufc.ObjectId = newMultipartUploadOutput.Data.Object.ObjectID
 	ufc.ObjectPath = objectPath
 	ufc.UploadFile = input.UploadFile
 	ufc.FileInfo = JCSFileStatus{}
@@ -885,22 +1118,22 @@ func (o *JCS) prepareUpload(
 	err = o.sliceFile(ctx, input.PartSize, ufc)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:sliceFile failed.",
+			"JCSProxy:sliceFile failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:prepareUpload finish.")
+		"JCSProxy:prepareUpload finish.")
 	return err
 }
 
-func (o *JCS) sliceFile(
+func (o *JCSProxy) sliceFile(
 	ctx context.Context,
 	partSize int64,
 	ufc *JCSUploadCheckpoint) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:sliceFile start.",
+		"JCSProxy:sliceFile start.",
 		" partSize: ", partSize,
 		" fileSize: ", ufc.FileInfo.Size)
 	fileSize := ufc.FileInfo.Size
@@ -943,13 +1176,12 @@ func (o *JCS) sliceFile(
 		}
 		ufc.UploadParts = uploadParts
 	}
-
 	Logger.WithContext(ctx).Debug(
-		"JCS:sliceFile finish.")
+		"JCSProxy:sliceFile finish.")
 	return nil
 }
 
-func (o *JCS) handleUploadTaskResult(
+func (o *JCSProxy) handleUploadTaskResult(
 	ctx context.Context,
 	result interface{},
 	ufc *JCSUploadCheckpoint,
@@ -959,7 +1191,7 @@ func (o *JCS) handleUploadTaskResult(
 	lock *sync.Mutex) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:handleUploadTaskResult start.",
+		"JCSProxy:handleUploadTaskResult start.",
 		" checkpointFilePath: ", checkpointFilePath,
 		" partNum: ", partNum)
 
@@ -972,7 +1204,7 @@ func (o *JCS) handleUploadTaskResult(
 			_err := o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != _err {
 				Logger.WithContext(ctx).Error(
-					"JCS:updateCheckpointFile failed.",
+					"JCSProxy:updateCheckpointFile failed.",
 					" checkpointFilePath: ", checkpointFilePath,
 					" partNum: ", partNum,
 					" err: ", _err)
@@ -989,72 +1221,76 @@ func (o *JCS) handleUploadTaskResult(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:handleUploadTaskResult finish.")
+		"JCSProxy:handleUploadTaskResult finish.")
 	return
 }
 
-func (o *JCS) completeParts(
+func (o *JCSProxy) completeParts(
 	ctx context.Context,
+	taskId int32,
 	ufc *JCSUploadCheckpoint,
 	enableCheckpoint bool,
 	checkpointFilePath string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:completeParts start.",
-		" enableCheckpoint: ", enableCheckpoint,
+		"JCSProxy:completeParts start.",
+		" objectId: ", ufc.ObjectId,
+		" taskId: ", taskId,
 		" checkpointFilePath: ", checkpointFilePath)
 
 	parts := make([]int32, 0, len(ufc.UploadParts))
 	for _, uploadPart := range ufc.UploadParts {
 		parts = append(parts, uploadPart.PartNumber)
 	}
-
-	err = o.jcsClient.CompleteMultiPartUpload(
+	err = o.CompleteMultipartUploadWithSignedUrl(
 		ctx,
 		ufc.ObjectId,
+		taskId,
 		parts)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"jcsClient.CompleteMultiPartUpload failed.",
-			" ObjectId: ", ufc.ObjectId,
-			" err: ", err)
-		return err
-	}
-
-	if enableCheckpoint {
-		_err := os.Remove(checkpointFilePath)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+	if nil == err {
+		if enableCheckpoint {
+			_err := os.Remove(checkpointFilePath)
+			if nil != _err {
+				if !os.IsNotExist(_err) {
+					Logger.WithContext(ctx).Error(
+						"os.Remove failed.",
+						" checkpointFilePath: ", checkpointFilePath,
+						" err: ", _err)
+				}
 			}
 		}
+		Logger.WithContext(ctx).Debug(
+			"JCSProxy:CompleteMultipartUploadWithSignedUrl finish.")
+		return err
 	}
-	Logger.WithContext(ctx).Debug(
-		"JCS:completeParts finish.")
+	Logger.WithContext(ctx).Error(
+		"JCSProxy.CompleteMultipartUpload failed.",
+		" objectId: ", ufc.ObjectId,
+		" taskId: ", taskId,
+		" err: ", err)
 	return err
 }
 
-type JCSUploadPartTask struct {
+type JCSProxyUploadPartTask struct {
 	ObjectId         int32
 	ObjectPath       string
 	PartNumber       int32
 	SourceFile       string
 	Offset           int64
 	PartSize         int64
-	JcsClient        *JCSClient
+	JcsProxyClient   *JCSProxyClient
 	EnableCheckpoint bool
 }
 
-func (task *JCSUploadPartTask) Run(
+func (task *JCSProxyUploadPartTask) Run(
 	ctx context.Context,
-	sourceFile string) interface{} {
+	sourceFile string,
+	taskId int32) interface{} {
 
 	Logger.WithContext(ctx).Debug(
-		"JCSUploadPartTask:Run start.",
-		" sourceFile: ", sourceFile)
+		"JCSProxyUploadPartTask:Run start.",
+		" sourceFile: ", sourceFile,
+		" taskId: ", taskId)
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
@@ -1077,6 +1313,7 @@ func (task *JCSUploadPartTask) Run(
 	readerWrapper := new(ReaderWrapper)
 	readerWrapper.Reader = fd
 
+	readerWrapper.TotalCount = task.PartSize
 	readerWrapper.Mark = task.Offset
 	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1086,112 +1323,143 @@ func (task *JCSUploadPartTask) Run(
 		return err
 	}
 
-	err = task.JcsClient.UploadPart(
+	createJCSPreSignedObjectUploadPartReq :=
+		new(CreateJCSPreSignedObjectUploadPartReq)
+
+	createJCSPreSignedObjectUploadPartReq.ObjectId = task.ObjectId
+	createJCSPreSignedObjectUploadPartReq.Index = task.PartNumber
+	createJCSPreSignedObjectUploadPartReq.TaskId = taskId
+	err, createUploadPartSignedUrlResp :=
+		UClient.CreateJCSPreSignedObjectUploadPart(
+			ctx,
+			createJCSPreSignedObjectUploadPartReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateJCSPreSignedObjectUploadPart failed.",
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber,
+			" taskId: ", taskId,
+			" err: ", err)
+		return err
+	}
+
+	err, uploadPartOutput := task.JcsProxyClient.UploadPartWithSignedUrl(
 		ctx,
-		task.ObjectId,
-		task.PartNumber,
-		task.ObjectPath,
+		createUploadPartSignedUrlResp.SignedUrl,
 		readerWrapper)
 
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JcsClient.UploadPart failed.",
+			"JcsProxyClient.UploadPartWithSignedUrl failed.",
+			" signedUrl: ", createUploadPartSignedUrlResp.SignedUrl,
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber,
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCSUploadPartTask:Run finish.")
-	return err
+		"JCSProxyUploadPartTask:Run finish.")
+	return uploadPartOutput
 }
 
-func (o *JCS) Download(
+func (o *JCSProxy) Download(
 	ctx context.Context,
-	input interface{}) (err error) {
-
-	var sourcePath, targetPath string
-	var packageId int32
-	if jcsDownloadInput, ok := input.(JCSDownloadInput); ok {
-		sourcePath = jcsDownloadInput.SourcePath
-		targetPath = jcsDownloadInput.TargetPath
-		packageId = jcsDownloadInput.PackageId
-	} else {
-		Logger.WithContext(ctx).Error(
-			"input param invalid.")
-		return errors.New("input param invalid")
-	}
+	targetPath string,
+	taskId int32,
+	bucketName string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:Download start.",
-		" sourcePath: ", sourcePath,
+		"JCSProxy:Download start.",
 		" targetPath: ", targetPath,
-		" packageId: ", packageId)
+		" taskId: ", taskId,
+		" bucketName: ", bucketName)
 
 	continuationToken := ""
 	for {
-		listObjectsData := new(JCSListData)
-		listObjectsData, err = o.jcsClient.List(
+		listObjectsData, err := o.ListObjectsWithSignedUrl(
 			ctx,
-			packageId,
-			sourcePath,
-			true,
-			false,
-			DefaultJCSListLimit,
+			taskId,
 			continuationToken)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"jcsClient:List start.",
-				" packageId: ", packageId,
-				" sourcePath: ", sourcePath,
-				" continuationToken: ", continuationToken,
+				"JCSProxy:ListObjectsWithSignedUrl start.",
+				" taskId: ", taskId,
 				" err: ", err)
 			return err
 		}
-
 		err = o.downloadObjects(
 			ctx,
-			sourcePath,
 			targetPath,
+			taskId,
 			listObjectsData)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS:downloadObjects failed.",
-				" sourcePath: ", sourcePath,
+				"JCSProxy:downloadObjects failed.",
 				" targetPath: ", targetPath,
+				" taskId: ", taskId,
+				" bucketName: ", bucketName,
 				" err: ", err)
 			return err
 		}
-
 		if listObjectsData.IsTruncated {
 			continuationToken = listObjectsData.NextContinuationToken
 		} else {
 			break
 		}
 	}
-
 	Logger.WithContext(ctx).Debug(
-		"JCS:Download finish.",
-		" sourcePath: ", sourcePath)
+		"JCSProxy:Download finish.")
 	return nil
 }
 
-func (o *JCS) downloadObjects(
+func (o *JCSProxy) downloadObjects(
 	ctx context.Context,
-	sourcePath,
 	targetPath string,
+	taskId int32,
 	listObjectsData *JCSListData) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:downloadObjects start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		"JCSProxy:downloadObjects start.",
+		" targetPath: ", targetPath,
+		" taskId: ", taskId)
+
+	getTaskReq := new(GetTaskReq)
+	getTaskReq.TaskId = &taskId
+	getTaskReq.PageIndex = DefaultPageIndex
+	getTaskReq.PageSize = DefaultPageSize
+
+	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.GetTask failed.",
+			" taskId: ", taskId,
+			" err: ", err)
+		return err
+	}
+	if len(getTaskResp.Data.List) == 0 {
+		Logger.WithContext(ctx).Error(
+			"task not exist. taskId: ", taskId)
+		return errors.New("task not exist")
+	}
+	task := getTaskResp.Data.List[0].Task
+	downloadObjectTaskParams := new(DownloadObjectTaskParams)
+	err = json.Unmarshal([]byte(task.Params), downloadObjectTaskParams)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"DownloadObjectTaskParams Unmarshal failed.",
+			" taskId: ", taskId,
+			" params: ", task.Params,
+			" err: ", err)
+		return err
+	}
+	uuid := downloadObjectTaskParams.Request.ObjUuid
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord :=
-		targetPath + sourcePath + ".download_folder_record"
-
+	downloadFolderRecord := targetPath + uuid + ".download_folder_record"
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
 		lines := strings.Split(string(fileData), "\n")
@@ -1211,7 +1479,7 @@ func (o *JCS) downloadObjects(
 	pool, err := ants.NewPool(DefaultJCSDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ants.NewPool for download object failed.",
+			"ants.NewPool for download Object  failed.",
 			" err: ", err)
 		return err
 	}
@@ -1242,16 +1510,18 @@ func (o *JCS) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			err = o.downloadPart(
+			err = o.downloadPartWithSignedUrl(
 				ctx,
 				itemObject,
-				targetPath+itemObject.Path)
+				targetPath+uuid+"/"+itemObject.Path,
+				taskId)
 			if nil != err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
-					"JCS:downloadPart failed.",
+					"JCSProxy:downloadPartWithSignedUrl failed.",
 					" objectPath: ", itemObject.Path,
 					" targetFile: ", targetPath+itemObject.Path,
+					" taskId: ", taskId,
 					" err: ", err)
 				return
 			}
@@ -1283,7 +1553,7 @@ func (o *JCS) downloadObjects(
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectPath: ", itemObject.Path,
+					" objectKey: ", itemObject.Path,
 					" err: ", err)
 				return
 			}
@@ -1298,8 +1568,8 @@ func (o *JCS) downloadObjects(
 	wg.Wait()
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"JCS:downloadObjects not all success.",
-			" sourcePath: ", sourcePath)
+			"JCSProxy:downloadObjects not all success.",
+			" uuid: ", downloadObjectTaskParams.Request.ObjUuid)
 		return errors.New("downloadObjects not all success")
 	} else {
 		_err := os.Remove(downloadFolderRecord)
@@ -1314,19 +1584,23 @@ func (o *JCS) downloadObjects(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:downloadObjects finish.")
+		"JCSProxy:downloadObjects finish.")
 	return nil
 }
 
-func (o *JCS) downloadPart(
+func (o *JCSProxy) downloadPartWithSignedUrl(
 	ctx context.Context,
 	object *JCSObject,
-	targetFile string) (err error) {
+	targetFile string,
+	taskId int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:downloadPart start.",
-		" ObjectPath: ", object.Path,
-		" targetFile: ", targetFile)
+		"JCSProxy:downloadPartWithSignedUrl start.",
+		" ObjectID: ", object.ObjectID,
+		" PackageID: ", object.PackageID,
+		" Path: ", object.Path,
+		" targetFile: ", targetFile,
+		" taskId: ", taskId)
 
 	downloadFileInput := new(JCSDownloadFileInput)
 	downloadFileInput.Path = object.Path
@@ -1339,26 +1613,30 @@ func (o *JCS) downloadPart(
 
 	err = o.resumeDownload(
 		ctx,
+		taskId,
 		object,
 		downloadFileInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:resumeDownload failed.",
+			"JCSProxy:resumeDownload failed.",
+			" taskId: ", taskId,
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:downloadPart finish.")
+		"JCSProxy:downloadPartWithSignedUrl finish.")
 	return
 }
 
-func (o *JCS) resumeDownload(
+func (o *JCSProxy) resumeDownload(
 	ctx context.Context,
+	taskId int32,
 	object *JCSObject,
 	input *JCSDownloadFileInput) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:resumeDownload start.")
+		"JCSProxy:resumeDownload start.",
+		" taskId: ", taskId)
 
 	partSize := input.PartSize
 	dfc := &JCSDownloadCheckpoint{}
@@ -1374,7 +1652,7 @@ func (o *JCS) resumeDownload(
 			object)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS:getDownloadCheckpointFile failed.",
+				"JCSProxy:getDownloadCheckpointFile failed.",
 				" checkpointFilePath: ", checkpointFilePath,
 				" err: ", err)
 			return err
@@ -1383,6 +1661,7 @@ func (o *JCS) resumeDownload(
 
 	if needCheckpoint {
 		objectSize, _ := strconv.ParseInt(object.Size, 10, 64)
+		dfc.ObjectId = object.ObjectID
 		dfc.DownloadFile = input.DownloadFile
 		dfc.ObjectInfo = JCSObjectInfo{}
 		dfc.ObjectInfo.Size = objectSize
@@ -1396,7 +1675,7 @@ func (o *JCS) resumeDownload(
 			dfc.TempFileInfo.Size)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCS:prepareTempFile failed.",
+				"JCSProxy:prepareTempFile failed.",
 				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 				" Size: ", dfc.TempFileInfo.Size,
 				" err: ", err)
@@ -1407,7 +1686,7 @@ func (o *JCS) resumeDownload(
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"JCS:updateCheckpointFile failed.",
+					"JCSProxy:updateCheckpointFile failed.",
 					" checkpointFilePath: ", checkpointFilePath,
 					" err: ", err)
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
@@ -1425,7 +1704,7 @@ func (o *JCS) resumeDownload(
 	}
 
 	downloadFileError := o.downloadFileConcurrent(
-		ctx, input, dfc)
+		ctx, taskId, input, dfc)
 	err = o.handleDownloadFileResult(
 		ctx,
 		dfc.TempFileInfo.TempFileUrl,
@@ -1433,7 +1712,7 @@ func (o *JCS) resumeDownload(
 		downloadFileError)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:handleDownloadFileResult failed.",
+			"JCSProxy:handleDownloadFileResult failed.",
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" err: ", err)
 		return err
@@ -1460,17 +1739,19 @@ func (o *JCS) resumeDownload(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:resumeDownload finish.")
+		"JCSProxy:resumeDownload finish.")
 	return nil
 }
 
-func (o *JCS) downloadFileConcurrent(
+func (o *JCSProxy) downloadFileConcurrent(
 	ctx context.Context,
+	taskId int32,
 	input *JCSDownloadFileInput,
 	dfc *JCSDownloadCheckpoint) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:downloadFileConcurrent start.")
+		"JCSProxy:downloadFileConcurrent start.",
+		" taskId: ", taskId)
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
@@ -1490,18 +1771,19 @@ func (o *JCS) downloadFileConcurrent(
 		if downloadPart.IsCompleted {
 			continue
 		}
-		task := JCSDownloadPartTask{
+		task := JCSProxyDownloadPartTask{
 			ObjectId:         dfc.ObjectId,
 			Offset:           downloadPart.Offset,
 			Length:           downloadPart.Length,
-			JcsClient:        o.jcsClient,
-			Jcs:              o,
+			JcsProxyClient:   o.jcsProxyClient,
+			JcsProxy:         o,
 			PartNumber:       downloadPart.PartNumber,
 			TempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 		Logger.WithContext(ctx).Debug(
 			"DownloadPartTask params.",
+			" ObjectId: ", dfc.ObjectId,
 			" Offset: ", downloadPart.Offset,
 			" Length: ", downloadPart.Length,
 			" PartNumber: ", downloadPart.PartNumber,
@@ -1525,7 +1807,7 @@ func (o *JCS) downloadFileConcurrent(
 						input.CheckpointFile)
 					if nil != err {
 						Logger.WithContext(ctx).Error(
-							"JCS:updateCheckpointFile failed.",
+							"JCSProxy:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
 							" err: ", err)
 						downloadPartError.Store(err)
@@ -1533,7 +1815,7 @@ func (o *JCS) downloadFileConcurrent(
 				}
 				return
 			} else {
-				result := task.Run(ctx)
+				result := task.Run(ctx, taskId)
 				err = o.handleDownloadTaskResult(
 					ctx,
 					result,
@@ -1546,7 +1828,7 @@ func (o *JCS) downloadFileConcurrent(
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
-						"JCS:handleDownloadTaskResult failed.",
+						"JCSProxy:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
 						" err: ", err)
@@ -1570,18 +1852,18 @@ func (o *JCS) downloadFileConcurrent(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:downloadFileConcurrent finish.")
+		"JCSProxy:downloadFileConcurrent finish.")
 	return nil
 }
 
-func (o *JCS) getDownloadCheckpointFile(
+func (o *JCSProxy) getDownloadCheckpointFile(
 	ctx context.Context,
 	dfc *JCSDownloadCheckpoint,
 	input *JCSDownloadFileInput,
 	object *JCSObject) (needCheckpoint bool, err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:getDownloadCheckpointFile start.",
+		"JCSProxy:getDownloadCheckpointFile start.",
 		" checkpointFile: ", input.CheckpointFile)
 
 	checkpointFilePath := input.CheckpointFile
@@ -1608,7 +1890,7 @@ func (o *JCS) getDownloadCheckpointFile(
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCS:loadCheckpointFile failed.",
+			"JCSProxy:loadCheckpointFile failed.",
 			" checkpointFilePath: ", checkpointFilePath,
 			" err: ", err)
 		return true, nil
@@ -1643,13 +1925,13 @@ func (o *JCS) getDownloadCheckpointFile(
 	return true, nil
 }
 
-func (o *JCS) prepareTempFile(
+func (o *JCSProxy) prepareTempFile(
 	ctx context.Context,
 	tempFileURL string,
 	fileSize int64) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:prepareTempFile start.",
+		"JCSProxy:prepareTempFile start.",
 		" tempFileURL: ", tempFileURL,
 		" fileSize: ", fileSize)
 
@@ -1676,8 +1958,7 @@ func (o *JCS) prepareTempFile(
 		}
 	} else if !stat.IsDir() {
 		Logger.WithContext(ctx).Error(
-			"same file exists.",
-			" parentDir: ", parentDir)
+			"same file exists. parentDir: ", parentDir)
 		return fmt.Errorf(
 			"cannot create folder: %s due to a same file exists",
 			parentDir)
@@ -1686,7 +1967,7 @@ func (o *JCS) prepareTempFile(
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"JCS:createFile finish.",
+			"JCSProxy:createFile finish.",
 			" tempFileURL: ", tempFileURL,
 			" fileSize: ", fileSize)
 		return nil
@@ -1722,17 +2003,17 @@ func (o *JCS) prepareTempFile(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:prepareTempFile finish.")
+		"JCSProxy:prepareTempFile finish.")
 	return nil
 }
 
-func (o *JCS) createFile(
+func (o *JCSProxy) createFile(
 	ctx context.Context,
 	tempFileURL string,
 	fileSize int64) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:createFile start.",
+		"JCSProxy:createFile start.",
 		" tempFileURL: ", tempFileURL,
 		" fileSize: ", fileSize)
 
@@ -1766,11 +2047,11 @@ func (o *JCS) createFile(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:createFile finish.")
+		"JCSProxy:createFile finish.")
 	return nil
 }
 
-func (o *JCS) handleDownloadTaskResult(
+func (o *JCSProxy) handleDownloadTaskResult(
 	ctx context.Context,
 	result interface{},
 	dfc *JCSDownloadCheckpoint,
@@ -1780,7 +2061,7 @@ func (o *JCS) handleDownloadTaskResult(
 	lock *sync.Mutex) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:handleDownloadTaskResult start.",
+		"JCSProxy:handleDownloadTaskResult start.",
 		" partNum: ", partNum,
 		" checkpointFile: ", checkpointFile)
 
@@ -1793,7 +2074,7 @@ func (o *JCS) handleDownloadTaskResult(
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
 				Logger.WithContext(ctx).Warn(
-					"JCS:updateCheckpointFile failed.",
+					"JCSProxy:updateCheckpointFile failed.",
 					" checkpointFile: ", checkpointFile,
 					" err: ", _err)
 			}
@@ -1804,18 +2085,18 @@ func (o *JCS) handleDownloadTaskResult(
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"JCS:handleDownloadTaskResult finish.")
+		"JCSProxy:handleDownloadTaskResult finish.")
 	return
 }
 
-func (o *JCS) handleDownloadFileResult(
+func (o *JCSProxy) handleDownloadFileResult(
 	ctx context.Context,
 	tempFileURL string,
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:handleDownloadFileResult start.",
+		"JCSProxy:handleDownloadFileResult start.",
 		" tempFileURL: ", tempFileURL)
 
 	if downloadFileError != nil {
@@ -1831,25 +2112,25 @@ func (o *JCS) handleDownloadFileResult(
 			}
 		}
 		Logger.WithContext(ctx).Debug(
-			"JCS.handleDownloadFileResult finish.",
+			"JCSProxy.handleDownloadFileResult finish.",
 			" tempFileURL: ", tempFileURL,
 			" downloadFileError: ", downloadFileError)
 		return downloadFileError
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS.handleDownloadFileResult finish.")
+		"JCSProxy.handleDownloadFileResult finish.")
 	return nil
 }
 
-func (o *JCS) UpdateDownloadFile(
+func (o *JCSProxy) UpdateDownloadFile(
 	ctx context.Context,
 	filePath string,
 	offset int64,
 	downloadPartOutput *JCSDownloadPartOutput) error {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:UpdateDownloadFile start.",
+		"JCSProxy:UpdateDownloadFile start.",
 		" filePath: ", filePath,
 		" offset: ", offset)
 
@@ -1925,38 +2206,58 @@ func (o *JCS) UpdateDownloadFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:UpdateDownloadFile finish. readTotal: ", readTotal)
+		"JCSProxy:UpdateDownloadFile finish.",
+		" readTotal: ", readTotal)
 	return nil
 }
 
-type JCSDownloadPartTask struct {
+type JCSProxyDownloadPartTask struct {
 	ObjectId         int32
 	Offset           int64
 	Length           int64
-	JcsClient        *JCSClient
-	Jcs              *JCS
+	JcsProxyClient   *JCSProxyClient
+	JcsProxy         *JCSProxy
 	PartNumber       int64
 	TempFileURL      string
 	EnableCheckpoint bool
 }
 
-func (task *JCSDownloadPartTask) Run(
-	ctx context.Context) interface{} {
+func (task *JCSProxyDownloadPartTask) Run(
+	ctx context.Context,
+	taskId int32) interface{} {
 
 	Logger.WithContext(ctx).Debug(
-		"JCSDownloadPartTask:Run start.",
+		"JCSProxyDownloadPartTask:Run start.",
+		" taskId: ", taskId,
 		" partNumber: ", task.PartNumber)
 
-	err, downloadPartOutput :=
-		task.JcsClient.DownloadPart(
+	createJCSPreSignedObjectDownloadReq :=
+		new(CreateJCSPreSignedObjectDownloadReq)
+
+	createJCSPreSignedObjectDownloadReq.Offset = task.Offset
+	createJCSPreSignedObjectDownloadReq.ObjectId = task.ObjectId
+	createJCSPreSignedObjectDownloadReq.Length = task.Length
+	createJCSPreSignedObjectDownloadReq.TaskId = taskId
+
+	err, createJCSPreSignedObjectDownloadResp :=
+		UClient.CreateJCSPreSignedObjectDownload(
 			ctx,
-			task.ObjectId,
-			task.Offset,
-			task.Length)
+			createJCSPreSignedObjectDownloadReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateGetObjectSignedUrl failed.",
+			" err: ", err)
+		return err
+	}
+
+	err, downloadPartOutput :=
+		task.JcsProxyClient.DownloadPartWithSignedUrl(
+			ctx,
+			createJCSPreSignedObjectDownloadResp.SignedUrl)
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"JcsClient.DownloadPart finish.")
+			"JcsProxyClient.DownloadPartWithSignedUrl finish.")
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
@@ -1964,7 +2265,7 @@ func (task *JCSDownloadPartTask) Run(
 					"close response body failed.")
 			}
 		}()
-		_err := task.Jcs.UpdateDownloadFile(
+		_err := task.JcsProxy.UpdateDownloadFile(
 			ctx,
 			task.TempFileURL,
 			task.Offset,
@@ -1976,7 +2277,7 @@ func (task *JCSDownloadPartTask) Run(
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
-				"JCS.updateDownloadFile failed.",
+				"JCSProxy.updateDownloadFile failed.",
 				" err: ", _err)
 			return _err
 		}
@@ -1986,7 +2287,8 @@ func (task *JCSDownloadPartTask) Run(
 	}
 
 	Logger.WithContext(ctx).Error(
-		"JCSDownloadPartTask:Run failed.",
+		"JCSProxyDownloadPartTask:Run failed.",
+		" signedUrl: ", createJCSPreSignedObjectDownloadResp.SignedUrl,
 		" err: ", err)
 	return err
 }

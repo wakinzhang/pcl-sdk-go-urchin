@@ -3,9 +3,9 @@ package module
 import (
 	"context"
 	"encoding/xml"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	"io"
 	"os"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 )
 
 const (
@@ -19,9 +19,6 @@ const (
 	DefaultScowDownloadMultiTaskNum = 20
 	DefaultScowMaxPartSize          = 5 * 1024 * 1024 * 1024
 	DefaultScowMinPartSize          = 100 * 1024
-
-	DefaultScowClientReqTimeout    = 3600
-	DefaultScowClientMaxConnection = 50
 
 	DefaultScowTokenExpireHours = 6
 
@@ -42,6 +39,17 @@ const (
 	ScowObjectTypeFile   = "FILE"
 	ScowObjectTypeFolder = "DIR"
 )
+
+type ScowUploadInput struct {
+	SourcePath string
+	TargetPath string
+	NeedPure   bool
+}
+
+type ScowDownloadInput struct {
+	SourcePath string
+	TargetPath string
+}
 
 type ScowBaseResponse struct {
 	RespCode    int32       `json:"respCode"`

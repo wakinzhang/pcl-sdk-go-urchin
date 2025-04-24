@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"io"
 	"mime/multipart"
 	"net"
 	"net/http"
 	"os"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"time"
 	// LTScow "github.com/urchinfs/LT-scow-sdk/scow"
 )
@@ -38,7 +38,7 @@ func (o *ScowClient) Init(
 	url,
 	clusterId string,
 	reqTimeout,
-	maxConnection int) {
+	maxConnection int32) {
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Init start.",
@@ -73,7 +73,7 @@ func (o *ScowClient) Init(
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 		TLSHandshakeTimeout: 10 * time.Second,
 		IdleConnTimeout:     90 * time.Second,
-		MaxIdleConnsPerHost: maxConnection,
+		MaxIdleConnsPerHost: int(maxConnection),
 	}
 	o.scowClient = retryablehttp.NewClient()
 	o.scowClient.RetryMax = 3

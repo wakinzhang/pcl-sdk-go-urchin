@@ -3,14 +3,29 @@ package module
 import (
 	"context"
 	"encoding/xml"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	"io"
 	"os"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	"strconv"
 )
 
 const (
 	JCSSuccessCode = "OK"
+
+	JCSCreateBucketInterface                           = "/v1/bucket/create"
+	JCSCreatePackageInterface                          = "/v1/package/create"
+	JCSPreSignedObjectListInterface                    = "/v1/presigned/object/listByPath"
+	JCSPreSignedObjectUploadInterface                  = "/v1/presigned/object/upload"
+	JCSPreSignedObjectNewMultipartUploadInterface      = "/v1/presigned/object/newMultipartUpload"
+	JCSPreSignedObjectUploadPartInterface              = "/v1/presigned/object/uploadPart"
+	JCSPreSignedObjectCompleteMultipartUploadInterface = "/v1/presigned/object/completeMultipartUpload"
+	JCSPreSignedObjectDownloadInterface                = "/v1/presigned/object/download"
+	JCSListInterface                                   = "/v1/object/listByPath"
+	JCSUploadInterface                                 = "/v1/object/upload"
+	JCSNewMultipartUploadInterface                     = "/v1/object/newMultipartUpload"
+	JCSUploadPartInterface                             = "/v1/object/uploadPart"
+	JCSCompleteMultipartUploadInterface                = "/v1/object/completeMultipartUpload"
+	JCSDownloadInterface                               = "/v1/object/download"
 
 	DefaultJCSUploadMultiSize = 500 * 1024 * 1024
 
@@ -20,10 +35,25 @@ const (
 	DefaultJCSDownloadMultiTaskNum = 20
 	DefaultJCSMaxPartSize          = 5 * 1024 * 1024 * 1024
 	DefaultJCSMinPartSize          = 100 * 1024
+	DefaultJCSListLimit            = 1000
 
-	DefaultJCSClientReqTimeout    = 3600
-	DefaultJCSClientMaxConnection = 50
+	JCSMultiPartFormFiledInfo  = "info"
+	JCSMultiPartFormFiledFile  = "file"
+	JCSMultiPartFormFiledFiles = "files"
 )
+
+type JCSUploadInput struct {
+	SourcePath string
+	TargetPath string
+	PackageId  int32
+	NeedPure   bool
+}
+
+type JCSDownloadInput struct {
+	SourcePath string
+	TargetPath string
+	PackageId  int32
+}
 
 type JCSBaseResponse struct {
 	Code    string `json:"code"`
@@ -44,6 +74,12 @@ type JCSListData struct {
 }
 
 type JCSNewMultiPartUploadResponse struct {
+	Code    string                     `json:"code"`
+	Message string                     `json:"message"`
+	Data    *JCSNewMultiPartUploadData `json:"data"`
+}
+
+type JCSCompleteMultiPartUploadResponse struct {
 	Code    string                     `json:"code"`
 	Message string                     `json:"message"`
 	Data    *JCSNewMultiPartUploadData `json:"data"`
@@ -221,4 +257,92 @@ func (dfc *JCSDownloadCheckpoint) IsValid(
 	Logger.WithContext(ctx).Debug(
 		"JCSDownloadCheckpoint:IsValid finish.")
 	return true
+}
+
+type JCSCreateBucketReq struct {
+	UserID int32  `json:"userID"`
+	Name   string `json:"name"`
+}
+
+type JCSCreateBucketResponse struct {
+	Code    string                      `json:"code"`
+	Message string                      `json:"message"`
+	Data    JCSCreateBucketResponseData `json:"data"`
+}
+
+type JCSCreateBucketResponseData struct {
+	Bucket JCSBucketInfo `json:"bucket"`
+}
+
+type JCSBucketInfo struct {
+	BucketID int32  `json:"bucketID"`
+	Name     string `json:"name"`
+}
+
+type JCSCreatePackageReq struct {
+	UserID   int32  `json:"userID"`
+	BucketID int32  `json:"bucketID"`
+	Name     string `json:"name"`
+}
+
+type JCSCreatePackageResponse struct {
+	Code    string                       `json:"code"`
+	Message string                       `json:"message"`
+	Data    JCSCreatePackageResponseData `json:"data"`
+}
+
+type JCSCreatePackageResponseData struct {
+	Package JCSPackageInfo `json:"package"`
+}
+
+type JCSPackageInfo struct {
+	PackageID int32  `json:"packageID"`
+	BucketID  int32  `json:"bucketID"`
+	Name      string `json:"name"`
+}
+
+type JCSListReq struct {
+	UserID            int32  `url:"userID"`
+	PackageID         int32  `url:"packageID"`
+	Path              string `url:"path"`
+	IsPrefix          bool   `url:"isPrefix"`
+	NoRecursive       bool   `url:"noRecursive"`
+	MaxKeys           int32  `url:"maxKeys"`
+	ContinuationToken string `url:"continuationToken"`
+}
+
+type JCSCreatePreSignedObjectUploadSignedUrlReq struct {
+	UserID    int32  `json:"userID" url:"userID"`
+	PackageID int32  `json:"packageID" url:"packageID"`
+	Path      string `json:"path" url:"path"`
+}
+
+type JCSNewMultiPartUploadReq struct {
+	UserID    int32  `json:"userID" url:"userID"`
+	PackageID int32  `json:"packageID" url:"packageID"`
+	Path      string `json:"path" url:"path"`
+}
+
+type JCSUploadPartReqInfo struct {
+	UserID   int32 `json:"userID" url:"userID"`
+	ObjectID int32 `json:"objectID" url:"objectID"`
+	Index    int32 `json:"index" url:"index"`
+}
+
+type JCSCompleteMultiPartUploadReq struct {
+	UserID   int32   `json:"userID" url:"userID"`
+	ObjectID int32   `json:"objectID" url:"objectID"`
+	Indexes  []int32 `json:"indexes" url:"indexes"`
+}
+
+type JCSUploadReqInfo struct {
+	UserID    int32 `url:"userID"`
+	PackageID int32 `url:"packageID"`
+}
+
+type JCSDownloadReq struct {
+	UserID   int32 `url:"userID"`
+	ObjectID int32 `url:"objectID"`
+	Offset   int64 `url:"offset"`
+	Length   int64 `url:"length"`
 }

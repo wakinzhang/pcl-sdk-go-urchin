@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/adapter"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adapter"
 )
 
 func RetryTask(
@@ -158,7 +158,7 @@ func processRetryUploadTask(
 		return err
 	}
 
-	err = ProcessUpload(
+	err = ProcessUploadByProxy(
 		ctx,
 		uploadObjectTaskParams.Request.SourceLocalPath,
 		taskId,
@@ -166,7 +166,7 @@ func processRetryUploadTask(
 		needPure)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessUpload failed.",
+			"ProcessUploadByProxy failed.",
 			" err: ", err)
 		return err
 	}
@@ -197,7 +197,7 @@ func processRetryUploadFileTask(
 		return err
 	}
 
-	err = ProcessUploadFile(
+	err = ProcessUploadFileByProxy(
 		ctx,
 		uploadFileTaskParams.Request.SourceLocalPath,
 		taskId,
@@ -205,7 +205,7 @@ func processRetryUploadFileTask(
 		needPure)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessUploadFile failed.",
+			"ProcessUploadFileByProxy failed.",
 			" err: ", err)
 		return err
 	}
@@ -234,7 +234,7 @@ func processRetryDownloadTask(
 		return err
 	}
 
-	err = ProcessDownload(
+	err = ProcessDownloadByProxy(
 		ctx,
 		downloadObjectTaskParams.Request.TargetLocalPath,
 		downloadObjectTaskParams.BucketName,
@@ -242,7 +242,7 @@ func processRetryDownloadTask(
 		downloadObjectTaskParams.NodeType)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessDownload failed.",
+			"ProcessDownloadByProxy failed.",
 			" err: ", err)
 		return err
 	}
@@ -271,7 +271,7 @@ func processRetryDownloadFileTask(
 		return err
 	}
 
-	err = ProcessDownload(
+	err = ProcessDownloadByProxy(
 		ctx,
 		downloadFileTaskParams.Request.TargetLocalPath,
 		downloadFileTaskParams.BucketName,
@@ -279,7 +279,7 @@ func processRetryDownloadFileTask(
 		downloadFileTaskParams.NodeType)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessDownload failed.",
+			"ProcessDownloadByProxy failed.",
 			" err: ", err)
 		return err
 	}
@@ -310,7 +310,7 @@ func processRetryMigrateTask(
 		return err
 	}
 
-	err = ProcessMigrate(
+	err = ProcessMigrateByProxy(
 		ctx,
 		migrateObjectTaskParams.Request.CacheLocalPath,
 		migrateObjectTaskParams.Request.ObjUuid,
@@ -321,7 +321,7 @@ func processRetryMigrateTask(
 		needPure)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessMigrate failed.",
+			"ProcessMigrateByProxy failed.",
 			" err: ", err)
 		return err
 	}

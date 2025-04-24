@@ -3,9 +3,9 @@ package module
 import (
 	"context"
 	"encoding/xml"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
 	"io"
 	"os"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 )
 
 type PCDownloadPartOutput struct {
@@ -17,6 +17,17 @@ const (
 	DefaultParaCloudDownloadFileTaskNum  = 100
 	DefaultParaCloudDownloadMultiTaskNum = 20
 )
+
+type ParaCloudUploadInput struct {
+	SourcePath string
+	TargetPath string
+	NeedPure   bool
+}
+
+type ParaCloudDownloadInput struct {
+	SourcePath string
+	TargetPath string
+}
 
 type PCObject struct {
 	ObjectPath     string

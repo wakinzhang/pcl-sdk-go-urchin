@@ -7,11 +7,11 @@ import (
 	"errors"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"io"
 	"net"
 	"net/http"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"time"
 	// sl "github.com/urchinfs/starlight-sdk/starlight"
 )
@@ -33,7 +33,7 @@ func (o *SLClient) Init(
 	endpoint,
 	lustreType string,
 	reqTimeout,
-	maxConnection int) {
+	maxConnection int32) {
 
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Init start.",
@@ -66,7 +66,7 @@ func (o *SLClient) Init(
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 		TLSHandshakeTimeout: 10 * time.Second,
 		IdleConnTimeout:     90 * time.Second,
-		MaxIdleConnsPerHost: maxConnection,
+		MaxIdleConnsPerHost: int(maxConnection),
 	}
 	o.slClient = retryablehttp.NewClient()
 	o.slClient.RetryMax = 3

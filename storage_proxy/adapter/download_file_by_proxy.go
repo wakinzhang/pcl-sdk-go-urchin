@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 )
 
-func Download(
+func DownloadFileByProxy(
 	urchinServiceAddr,
 	objUuid,
+	source,
 	targetPath string) (err error) {
 
 	requestId := uuid.NewV4().String()
@@ -20,9 +21,10 @@ func Download(
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
 	Logger.WithContext(ctx).Debug(
-		"Download start.",
-		" targetPath: ", targetPath,
-		" objUuid: ", objUuid)
+		"DownloadFileByProxy start.",
+		" objUuid: ", objUuid,
+		" source: ", source,
+		" targetPath: ", targetPath)
 
 	UClient.Init(
 		ctx,
@@ -30,46 +32,48 @@ func Download(
 		DefaultUClientReqTimeout,
 		DefaultUClientMaxConnection)
 
-	downloadObjectReq := new(DownloadObjectReq)
-	downloadObjectReq.UserId = DefaultUrchinClientUserId
-	downloadObjectReq.ObjUuid = objUuid
-	downloadObjectReq.TargetLocalPath = targetPath
+	downloadFileReq := new(DownloadFileReq)
+	downloadFileReq.UserId = DefaultUrchinClientUserId
+	downloadFileReq.ObjUuid = objUuid
+	downloadFileReq.Source = source
+	downloadFileReq.TargetLocalPath = targetPath
 
-	err, downloadObjectResp := UClient.DownloadObject(
-		ctx, downloadObjectReq)
+	err, downloadFileResp := UClient.DownloadFile(ctx, downloadFileReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"UrchinClient.DownloadObject  failed.",
+			"UrchinClient.DownloadFile failed.",
 			" err: ", err)
 		return err
 	}
 
-	fmt.Printf("Download TaskId: %d\n", downloadObjectResp.TaskId)
+	fmt.Printf("DownloadFile TaskId: %d\n", downloadFileResp.TaskId)
 
-	err = ProcessDownload(
+	err = ProcessDownloadFileByProxy(
 		ctx,
 		targetPath,
-		downloadObjectResp.BucketName,
-		downloadObjectResp.TaskId,
-		downloadObjectResp.NodeType)
+		downloadFileResp.BucketName,
+		downloadFileResp.TaskId,
+		downloadFileResp.NodeType)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessDownload failed.",
+			"ProcessDownloadFileByProxy failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"Download finish.")
+		"DownloadFileByProxy finish.")
 	return err
 }
 
-func ProcessDownload(
+func ProcessDownloadFileByProxy(
 	ctx context.Context,
-	targetPath, bucketName string,
-	taskId, nodeType int32) (err error) {
+	targetPath,
+	bucketName string,
+	taskId,
+	nodeType int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessDownload start.",
+		"ProcessDownloadFileByProxy start.",
 		" targetPath: ", targetPath,
 		" bucketName: ", bucketName,
 		" taskId: ", taskId,
@@ -91,10 +95,10 @@ func ProcessDownload(
 		}
 	}()
 
-	err, storage := NewStorage(ctx, nodeType)
+	err, storage := NewStorageProxy(ctx, nodeType)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"NewStorage failed.",
+			"NewStorageProxy failed.",
 			" err: ", err)
 		return err
 	}
@@ -112,6 +116,6 @@ func ProcessDownload(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessDownload finish.")
+		"ProcessDownloadFileByProxy finish.")
 	return nil
 }

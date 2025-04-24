@@ -7,12 +7,12 @@ import (
 	"errors"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"io"
 	"mime/multipart"
 	"net"
 	"net/http"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strconv"
 	"strings"
 	"time"
@@ -39,7 +39,7 @@ func (o *SugonClient) Init(
 	orgId,
 	clusterId string,
 	reqTimeout,
-	maxConnection int) {
+	maxConnection int32) {
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:Init start.",
@@ -76,7 +76,7 @@ func (o *SugonClient) Init(
 		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 		TLSHandshakeTimeout: 10 * time.Second,
 		IdleConnTimeout:     90 * time.Second,
-		MaxIdleConnsPerHost: maxConnection,
+		MaxIdleConnsPerHost: int(maxConnection),
 	}
 	o.sugonClient = retryablehttp.NewClient()
 	o.sugonClient.RetryMax = 3

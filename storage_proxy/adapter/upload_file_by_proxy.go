@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 )
 
-func UploadFile(
+func UploadFileByProxy(
 	urchinServiceAddr,
 	objUuid,
 	objPath,
@@ -22,7 +22,7 @@ func UploadFile(
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
 	Logger.WithContext(ctx).Debug(
-		"UploadFile start.",
+		"UploadFileByProxy start.",
 		" objUuid: ", objUuid,
 		" objPath: ", objPath,
 		" sourcePath: ", sourcePath,
@@ -50,7 +50,7 @@ func UploadFile(
 
 	fmt.Printf("UploadFile TaskId: %d\n", uploadFileResp.TaskId)
 
-	err = ProcessUploadFile(
+	err = ProcessUploadFileByProxy(
 		ctx,
 		sourcePath,
 		uploadFileResp.TaskId,
@@ -58,23 +58,24 @@ func UploadFile(
 		needPure)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessUploadFile failed.",
+			"ProcessUploadFileByProxy failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"UploadFile finish.")
+		"UploadFileByProxy finish.")
 	return err
 }
 
-func ProcessUploadFile(
+func ProcessUploadFileByProxy(
 	ctx context.Context,
 	sourcePath string,
-	taskId, nodeType int32,
+	taskId,
+	nodeType int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessUploadFile start.",
+		"ProcessUploadFileByProxy start.",
 		" sourcePath: ", sourcePath,
 		" taskId: ", taskId,
 		" nodeType: ", nodeType,
@@ -96,10 +97,10 @@ func ProcessUploadFile(
 		}
 	}()
 
-	err, storage := NewStorage(ctx, nodeType)
+	err, storage := NewStorageProxy(ctx, nodeType)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"NewStorage failed.",
+			"NewStorageProxy failed.",
 			" err: ", err)
 		return err
 	}
@@ -116,6 +117,6 @@ func ProcessUploadFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessUploadFile finish.")
+		"ProcessUploadFileByProxy finish.")
 	return nil
 }

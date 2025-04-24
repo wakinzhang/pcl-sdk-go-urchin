@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/panjf2000/ants/v2"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"io"
 	"os"
 	"path/filepath"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -28,14 +28,18 @@ func (o *StarLight) Init(
 	username,
 	password,
 	endpoint,
-	lustreType string) (err error) {
+	lustreType string,
+	reqTimeout,
+	maxConnection int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"StarLight:Init start.",
 		" username: ", "***",
 		" password: ", "***",
 		" endpoint: ", endpoint,
-		" lustreType: ", lustreType)
+		" lustreType: ", lustreType,
+		" reqTimeout: ", reqTimeout,
+		" maxConnection: ", maxConnection)
 
 	o.slClient = new(SLClient)
 	o.slClient.Init(
@@ -44,8 +48,8 @@ func (o *StarLight) Init(
 		password,
 		endpoint,
 		lustreType,
-		DefaultSLClientReqTimeout,
-		DefaultSLClientMaxConnection)
+		reqTimeout,
+		maxConnection)
 
 	Logger.WithContext(ctx).Debug(
 		"StarLight:Init finish.")
@@ -151,9 +155,19 @@ func (o *StarLight) updateCheckpointFile(
 
 func (o *StarLight) Upload(
 	ctx context.Context,
-	sourcePath,
-	targetPath string,
-	needPure bool) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	var needPure bool
+	if starLightUploadInput, ok := input.(StarLightUploadInput); ok {
+		sourcePath = starLightUploadInput.SourcePath
+		targetPath = starLightUploadInput.TargetPath
+		needPure = starLightUploadInput.NeedPure
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"StarLight:Upload start.",
@@ -422,6 +436,11 @@ func (o *StarLight) uploadFileResume(
 		uploadFileInput.UploadFile + ".upload_file_record"
 	uploadFileInput.TaskNum = DefaultSLUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
+	if uploadFileInput.PartSize < DefaultSLMinPartSize {
+		uploadFileInput.PartSize = DefaultSLMinPartSize
+	} else if uploadFileInput.PartSize > DefaultSLMaxPartSize {
+		uploadFileInput.PartSize = DefaultSLMaxPartSize
+	}
 
 	if needPure {
 		err = os.Remove(uploadFileInput.CheckpointFile)
@@ -434,12 +453,6 @@ func (o *StarLight) uploadFileResume(
 				return err
 			}
 		}
-	}
-
-	if uploadFileInput.PartSize < DefaultSLMinPartSize {
-		uploadFileInput.PartSize = DefaultSLMinPartSize
-	} else if uploadFileInput.PartSize > DefaultSLMaxPartSize {
-		uploadFileInput.PartSize = DefaultSLMaxPartSize
 	}
 
 	err = o.resumeUpload(
@@ -811,7 +824,7 @@ func (o *StarLight) handleUploadTaskResult(
 					" err: ", _err)
 			}
 		}
-	} else if result != errAbort {
+	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
 			Logger.WithContext(ctx).Error(
 				"upload task result failed.",
@@ -928,8 +941,17 @@ func (task *SLUploadPartTask) Run(
 
 func (o *StarLight) Download(
 	ctx context.Context,
-	sourcePath,
-	targetPath string) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	if starLightDownloadInput, ok := input.(StarLightDownloadInput); ok {
+		sourcePath = starLightDownloadInput.SourcePath
+		targetPath = starLightDownloadInput.TargetPath
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"StarLight:Download start.",
@@ -971,7 +993,11 @@ func (o *StarLight) Download(
 		return err
 	}
 	for _, folder := range folders {
-		err = o.Download(ctx, folder.Path, targetPath)
+		var starLightDownloadInput StarLightDownloadInput
+		starLightDownloadInput.SourcePath = folder.Path
+		starLightDownloadInput.TargetPath = targetPath
+
+		err = o.Download(ctx, starLightDownloadInput)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"StarLight:Download failed.",
@@ -1033,7 +1059,6 @@ func (o *StarLight) downloadObjects(
 			" index: ", index,
 			" Path: ", object.Path,
 			" size: ", object.Size)
-		// 处理文件
 		itemObject := object
 		if _, exists := fileMap[itemObject.Path]; exists {
 			Logger.WithContext(ctx).Info(
@@ -1607,7 +1632,7 @@ func (o *StarLight) handleDownloadTaskResult(
 					" err: ", _err)
 			}
 		}
-	} else if result != errAbort {
+	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
 			err = _err
 		}

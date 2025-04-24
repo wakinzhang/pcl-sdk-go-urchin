@@ -5,25 +5,25 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/urchinfs/go-urchin2-sdk/ipfs_api"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"os"
 	"path/filepath"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strings"
 )
 
-type IPFS struct {
+type IPFSProxy struct {
 }
 
-func (o *IPFS) Upload(
+func (o *IPFSProxy) Upload(
 	ctx context.Context,
 	sourcePath string,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"IPFS:Upload start.",
+		"IPFSProxy:Upload start.",
 		" sourcePath: ", sourcePath,
 		" taskId: ", taskId,
 		" needPure: ", needPure)
@@ -42,7 +42,8 @@ func (o *IPFS) Upload(
 	}
 	if len(getTaskResp.Data.List) == 0 {
 		Logger.WithContext(ctx).Error(
-			"task not exist. taskId: ", taskId)
+			"task not exist.",
+			" taskId: ", taskId)
 		return errors.New("task not exist")
 	}
 	if TaskTypeUpload == getTaskResp.Data.List[0].Task.Type ||
@@ -53,7 +54,7 @@ func (o *IPFS) Upload(
 			getTaskResp.Data.List[0].Task)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"IPFS:uploadObject failed.",
+				"IPFSProxy:uploadObject failed.",
 				" err: ", err)
 			return err
 		}
@@ -64,28 +65,29 @@ func (o *IPFS) Upload(
 			getTaskResp.Data.List[0].Task)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"IPFS:uploadFile failed.",
+				"IPFSProxy:uploadFile failed.",
 				" err: ", err)
 			return err
 		}
 	} else {
 		Logger.WithContext(ctx).Error(
-			"task type invalid. taskId: ", taskId)
+			"task type invalid.",
+			" taskId: ", taskId)
 		return errors.New("task type invalid")
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"IPFS:Upload finish.")
+		"IPFSProxy:Upload finish.")
 	return err
 }
 
-func (o *IPFS) uploadObject(
+func (o *IPFSProxy) uploadObject(
 	ctx context.Context,
 	sourcePath string,
 	task *Task) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"IPFS:uploadObject start.",
+		"IPFSProxy:uploadObject start.",
 		" sourcePath: ", sourcePath)
 
 	var objUuid, nodeName string
@@ -131,7 +133,9 @@ func (o *IPFS) uploadObject(
 			" err: ", err)
 		return err
 	}
-	ipfsClient := ipfs_api.NewClient(getIpfsTokenResp.Url, getIpfsTokenResp.Token)
+	ipfsClient := ipfs_api.NewClient(
+		getIpfsTokenResp.Url,
+		getIpfsTokenResp.Token)
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
@@ -146,38 +150,38 @@ func (o *IPFS) uploadObject(
 	go func() {
 		if stat.IsDir() {
 			Logger.WithContext(ctx).Debug(
-				"IPFS:AddDir start.",
+				"IPFSProxy:AddDir start.",
 				" sourcePath: ", sourcePath)
 			cid, _err := ipfsClient.AddDir(context.Background(), sourcePath)
 			if nil != _err {
 				Logger.WithContext(ctx).Error(
-					"IPFS:AddDir failed.",
+					"IPFSProxy:AddDir failed.",
 					" sourcePath: ", sourcePath,
 					" err: ", _err)
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
 			Logger.WithContext(ctx).Debug(
-				"IPFS:AddDir finish.",
+				"IPFSProxy:AddDir finish.",
 				" sourcePath: ", sourcePath)
 			ch <- XIpfsUpload{
 				CId:    cid,
 				Result: ChanResultSuccess}
 		} else {
 			Logger.WithContext(ctx).Debug(
-				"IPFS:Add start.",
+				"IPFSProxy:Add start.",
 				" sourcePath: ", sourcePath)
 			cid, _err := ipfsClient.Add(context.Background(), sourcePath)
 			if nil != _err {
 				Logger.WithContext(ctx).Error(
-					"IPFS:Add failed.",
+					"IPFSProxy:Add failed.",
 					" sourcePath: ", sourcePath,
 					" err: ", _err)
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
 			Logger.WithContext(ctx).Debug(
-				"IPFS:Add finish.",
+				"IPFSProxy:Add finish.",
 				" sourcePath: ", sourcePath)
 			ch <- XIpfsUpload{
 				CId:    cid,
@@ -192,9 +196,9 @@ func (o *IPFS) uploadObject(
 		}
 		if ChanResultFailed == uploadResult.Result {
 			Logger.WithContext(ctx).Error(
-				"IPFS:uploadObject failed.",
+				"IPFSProxy:uploadObject failed.",
 				" sourcePath: ", sourcePath)
-			return errors.New("IPFS:Upload failed")
+			return errors.New("IPFSProxy:Upload failed")
 		}
 		cid = uploadResult.CId
 		close(ch)
@@ -218,17 +222,17 @@ func (o *IPFS) uploadObject(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"IPFS:uploadObject finish.")
+		"IPFSProxy:uploadObject finish.")
 	return nil
 }
 
-func (o *IPFS) uploadFile(
+func (o *IPFSProxy) uploadFile(
 	ctx context.Context,
 	sourcePath string,
 	task *Task) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"IPFS:uploadFile start.",
+		"IPFSProxy:uploadFile start.",
 		" sourcePath: ", sourcePath)
 
 	taskParams := new(UploadFileTaskParams)
@@ -242,18 +246,18 @@ func (o *IPFS) uploadFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"IPFS:uploadFile finish.")
+		"IPFSProxy:uploadFile finish.")
 	return nil
 }
 
-func (o *IPFS) Download(
+func (o *IPFSProxy) Download(
 	ctx context.Context,
 	targetPath string,
 	taskId int32,
 	bucketName string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"IPFS:Download start.",
+		"IPFSProxy:Download start.",
 		" targetPath: ", targetPath,
 		" taskId: ", taskId,
 		" bucketName: ", bucketName)
@@ -286,7 +290,9 @@ func (o *IPFS) Download(
 	var nodeName, hash, prePath, postPath string
 	if TaskTypeDownload == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(DownloadObjectTaskParams)
-		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
+		err = json.Unmarshal(
+			[]byte(getTaskResp.Data.List[0].Task.Params),
+			taskParams)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"DownloadObjectTaskParams Unmarshal failed.",
@@ -300,7 +306,9 @@ func (o *IPFS) Download(
 		postPath = targetPath + "/" + taskParams.Request.ObjUuid
 	} else if TaskTypeDownloadFile == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(DownloadFileTaskParams)
-		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
+		err = json.Unmarshal(
+			[]byte(getTaskResp.Data.List[0].Task.Params),
+			taskParams)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"DownloadFileTaskParams Unmarshal failed.",
@@ -315,7 +323,9 @@ func (o *IPFS) Download(
 		postPath = targetPath + "/" + taskParams.Request.ObjUuid
 	} else if TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(MigrateObjectTaskParams)
-		err = json.Unmarshal([]byte(getTaskResp.Data.List[0].Task.Params), taskParams)
+		err = json.Unmarshal(
+			[]byte(getTaskResp.Data.List[0].Task.Params),
+			taskParams)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"MigrateObjectTaskParams Unmarshal failed.",
@@ -343,17 +353,19 @@ func (o *IPFS) Download(
 			" err: ", err)
 		return err
 	}
-	ipfsClient := ipfs_api.NewClient(getIpfsTokenResp.Url, getIpfsTokenResp.Token)
+	ipfsClient := ipfs_api.NewClient(
+		getIpfsTokenResp.Url,
+		getIpfsTokenResp.Token)
 	ch := make(chan XIpfsDownload)
 	go func() {
 		Logger.WithContext(ctx).Debug(
-			"IPFS:Get start.",
+			"IPFSProxy:Get start.",
 			" hash: ", hash,
 			" targetPath: ", targetPath)
 		_err := ipfsClient.Get(hash, targetPath)
 		if nil != _err {
 			Logger.WithContext(ctx).Error(
-				"IPFS:Get failed.",
+				"IPFSProxy:Get failed.",
 				" hash: ", hash,
 				" targetPath: ", targetPath,
 				" err: ", _err)
@@ -361,7 +373,7 @@ func (o *IPFS) Download(
 				Result: ChanResultFailed}
 		}
 		Logger.WithContext(ctx).Debug(
-			"IPFS:Get finish.",
+			"IPFSProxy:Get finish.",
 			" hash: ", hash,
 			" targetPath: ", targetPath)
 		ch <- XIpfsDownload{
@@ -375,10 +387,10 @@ func (o *IPFS) Download(
 		}
 		if ChanResultFailed == downloadResult.Result {
 			Logger.WithContext(ctx).Error(
-				"IPFS:Download failed.",
+				"IPFSProxy:Download failed.",
 				" targetPath: ", targetPath,
 				" taskId: ", taskId)
-			return errors.New("IPFS:Download failed")
+			return errors.New("IPFSProxy:Download failed")
 		}
 		close(ch)
 	}
@@ -393,6 +405,6 @@ func (o *IPFS) Download(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"IPFS:Download finish.")
+		"IPFSProxy:Download finish.")
 	return nil
 }

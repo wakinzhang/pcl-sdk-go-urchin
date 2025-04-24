@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/panjf2000/ants/v2"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"io"
 	"os"
 	"path/filepath"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -146,9 +146,19 @@ func (o *ParaCloud) updateCheckpointFile(
 
 func (o *ParaCloud) Upload(
 	ctx context.Context,
-	sourcePath,
-	targetPath string,
-	needPure bool) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	var needPure bool
+	if paraCloudUploadInput, ok := input.(ParaCloudUploadInput); ok {
+		sourcePath = paraCloudUploadInput.SourcePath
+		targetPath = paraCloudUploadInput.TargetPath
+		needPure = paraCloudUploadInput.NeedPure
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:Upload start.",
@@ -393,8 +403,17 @@ func (o *ParaCloud) uploadFolder(
 
 func (o *ParaCloud) Download(
 	ctx context.Context,
-	sourcePath,
-	targetPath string) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	if paraCloudDownloadInput, ok := input.(ParaCloudDownloadInput); ok {
+		sourcePath = paraCloudDownloadInput.SourcePath
+		targetPath = paraCloudDownloadInput.TargetPath
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:Download start.",
@@ -440,7 +459,11 @@ func (o *ParaCloud) Download(
 		return err
 	}
 	for _, folder := range folders {
-		err = o.Download(ctx, folder.ObjectPath, targetPath)
+		var paraCloudDownloadInput ParaCloudDownloadInput
+		paraCloudDownloadInput.SourcePath = folder.ObjectPath
+		paraCloudDownloadInput.TargetPath = targetPath
+
+		err = o.Download(ctx, paraCloudDownloadInput)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"ParaCloud:Download failed.",
@@ -502,7 +525,6 @@ func (o *ParaCloud) downloadObjects(
 			" index: ", index,
 			" Path: ", object.ObjectPath,
 			" size: ", object.ObjectFileInfo.Size())
-		// 处理文件
 		itemObject := object
 		if _, exists := fileMap[itemObject.ObjectPath]; exists {
 			Logger.WithContext(ctx).Info(
@@ -1078,7 +1100,7 @@ func (o *ParaCloud) handleDownloadTaskResult(
 					" err: ", _err)
 			}
 		}
-	} else if result != errAbort {
+	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
 			err = _err
 		}

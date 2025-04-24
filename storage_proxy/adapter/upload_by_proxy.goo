@@ -4,16 +4,17 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"os"
 	"path/filepath"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 )
 
-func Upload(
+func UploadByProxy(
 	urchinServiceAddr,
-	sourcePath string) (err error) {
+	sourcePath,
+	objectName string) (err error) {
 
 	requestId := uuid.NewV4().String()
 	var ctx context.Context
@@ -21,7 +22,7 @@ func Upload(
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
 	Logger.WithContext(ctx).Debug(
-		"Upload start. sourcePath: ", sourcePath)
+		"UploadByProxy start. sourcePath: ", sourcePath)
 
 	UClient.Init(
 		ctx,
@@ -31,7 +32,7 @@ func Upload(
 
 	uploadObjectReq := new(UploadObjectReq)
 	uploadObjectReq.UserId = DefaultUrchinClientUserId
-	uploadObjectReq.Name = "wakinzhang-test-obj"
+	uploadObjectReq.Name = objectName
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
@@ -59,7 +60,7 @@ func Upload(
 
 	fmt.Printf("Upload TaskId: %d\n", uploadObjectResp.TaskId)
 
-	err = ProcessUpload(
+	err = ProcessUploadByProxy(
 		ctx,
 		sourcePath,
 		uploadObjectResp.TaskId,
@@ -67,25 +68,28 @@ func Upload(
 		true)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessUpload failed.",
+			"ProcessUploadByProxy failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"Upload success.")
+		"UploadByProxy success.")
 	return err
 }
 
-func ProcessUpload(
+func ProcessUploadByProxy(
 	ctx context.Context,
 	sourcePath string,
-	taskId, nodeType int32,
+	taskId,
+	nodeType int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessUpload start.",
-		" sourcePath: ", sourcePath, " taskId: ", taskId,
-		" nodeType: ", nodeType, " needPure: ", needPure)
+		"ProcessUploadByProxy start.",
+		" sourcePath: ", sourcePath,
+		" taskId: ", taskId,
+		" nodeType: ", nodeType,
+		" needPure: ", needPure)
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
@@ -103,10 +107,10 @@ func ProcessUpload(
 		}
 	}()
 
-	err, storage := NewStorage(ctx, nodeType)
+	err, storage := NewStorageProxy(ctx, nodeType)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"NewStorage failed.",
+			"NewStorageProxy failed.",
 			" err: ", err)
 		return err
 	}
@@ -123,6 +127,6 @@ func ProcessUpload(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessUpload success.")
+		"ProcessUploadByProxy success.")
 	return nil
 }

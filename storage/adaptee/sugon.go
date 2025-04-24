@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/panjf2000/ants/v2"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/module"
 	"io"
 	"os"
 	"path/filepath"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -30,7 +30,9 @@ func (o *Sugon) Init(
 	endpoint,
 	url,
 	orgId,
-	clusterId string) (err error) {
+	clusterId string,
+	reqTimeout,
+	maxConnection int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:Init start.",
@@ -39,7 +41,9 @@ func (o *Sugon) Init(
 		" endpoint: ", endpoint,
 		" url: ", url,
 		" orgId: ", orgId,
-		" clusterId: ", clusterId)
+		" clusterId: ", clusterId,
+		" reqTimeout: ", reqTimeout,
+		" maxConnection: ", maxConnection)
 
 	o.sugonClient = new(SugonClient)
 	o.sugonClient.Init(
@@ -50,8 +54,8 @@ func (o *Sugon) Init(
 		url,
 		orgId,
 		clusterId,
-		DefaultSugonClientReqTimeout,
-		DefaultSugonClientMaxConnection)
+		reqTimeout,
+		maxConnection)
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:Init finish.")
@@ -157,9 +161,19 @@ func (o *Sugon) updateCheckpointFile(
 
 func (o *Sugon) Upload(
 	ctx context.Context,
-	sourcePath,
-	targetPath string,
-	needPure bool) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	var needPure bool
+	if sugonUploadInput, ok := input.(SugonUploadInput); ok {
+		sourcePath = sugonUploadInput.SourcePath
+		targetPath = sugonUploadInput.TargetPath
+		needPure = sugonUploadInput.NeedPure
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:Upload start.",
@@ -532,24 +546,11 @@ func (o *Sugon) uploadFileResume(
 		uploadFileInput.UploadFile + ".upload_file_record"
 	uploadFileInput.TaskNum = DefaultSugonUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
-
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return err
+	if uploadFileInput.PartSize < DefaultSugonMinPartSize {
+		uploadFileInput.PartSize = DefaultSugonMinPartSize
+	} else if uploadFileInput.PartSize > DefaultSugonMaxPartSize {
+		uploadFileInput.PartSize = DefaultSugonMaxPartSize
 	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
-		}
-	}()
 
 	if needPure {
 		err = os.Remove(uploadFileInput.CheckpointFile)
@@ -562,12 +563,6 @@ func (o *Sugon) uploadFileResume(
 				return err
 			}
 		}
-	}
-
-	if uploadFileInput.PartSize < DefaultSugonMinPartSize {
-		uploadFileInput.PartSize = DefaultSugonMinPartSize
-	} else if uploadFileInput.PartSize > DefaultSugonMaxPartSize {
-		uploadFileInput.PartSize = DefaultSugonMaxPartSize
 	}
 
 	err = o.resumeUpload(
@@ -946,7 +941,7 @@ func (o *Sugon) handleUploadTaskResult(
 					" err: ", _err)
 			}
 		}
-	} else if result != errAbort {
+	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
 			Logger.WithContext(ctx).Error(
 				"upload task result failed.",
@@ -1090,8 +1085,17 @@ func (task *SugonUploadPartTask) Run(
 
 func (o *Sugon) Download(
 	ctx context.Context,
-	sourcePath,
-	targetPath string) (err error) {
+	input interface{}) (err error) {
+
+	var sourcePath, targetPath string
+	if sugonDownloadInput, ok := input.(SugonDownloadInput); ok {
+		sourcePath = sugonDownloadInput.SourcePath
+		targetPath = sugonDownloadInput.TargetPath
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:Download start.",
@@ -1132,10 +1136,11 @@ func (o *Sugon) Download(
 		}
 
 		for _, folder := range sugonListResponseData.Children {
-			err = o.Download(
-				ctx,
-				folder.Path,
-				targetPath)
+			var sugonDownloadInput SugonDownloadInput
+			sugonDownloadInput.SourcePath = folder.Path
+			sugonDownloadInput.TargetPath = targetPath
+
+			err = o.Download(ctx, sugonDownloadInput)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"Sugon:Download failed.",
@@ -1204,7 +1209,6 @@ func (o *Sugon) downloadObjects(
 			"object content.",
 			" index: ", index,
 			" Path: ", object.Path)
-		// 处理文件
 		itemObject := object
 		if _, exists := fileMap[itemObject.Path]; exists {
 			Logger.WithContext(ctx).Info(
@@ -1784,7 +1788,7 @@ func (o *Sugon) handleDownloadTaskResult(
 					" err: ", _err)
 			}
 		}
-	} else if result != errAbort {
+	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
 			err = _err
 		}

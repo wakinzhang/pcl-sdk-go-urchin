@@ -8,3 +8,14 @@ const (
 	DefaultS3DownloadFileTaskNum  = 100
 	DefaultS3DownloadMultiTaskNum = 20
 )
+
+type S3UploadInput struct {
+	SourcePath string
+	TargetPath string
+	NeedPure   bool
+}
+
+type S3DownloadInput struct {
+	SourcePath string
+	TargetPath string
+}
