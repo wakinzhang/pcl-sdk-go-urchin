@@ -3,9 +3,9 @@ package module
 import (
 	"context"
 	"encoding/xml"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	"io"
 	"os"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	"strconv"
 )
 

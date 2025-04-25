@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/urchinfs/go-urchin2-sdk/ipfs_api"
-	"os"
-	"path/filepath"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"os"
+	"path/filepath"
 	"strings"
 )
 

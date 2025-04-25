@@ -7,10 +7,10 @@ import (
 	"errors"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
-	"net"
-	"net/http"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"net"
+	"net/http"
 	"time"
 )
 

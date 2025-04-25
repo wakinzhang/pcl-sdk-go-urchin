@@ -3,6 +3,8 @@ module github.com/wakinzhang/pcl-sdk-go-urchin
 go 1.22.6
 
 require (
+	github.com/aws/aws-sdk-go-v2 v1.36.3
+	github.com/aws/aws-sdk-go-v2/credentials v1.17.67
 	github.com/google/go-querystring v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/huaweicloud/huaweicloud-sdk-go-obs v3.24.9+incompatible
@@ -16,6 +18,7 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
+	github.com/aws/smithy-go v1.22.2 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20231225121904-e25f5bc08668 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

@@ -3,49 +3,89 @@ package client
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/urchinfs/go-urchin2-sdk/ipfs_api"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"net"
 	"net/http"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strings"
 	"time"
 )
 
-type IPFS struct {
+type IPFSClient struct {
 	user       string
 	pass       string
 	passMagic  string
 	endPoint   string
-	ipfsClient *ipfs_api.HttpClient
+	ipfsSDK    *ipfs_api.HttpClient
+	ipfsClient *retryablehttp.Client
 	token      string
 }
 
-func (o *IPFS) Init(
+func (o *IPFSClient) Init(
 	ctx context.Context,
-	user, pass, passMagic, endPoint string) (err error) {
+	user,
+	pass,
+	passMagic,
+	endPoint string,
+	reqTimeout,
+	maxConnection int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"Function IPFS:Init start.",
+		"Function IPFSClient:Init start.",
 		" user: ", "***",
 		" pass: ", "***",
 		" passMagic: ", "***",
-		" endPoint: ", endPoint)
+		" endPoint: ", endPoint,
+		" reqTimeout: ", reqTimeout,
+		" maxConnection: ", maxConnection)
 	o.user = user
 	o.pass = pass
 	o.passMagic = passMagic
 	o.endPoint = endPoint
+
+	timeout := time.Duration(reqTimeout) * time.Second
+
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(
+			ctx context.Context,
+			network,
+			addr string) (net.Conn, error) {
+			dialer := &net.Dialer{
+				Timeout:   3 * time.Second,  // 连接超时时间
+				KeepAlive: 30 * time.Second, // 保持连接时长
+			}
+			return dialer.DialContext(ctx, network, addr)
+		},
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		TLSHandshakeTimeout: 10 * time.Second,
+		IdleConnTimeout:     90 * time.Second,
+		MaxIdleConnsPerHost: int(maxConnection),
+	}
+	o.ipfsClient = retryablehttp.NewClient()
+	o.ipfsClient.RetryMax = 3
+	o.ipfsClient.RetryWaitMin = 1 * time.Second
+	o.ipfsClient.RetryWaitMax = 5 * time.Second
+	o.ipfsClient.HTTPClient.Timeout = timeout
+	o.ipfsClient.HTTPClient.Transport = transport
+
 	Logger.WithContext(ctx).Debug(
-		"Function IPFS:Init finish.")
+		"Function IPFSClient:Init finish.")
 	return nil
 }
 
-func (o *IPFS) GetToken(ctx context.Context) (err error, token string) {
+func (o *IPFSClient) GetToken(
+	ctx context.Context) (
+	err error, token string) {
+
 	Logger.WithContext(ctx).Debug(
 		"Func: GetToken start.")
 	t := time.Now()
@@ -61,28 +101,7 @@ func (o *IPFS) GetToken(ctx context.Context) (err error, token string) {
 	req.ExpireTime = 3600
 	reqBody, _ := json.Marshal(req)
 
-	timeout := time.Duration(10) * time.Second
-	IPFSTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: func(
-			ctx context.Context,
-			network,
-			addr string) (net.Conn, error) {
-			dialer := &net.Dialer{
-				Timeout:   3 * time.Second,  // 连接超时时间
-				KeepAlive: 30 * time.Second, // 保持连接时长
-			}
-			return dialer.DialContext(ctx, network, addr)
-		},
-		TLSHandshakeTimeout: 10 * time.Second,
-		IdleConnTimeout:     60 * time.Second,
-		MaxIdleConnsPerHost: 10,
-	}
-	client := &http.Client{
-		Timeout:   timeout,
-		Transport: IPFSTransport,
-	}
-	resp, err := client.Post(
+	resp, err := o.ipfsClient.Post(
 		o.endPoint+IPFSAuthInterface,
 		"application/json; charset=UTF-8",
 		strings.NewReader(string(reqBody)))
@@ -123,4 +142,29 @@ func (o *IPFS) GetToken(ctx context.Context) (err error, token string) {
 	Logger.WithContext(ctx).Debug(
 		"Func: GetToken end.")
 	return nil, token
+}
+
+func (o *IPFSClient) ListObjects(
+	ctx context.Context,
+	path string) (output []*ipfs_api.LsLink, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"IPFSClient:ListObjects start.",
+		" path: ", path)
+	err, o.token = o.GetToken(ctx)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"IPFSClient.GetToken failed. error: ", err)
+		return output, err
+	}
+	o.ipfsSDK = ipfs_api.NewClient(o.endPoint, o.token)
+	output, err = o.ipfsSDK.List(path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ipfsSDK.List failed. error: ", err)
+		return output, err
+	}
+	Logger.WithContext(ctx).Debug(
+		"IPFSClient:ListObjects finish.")
+	return output, nil
 }

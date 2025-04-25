@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	"os"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"os"
 )
 
 func MigrateByProxy(

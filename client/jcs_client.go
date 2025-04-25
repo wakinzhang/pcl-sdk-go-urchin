@@ -13,12 +13,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"mime/multipart"
 	"net"
 	"net/http"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"strings"
 	"time"
 )
@@ -519,7 +519,10 @@ func (o *JCSClient) Init(
 	endPoint,
 	authService,
 	authRegion string,
-	userID, bucketID, reqTimeout, maxConnection int32) {
+	userID,
+	bucketID,
+	reqTimeout,
+	maxConnection int32) {
 
 	Logger.WithContext(ctx).Debug(
 		"Function JCSClient:Init start.",
