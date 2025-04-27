@@ -1,4 +1,4 @@
-module pcl-sdk-go-urchin
+module github.com/wakinzhang/pcl-sdk-go-urchin
 
 go 1.22.6
 

@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"os"
 	"path/filepath"
-	. "pcl-sdk-go-urchin/client"
-	. "pcl-sdk-go-urchin/common"
-	. "pcl-sdk-go-urchin/module"
 )
 
 func UploadByProxy(

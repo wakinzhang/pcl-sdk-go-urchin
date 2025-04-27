@@ -5,9 +5,9 @@ import (
 	"fmt"
 	uuid "github.com/satori/go.uuid"
 	"os"
-	. "pcl-sdk-go-urchin/client"
-	. "pcl-sdk-go-urchin/common"
-	. "pcl-sdk-go-urchin/module"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 )
 
 func MigrateByProxy(

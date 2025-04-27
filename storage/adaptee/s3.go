@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"github.com/panjf2000/ants/v2"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"os"
 	"path/filepath"
-	. "pcl-sdk-go-urchin/common"
-	. "pcl-sdk-go-urchin/module"
 	"strings"
 	"sync"
 )

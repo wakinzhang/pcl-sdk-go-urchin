@@ -3,9 +3,9 @@ package client
 import (
 	"context"
 	"github.com/studio-b12/gowebdav"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"os"
-	. "pcl-sdk-go-urchin/common"
-	. "pcl-sdk-go-urchin/module"
 	// ParaCloud "github.com/urchinfs/paracloud-sdk/paracloud"
 )
 
