@@ -1,4 +1,4 @@
-module github.com/wakinzhang/pcl-sdk-go-urchin
+module pcl-sdk-go-urchin
 
 go 1.22.6
 
@@ -8,10 +8,10 @@ require (
 	github.com/google/go-querystring v1.1.0
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/huaweicloud/huaweicloud-sdk-go-obs v3.24.9+incompatible
-	github.com/panjf2000/ants/v2 v2.11.2
+	github.com/panjf2000/ants/v2 v2.11.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/studio-b12/gowebdav v0.10.0
+	github.com/studio-b12/gowebdav v0.9.0
 	github.com/urchinfs/go-urchin2-sdk v0.1.2
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
@@ -42,7 +42,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56 // indirect
+	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sync v0.11.0 // indirect
 	golang.org/x/sys v0.26.0 // indirect

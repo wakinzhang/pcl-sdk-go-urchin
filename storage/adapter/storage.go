@@ -3,9 +3,9 @@ package adapter
 import (
 	"context"
 	"errors"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/adaptee"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
+	. "pcl-sdk-go-urchin/storage/adaptee"
 )
 
 type Storage interface {

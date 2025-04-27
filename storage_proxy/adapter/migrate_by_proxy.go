@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"os"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 )
 
 func MigrateByProxy(
-	urchinServiceAddr,
+	userId string,
+	token string,
+	urchinServiceAddr string,
 	objUuid string,
 	sourceNodeName *string,
 	targetNodeName string,
@@ -25,6 +27,8 @@ func MigrateByProxy(
 
 	Logger.WithContext(ctx).Debug(
 		"MigrateByProxy start.",
+		" userId: ", userId,
+		" token: ", "***",
 		" objUuid: ", objUuid,
 		" sourceNodeName: ", *sourceNodeName,
 		" targetNodeName: ", targetNodeName,
@@ -33,12 +37,14 @@ func MigrateByProxy(
 
 	UClient.Init(
 		ctx,
+		userId,
+		token,
 		urchinServiceAddr,
 		DefaultUClientReqTimeout,
 		DefaultUClientMaxConnection)
 
 	migrateObjectReq := new(MigrateObjectReq)
-	migrateObjectReq.UserId = DefaultUrchinClientUserId
+	migrateObjectReq.UserId = userId
 	migrateObjectReq.ObjUuid = objUuid
 	if nil != sourceNodeName {
 		migrateObjectReq.SourceNodeName = sourceNodeName
@@ -123,7 +129,8 @@ func ProcessMigrateByProxy(
 		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" migrateCachePath: ", migrateCachePath, " err: ", _err)
+				" migrateCachePath: ", migrateCachePath,
+				" err: ", _err)
 		}
 		_err = os.Remove(migrateDownloadFinishFile)
 		if nil != _err {
@@ -146,7 +153,8 @@ func ProcessMigrateByProxy(
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" migrateCachePath: ", migrateCachePath, " err: ", err)
+				" migrateCachePath: ", migrateCachePath,
+				" err: ", err)
 			return err
 		}
 		err = os.Remove(migrateDownloadFinishFile)

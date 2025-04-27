@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/urchinfs/go-urchin2-sdk/ipfs_api"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"net"
 	"net/http"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 	"strings"
 	"time"
 )

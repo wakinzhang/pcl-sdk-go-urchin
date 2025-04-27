@@ -472,16 +472,18 @@ type MigrateObjectTaskParams struct {
 	SourceNodeType int32 `protobuf:"varint,4,opt,name=source_node_type,proto3" json:"source_node_type"`
 	// @inject_tag: json:"source_bucket_name"
 	SourceBucketName string `protobuf:"bytes,5,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
+	// @inject_tag: json:"source_location"
+	SourceLocation string `protobuf:"bytes,6,opt,name=source_location,proto3" json:"source_location"`
 	// @inject_tag: json:"target_node_id"
-	TargetNodeId int32 `protobuf:"varint,6,opt,name=target_node_id,proto3" json:"target_node_id"`
+	TargetNodeId int32 `protobuf:"varint,7,opt,name=target_node_id,proto3" json:"target_node_id"`
 	// @inject_tag: json:"target_node_name"
-	TargetNodeName string `protobuf:"bytes,7,opt,name=target_node_name,proto3" json:"target_node_name"`
+	TargetNodeName string `protobuf:"bytes,8,opt,name=target_node_name,proto3" json:"target_node_name"`
 	// @inject_tag: json:"target_node_type"
-	TargetNodeType int32 `protobuf:"varint,8,opt,name=target_node_type,proto3" json:"target_node_type"`
-	// @inject_tag: json:"location"
-	Location string `protobuf:"bytes,9,opt,name=location,proto3" json:"location"`
+	TargetNodeType int32 `protobuf:"varint,9,opt,name=target_node_type,proto3" json:"target_node_type"`
+	// @inject_tag: json:"target_location"
+	TargetLocation string `protobuf:"bytes,10,opt,name=target_location,proto3" json:"target_location"`
 	// @inject_tag: json:"data_object_type"
-	DataObjectType int32 `protobuf:"varint,10,opt,name=data_object_type,proto3" json:"data_object_type"`
+	DataObjectType int32 `protobuf:"varint,11,opt,name=data_object_type,proto3" json:"data_object_type"`
 }
 
 type MigrateObjectResp struct {
@@ -491,14 +493,22 @@ type MigrateObjectResp struct {
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source_node_id"
+	SourceNodeId int32 `protobuf:"varint,4,opt,name=source_node_id,proto3" json:"source_node_id"`
+	// @inject_tag: json:"source_node_name"
+	SourceNodeName string `protobuf:"bytes,5,opt,name=source_node_name,proto3" json:"source_node_name"`
 	// @inject_tag: json:"source_node_type"
-	SourceNodeType int32 `protobuf:"varint,4,opt,name=source_node_type,proto3" json:"source_node_type"`
+	SourceNodeType int32 `protobuf:"varint,6,opt,name=source_node_type,proto3" json:"source_node_type"`
 	// @inject_tag: json:"source_bucket_name"
-	SourceBucketName string `protobuf:"bytes,5,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
+	SourceBucketName string `protobuf:"bytes,7,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
+	// @inject_tag: json:"target_node_id"
+	TargetNodeId int32 `protobuf:"varint,8,opt,name=target_node_id,proto3" json:"target_node_id"`
+	// @inject_tag: json:"target_node_name"
+	TargetNodeName string `protobuf:"bytes,9,opt,name=target_node_name,proto3" json:"target_node_name"`
 	// @inject_tag: json:"target_node_type"
-	TargetNodeType int32 `protobuf:"varint,6,opt,name=target_node_type,proto3" json:"target_node_type"`
+	TargetNodeType int32 `protobuf:"varint,10,opt,name=target_node_type,proto3" json:"target_node_type"`
 	// @inject_tag: json:"data_object_type"
-	DataObjectType int32 `protobuf:"varint,7,opt,name=data_object_type,proto3" json:"data_object_type"`
+	DataObjectType int32 `protobuf:"varint,11,opt,name=data_object_type,proto3" json:"data_object_type"`
 }
 
 type PutObjectDeploymentReq struct {
@@ -654,8 +664,10 @@ type StorageNodeConfig struct {
 	ClusterId string `protobuf:"bytes,13,opt,name=cluster_id,proto3" json:"cluster_id"`
 	// @inject_tag: json:"org_id"
 	OrgId string `protobuf:"bytes,14,opt,name=org_id,proto3" json:"org_id"`
+	// @inject_tag: json:"pass_magic"
+	PassMagic string `protobuf:"bytes,15,opt,name=pass_magic,proto3" json:"pass_magic"`
 	// @inject_tag: json:"req_timeout"
-	ReqTimeout int32 `protobuf:"varint,15,opt,name=req_timeout,proto3" json:"req_timeout"`
+	ReqTimeout int32 `protobuf:"varint,16,opt,name=req_timeout,proto3" json:"req_timeout"`
 	// @inject_tag: json:"max_connection"
-	MaxConnection int32 `protobuf:"varint,16,opt,name=max_connection,proto3" json:"max_connection"`
+	MaxConnection int32 `protobuf:"varint,17,opt,name=max_connection,proto3" json:"max_connection"`
 }

@@ -9,13 +9,13 @@ import (
 	"fmt"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"github.com/panjf2000/ants/v2"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 	"sort"
 	"strconv"
 	"strings"
@@ -795,9 +795,7 @@ func (o *S3Proxy) Upload(
 			" err: ", err)
 		return err
 	}
-	var isDir = false
 	if stat.IsDir() {
-		isDir = true
 		err = o.uploadFolder(ctx, sourcePath, taskId, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -827,57 +825,6 @@ func (o *S3Proxy) Upload(
 		}
 	}
 
-	getTaskReq := new(GetTaskReq)
-	getTaskReq.TaskId = &taskId
-	getTaskReq.PageIndex = DefaultPageIndex
-	getTaskReq.PageSize = DefaultPageSize
-
-	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"UrchinClient.GetTask failed.",
-			" err: ", err)
-		return err
-	}
-	if len(getTaskResp.Data.List) == 0 {
-		Logger.WithContext(ctx).Error(
-			"task not exist. taskId: ", taskId)
-		return errors.New("task not exist")
-	}
-
-	task := getTaskResp.Data.List[0].Task
-	if TaskTypeMigrate == task.Type {
-		migrateObjectTaskParams := new(MigrateObjectTaskParams)
-		err = json.Unmarshal([]byte(task.Params), migrateObjectTaskParams)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"MigrateObjectTaskParams Unmarshal failed.",
-				" params: ", task.Params,
-				" err: ", err)
-			return err
-		}
-		objUuid := migrateObjectTaskParams.Request.ObjUuid
-		nodeName := migrateObjectTaskParams.Request.TargetNodeName
-		var location string
-		if isDir {
-			location = objUuid + "/" + filepath.Base(sourcePath) + "/"
-		} else {
-			location = objUuid + "/" + filepath.Base(sourcePath)
-		}
-
-		putObjectDeploymentReq := new(PutObjectDeploymentReq)
-		putObjectDeploymentReq.ObjUuid = objUuid
-		putObjectDeploymentReq.NodeName = nodeName
-		putObjectDeploymentReq.Location = &location
-
-		err, _ = UClient.PutObjectDeployment(ctx, putObjectDeploymentReq)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"UrchinClient.PutObjectDeployment failed.",
-				" err: ", err)
-			return err
-		}
-	}
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Upload finish.")
 	return nil

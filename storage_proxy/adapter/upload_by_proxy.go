@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"os"
 	"path/filepath"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 )
 
 func UploadByProxy(
+	userId string,
+	token string,
 	urchinServiceAddr,
 	sourcePath,
 	objectName string) (err error) {
@@ -22,16 +24,22 @@ func UploadByProxy(
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
 	Logger.WithContext(ctx).Debug(
-		"UploadByProxy start. sourcePath: ", sourcePath)
+		"UploadByProxy start.",
+		" userId: ", userId,
+		" token: ", "***",
+		" sourcePath: ", sourcePath,
+		" objectName: ", objectName)
 
 	UClient.Init(
 		ctx,
+		userId,
+		token,
 		urchinServiceAddr,
 		DefaultUClientReqTimeout,
 		DefaultUClientMaxConnection)
 
 	uploadObjectReq := new(UploadObjectReq)
-	uploadObjectReq.UserId = DefaultUrchinClientUserId
+	uploadObjectReq.UserId = userId
 	uploadObjectReq.Name = objectName
 
 	stat, err := os.Stat(sourcePath)

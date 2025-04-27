@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 )
 
 func DownloadFileByProxy(
+	userId string,
+	token string,
 	urchinServiceAddr,
 	objUuid,
 	source,
@@ -22,18 +24,22 @@ func DownloadFileByProxy(
 
 	Logger.WithContext(ctx).Debug(
 		"DownloadFileByProxy start.",
+		" userId: ", userId,
+		" token: ", "***",
 		" objUuid: ", objUuid,
 		" source: ", source,
 		" targetPath: ", targetPath)
 
 	UClient.Init(
 		ctx,
+		userId,
+		token,
 		urchinServiceAddr,
 		DefaultUClientReqTimeout,
 		DefaultUClientMaxConnection)
 
 	downloadFileReq := new(DownloadFileReq)
-	downloadFileReq.UserId = DefaultUrchinClientUserId
+	downloadFileReq.UserId = userId
 	downloadFileReq.ObjUuid = objUuid
 	downloadFileReq.Source = source
 	downloadFileReq.TargetLocalPath = targetPath

@@ -7,10 +7,10 @@ import (
 	"errors"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"net"
 	"net/http"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 	"time"
 )
 
@@ -24,12 +24,16 @@ type UrchinClient struct {
 
 func (u *UrchinClient) Init(
 	ctx context.Context,
+	userId string,
+	token string,
 	address string,
 	reqTimeout int64,
 	maxConnection int) {
 
 	Logger.WithContext(ctx).Debug(
 		"UrchinClient:Init start.",
+		" userId: ", userId,
+		" token: ", "***",
 		" address: ", address,
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
@@ -63,8 +67,6 @@ func (u *UrchinClient) Init(
 	u.urchinClient.HTTPClient.Transport = transport
 	u.urchinClient.HTTPClient.Timeout = timeout
 
-	userId := DefaultUrchinClientUserId
-	token := DefaultUrchinClientToken
 	requestId := ctx.Value("X-Request-Id").(string)
 	u.header = make(http.Header)
 	u.header.Add(UrchinClientHeaderUserId, userId)

@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 )
 
 func DownloadByProxy(
+	userId string,
+	token string,
 	urchinServiceAddr,
 	objUuid,
 	targetPath string) (err error) {
@@ -21,17 +23,21 @@ func DownloadByProxy(
 
 	Logger.WithContext(ctx).Debug(
 		"DownloadByProxy start.",
+		" userId: ", userId,
+		" token: ", "***",
 		" targetPath: ", targetPath,
 		" objUuid: ", objUuid)
 
 	UClient.Init(
 		ctx,
+		userId,
+		token,
 		urchinServiceAddr,
 		DefaultUClientReqTimeout,
 		DefaultUClientMaxConnection)
 
 	downloadObjectReq := new(DownloadObjectReq)
-	downloadObjectReq.UserId = DefaultUrchinClientUserId
+	downloadObjectReq.UserId = userId
 	downloadObjectReq.ObjUuid = objUuid
 	downloadObjectReq.TargetLocalPath = targetPath
 
