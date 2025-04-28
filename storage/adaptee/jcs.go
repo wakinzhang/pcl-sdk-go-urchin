@@ -1158,7 +1158,7 @@ func (o *JCS) Download(
 			continuationToken)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"jcsClient:List start.",
+				"jcsClient:List failed.",
 				" packageId: ", packageId,
 				" sourcePath: ", sourcePath,
 				" continuationToken: ", continuationToken,

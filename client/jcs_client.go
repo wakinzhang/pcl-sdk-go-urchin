@@ -1309,7 +1309,7 @@ func (o *JCSClient) List(
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
 	reqHttp, err := http.NewRequest(
-		http.MethodPost,
+		http.MethodGet,
 		url,
 		nil)
 	if err != nil {
