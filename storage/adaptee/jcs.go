@@ -1095,6 +1095,7 @@ func (task *JCSUploadPartTask) Run(
 	readerWrapper := new(ReaderWrapper)
 	readerWrapper.Reader = fd
 
+	readerWrapper.TotalCount = task.PartSize
 	readerWrapper.Mark = task.Offset
 	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
 		Logger.WithContext(ctx).Error(

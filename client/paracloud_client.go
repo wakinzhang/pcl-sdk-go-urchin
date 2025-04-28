@@ -99,9 +99,6 @@ func (o *ParaCloudClient) Upload(
 		}
 	}()
 
-	readerWrapper := new(ReaderWrapper)
-	readerWrapper.Reader = fd
-
 	stat, err := os.Stat(sourceFile)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -110,6 +107,12 @@ func (o *ParaCloudClient) Upload(
 			" err: ", err)
 		return err
 	}
+
+	readerWrapper := new(ReaderWrapper)
+	readerWrapper.Reader = fd
+
+	readerWrapper.TotalCount = stat.Size()
+	readerWrapper.Mark = 0
 
 	err = o.pcClient.WriteStream(targetFile, readerWrapper, stat.Mode())
 	if nil != err {
