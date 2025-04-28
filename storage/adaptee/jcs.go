@@ -674,6 +674,7 @@ func (o *JCS) resumeUpload(
 	if needCheckpoint {
 		err = o.prepareUpload(
 			ctx,
+			packageId,
 			objectPath,
 			ufc,
 			uploadFileStat,
@@ -759,6 +760,7 @@ func (o *JCS) uploadPartConcurrent(
 		}
 		task := JCSUploadPartTask{
 			ObjectId:         ufc.ObjectId,
+			ObjectPath:       ufc.ObjectPath,
 			PartNumber:       uploadPart.PartNumber,
 			SourceFile:       input.UploadFile,
 			Offset:           uploadPart.Offset,
@@ -867,6 +869,7 @@ func (o *JCS) getUploadCheckpointFile(
 
 func (o *JCS) prepareUpload(
 	ctx context.Context,
+	packageId int32,
 	objectPath string,
 	ufc *JCSUploadCheckpoint,
 	uploadFileStat os.FileInfo,
@@ -874,8 +877,23 @@ func (o *JCS) prepareUpload(
 
 	Logger.WithContext(ctx).Debug(
 		"JCS:prepareUpload start.",
+		" packageId: ", packageId,
 		" objectPath: ", objectPath)
 
+	newMultipartUploadOutput, err := o.jcsClient.NewMultiPartUpload(
+		ctx,
+		packageId,
+		objectPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"JCSProxy:NewMultipartUploadWithSignedUrl failed.",
+			" packageId: ", packageId,
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
+	ufc.ObjectId = newMultipartUploadOutput.Data.Object.ObjectID
 	ufc.ObjectPath = objectPath
 	ufc.UploadFile = input.UploadFile
 	ufc.FileInfo = JCSFileStatus{}

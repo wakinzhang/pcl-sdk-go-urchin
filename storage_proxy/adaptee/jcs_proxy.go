@@ -922,6 +922,7 @@ func (o *JCSProxy) uploadPartConcurrent(
 		}
 		task := JCSProxyUploadPartTask{
 			ObjectId:         ufc.ObjectId,
+			ObjectPath:       ufc.ObjectPath,
 			PartNumber:       uploadPart.PartNumber,
 			SourceFile:       input.UploadFile,
 			Offset:           uploadPart.Offset,
