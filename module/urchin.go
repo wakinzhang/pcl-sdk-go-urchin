@@ -501,14 +501,18 @@ type MigrateObjectResp struct {
 	SourceNodeType int32 `protobuf:"varint,6,opt,name=source_node_type,proto3" json:"source_node_type"`
 	// @inject_tag: json:"source_bucket_name"
 	SourceBucketName string `protobuf:"bytes,7,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
+	// @inject_tag: json:"source_location"
+	SourceLocation string `protobuf:"bytes,8,opt,name=source_location,proto3" json:"source_location"`
 	// @inject_tag: json:"target_node_id"
-	TargetNodeId int32 `protobuf:"varint,8,opt,name=target_node_id,proto3" json:"target_node_id"`
+	TargetNodeId int32 `protobuf:"varint,9,opt,name=target_node_id,proto3" json:"target_node_id"`
 	// @inject_tag: json:"target_node_name"
-	TargetNodeName string `protobuf:"bytes,9,opt,name=target_node_name,proto3" json:"target_node_name"`
+	TargetNodeName string `protobuf:"bytes,10,opt,name=target_node_name,proto3" json:"target_node_name"`
 	// @inject_tag: json:"target_node_type"
-	TargetNodeType int32 `protobuf:"varint,10,opt,name=target_node_type,proto3" json:"target_node_type"`
+	TargetNodeType int32 `protobuf:"varint,11,opt,name=target_node_type,proto3" json:"target_node_type"`
+	// @inject_tag: json:"target_location"
+	TargetLocation string `protobuf:"bytes,12,opt,name=target_location,proto3" json:"target_location"`
 	// @inject_tag: json:"data_object_type"
-	DataObjectType int32 `protobuf:"varint,11,opt,name=data_object_type,proto3" json:"data_object_type"`
+	DataObjectType int32 `protobuf:"varint,13,opt,name=data_object_type,proto3" json:"data_object_type"`
 }
 
 type PutObjectDeploymentReq struct {

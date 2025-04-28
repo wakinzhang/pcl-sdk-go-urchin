@@ -6,35 +6,39 @@ import (
 	//. "github.com/wakinzhang/pcl-sdk-go-urchin/operation"
 )
 
-var urchinServiceAddr = "https://127.0.0.1:39256"
+var (
+	logPath           = "./logs"
+	logFile           = "urchin-sdk-access.log"
+	urchinServiceAddr = "https://127.0.0.1:39256"
+)
 
 func main() {
-	InitLog(6)
+	InitLog(logPath, logFile, 6)
 
 	/*上传数据对象*/
-	/*
-		var objectName = "wakinzhang-test-obj"
-		var sourcePath = "/Users/zhangjiayuan/Downloads/source"
-
-		_ = UploadByProxy(
-			DefaultUrchinClientUserId,
-			DefaultUrchinClientToken,
-			urchinServiceAddr,
-			sourcePath,
-			objectName)
-	*/
-
-	/*下载数据对象*/
 	/**/
-	var objUuid = ""
-	var targetPath = "/Users/zhangjiayuan/Downloads/target/"
+	var objectName = "wakinzhang-test-obj-20250428-1"
+	var sourcePath = "/Users/zhangjiayuan/Downloads/source/test.zip"
 
-	_ = DownloadByProxy(
+	_ = UploadByProxy(
 		DefaultUrchinClientUserId,
 		DefaultUrchinClientToken,
 		urchinServiceAddr,
-		objUuid,
-		targetPath)
+		sourcePath,
+		objectName)
+
+	/*下载数据对象*/
+	/*
+		var objUuid = ""
+		var targetPath = "/Users/zhangjiayuan/Downloads/target/"
+
+		_ = DownloadByProxy(
+			DefaultUrchinClientUserId,
+			DefaultUrchinClientToken,
+			urchinServiceAddr,
+			objUuid,
+			targetPath)
+	*/
 
 	/*迁移数据对象，可不清理断点续传信息，可重试迁移，needPure默认置false*/
 	/*

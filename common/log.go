@@ -7,11 +7,6 @@ import (
 	"path"
 )
 
-var (
-	logPath = "./logs"
-	logFile = "urchin-sdk-access.log"
-)
-
 type RequestIDHook struct{}
 
 func (h *RequestIDHook) Levels() []logrus.Level {
@@ -48,7 +43,7 @@ func (hook *RequestIdHook) Levels() []logrus.Level {
 }
 
 // InitLog 日志初始化
-func InitLog(LogLevel int64) {
+func InitLog(logPath, logFile string, LogLevel int64) {
 	// 打开文件
 	logFileName := path.Join(logPath, logFile)
 	// 使用滚动压缩方式记录日志
