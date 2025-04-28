@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -374,73 +375,90 @@ func (o *ScowClient) Upload(
 		return err
 	}
 
-	url := o.endpoint + ScowUploadInterface
+	url := o.endpoint + ScowUploadInterface + "?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Upload request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		" url: ", url)
 
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
-	go func() {
-		defer func() {
-			errMsg := pw.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close io.Pipe pw failed.",
-					" err: ", errMsg)
-			}
-			errMsg = writer.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close multipart.Writer failed.",
-					" err: ", errMsg)
-			}
-		}()
-
-		part, err := writer.CreateFormFile(
-			ScowMultiPartFormFiledFile,
-			fileName)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"writer.CreateFormFile failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-		_, err = io.Copy(part, data)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"io.Copy failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-	}()
-
-	header := make(http.Header)
-	header.Add(ScowHttpHeaderAuth, o.token)
-	header.Add(HttpHeaderContentType, writer.FormDataContentType())
-
-	err, respBody := Do(
-		ctx,
-		url+"?"+values.Encode(),
-		http.MethodPost,
-		header,
-		pr,
-		o.scowClient)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(
+		ScowMultiPartFormFiledFile,
+		fileName)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
+			"writer.CreateFormFile failed.",
 			" err: ", err)
 		return err
 	}
+	_, err = io.Copy(part, data)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.Copy failed.",
+			" err: ", err)
+		return err
+	}
+
+	err = writer.Close()
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"writer.Close failed.",
+			" err: ", err)
+		return err
+	}
+
+	reqHttp, err := http.NewRequest(
+		http.MethodPost,
+		url,
+		body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.NewRequest failed.",
+			" err: ", err)
+		return err
+	}
+	reqHttp.Header.Set(ScowHttpHeaderAuth, o.token)
+	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
+
+	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"retryablehttp.FromRequest failed.",
+			" err: ", err)
+		return err
+	}
+
+	response, err := o.scowClient.Do(reqRetryableHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"scowClient.Do failed.",
+			" err: ", err)
+		return err
+	}
+
+	defer func(body io.ReadCloser) {
+		_err := body.Close()
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"io.ReadCloser failed.",
+				" err: ", _err)
+		}
+	}(response.Body)
+
+	respBodyBuf, err := io.ReadAll(response.Body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.ReadAll failed.",
+			" err: ", err)
+		return err
+	}
+
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"response: ", string(respBodyBuf))
 
 	resp := new(ScowBaseResponse)
-	err = json.Unmarshal(respBody, resp)
+	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
@@ -496,78 +514,95 @@ func (o *ScowClient) UploadChunks(
 		return err
 	}
 
-	url := o.endpoint + ScowUploadChunksInterface
+	url := o.endpoint + ScowUploadChunksInterface + "?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		" url: ", url)
 
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
-	go func() {
-		defer func() {
-			errMsg := pw.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close io.Pipe pw failed.",
-					" err: ", errMsg)
-			}
-			errMsg = writer.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close multipart.Writer failed.",
-					" err: ", errMsg)
-			}
-		}()
-
-		fileMd5Name := fmt.Sprintf("%s_%d.%s", md5, partNum, fileName)
-		_ = writer.WriteField(
-			ScowMultiPartFormFiledFileMd5Name,
-			fileMd5Name)
-
-		part, err := writer.CreateFormFile(
-			ScowMultiPartFormFiledFile,
-			fileName)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"writer.CreateFormFile failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-		_, err = io.Copy(part, data)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"io.Copy failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-	}()
-
-	header := make(http.Header)
-	header.Add(ScowHttpHeaderAuth, o.token)
-	header.Add(HttpHeaderContentType, writer.FormDataContentType())
-
-	err, respBody := Do(
-		ctx,
-		url+"?"+values.Encode(),
-		http.MethodPost,
-		header,
-		pr,
-		o.scowClient)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(
+		ScowMultiPartFormFiledFile,
+		fileName)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
+			"writer.CreateFormFile failed.",
 			" err: ", err)
 		return err
 	}
+	_, err = io.Copy(part, data)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.Copy failed.",
+			" err: ", err)
+		return err
+	}
+
+	fileMd5Name := fmt.Sprintf("%s_%d.%s", md5, partNum, fileName)
+	_ = writer.WriteField(
+		ScowMultiPartFormFiledFileMd5Name,
+		fileMd5Name)
+
+	err = writer.Close()
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"writer.Close failed.",
+			" err: ", err)
+		return err
+	}
+
+	reqHttp, err := http.NewRequest(
+		http.MethodPost,
+		url,
+		body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.NewRequest failed.",
+			" err: ", err)
+		return err
+	}
+	reqHttp.Header.Set(ScowHttpHeaderAuth, o.token)
+	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
+
+	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"retryablehttp.FromRequest failed.",
+			" err: ", err)
+		return err
+	}
+
+	response, err := o.scowClient.Do(reqRetryableHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"scowClient.Do failed.",
+			" err: ", err)
+		return err
+	}
+
+	defer func(body io.ReadCloser) {
+		_err := body.Close()
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"io.ReadCloser failed.",
+				" err: ", _err)
+		}
+	}(response.Body)
+
+	respBodyBuf, err := io.ReadAll(response.Body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.ReadAll failed.",
+			" err: ", err)
+		return err
+	}
+
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"response: ", string(respBodyBuf))
 
 	resp := new(ScowBaseResponse)
-	err = json.Unmarshal(respBody, resp)
+	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",

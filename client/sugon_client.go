@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -438,78 +439,96 @@ func (o *SugonClient) Upload(
 		"SugonClient:Upload request.",
 		" url: ", url)
 
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
-	go func() {
-		defer func() {
-			errMsg := pw.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close io.Pipe pw failed.",
-					" err: ", errMsg)
-			}
-			errMsg = writer.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close multipart.Writer failed.",
-					" err: ", errMsg)
-			}
-		}()
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledCover,
-			SugonMultiPartFormFiledCoverECover)
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledFileName,
-			fileName)
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledPath,
-			path)
-
-		part, err := writer.CreateFormFile(
-			SugonMultiPartFormFiledFile,
-			fileName)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"writer.CreateFormFile failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-		_, err = io.Copy(part, data)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"io.Copy failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-	}()
-
-	header := make(http.Header)
-	header.Add(SugonHttpHeaderToken, o.token)
-	header.Add(HttpHeaderContentType, writer.FormDataContentType())
-
-	err, respBody := Do(
-		ctx,
-		url,
-		http.MethodPost,
-		header,
-		pr,
-		o.sugonClient)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(
+		SugonMultiPartFormFiledFile,
+		fileName)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
+			"writer.CreateFormFile failed.",
 			" err: ", err)
 		return err
 	}
+	_, err = io.Copy(part, data)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.Copy failed.",
+			" err: ", err)
+		return err
+	}
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledCover,
+		SugonMultiPartFormFiledCoverECover)
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledFileName,
+		fileName)
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledPath,
+		path)
+
+	err = writer.Close()
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"writer.Close failed.",
+			" err: ", err)
+		return err
+	}
+
+	reqHttp, err := http.NewRequest(
+		http.MethodPost,
+		url,
+		body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.NewRequest failed.",
+			" err: ", err)
+		return err
+	}
+	reqHttp.Header.Set(SugonHttpHeaderToken, o.token)
+	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
+
+	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"retryablehttp.FromRequest failed.",
+			" err: ", err)
+		return err
+	}
+
+	response, err := o.sugonClient.Do(reqRetryableHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sugonClient.Do failed.",
+			" err: ", err)
+		return err
+	}
+
+	defer func(body io.ReadCloser) {
+		_err := body.Close()
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"io.ReadCloser failed.",
+				" err: ", _err)
+		}
+	}(response.Body)
+
+	respBodyBuf, err := io.ReadAll(response.Body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.ReadAll failed.",
+			" err: ", err)
+		return err
+	}
+
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"response: ", string(respBodyBuf))
 
 	resp := new(SugonBaseResponse)
-	err = json.Unmarshal(respBody, resp)
+	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
@@ -571,102 +590,120 @@ func (o *SugonClient) UploadChunks(
 		"SugonClient:UploadChunks request.",
 		" url: ", url)
 
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
-	go func() {
-		defer func() {
-			errMsg := pw.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close io.Pipe pw failed.",
-					" err: ", errMsg)
-			}
-			errMsg = writer.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close multipart.Writer failed.",
-					" err: ", errMsg)
-			}
-		}()
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledChunkNumber,
-			strconv.FormatInt(int64(chunkNumber), 10))
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledCover,
-			SugonMultiPartFormFiledCoverECover)
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledFileName,
-			fileName)
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledPath,
-			path)
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledRelativePath,
-			relativePath)
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledTotalChunks,
-			strconv.FormatInt(int64(totalChunks), 10))
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledTotalSize,
-			strconv.FormatInt(totalSize, 10))
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledChunkSize,
-			strconv.FormatInt(chunkSize, 10))
-
-		_ = writer.WriteField(
-			SugonMultiPartFormFiledCurrentChunkSize,
-			strconv.FormatInt(currentChunkSize, 10))
-
-		part, err := writer.CreateFormFile(
-			SugonMultiPartFormFiledFile,
-			fileName)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"writer.CreateFormFile failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-		_, err = io.Copy(part, data)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"io.Copy failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-	}()
-
-	header := make(http.Header)
-	header.Add(SugonHttpHeaderToken, o.token)
-	header.Add(HttpHeaderContentType, writer.FormDataContentType())
-
-	err, respBody := Do(
-		ctx,
-		url,
-		http.MethodPost,
-		header,
-		pr,
-		o.sugonClient)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(
+		SugonMultiPartFormFiledFile,
+		fileName)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
+			"writer.CreateFormFile failed.",
 			" err: ", err)
 		return err
 	}
+	_, err = io.Copy(part, data)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.Copy failed.",
+			" err: ", err)
+		return err
+	}
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledChunkNumber,
+		strconv.FormatInt(int64(chunkNumber), 10))
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledCover,
+		SugonMultiPartFormFiledCoverECover)
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledFileName,
+		fileName)
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledPath,
+		path)
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledRelativePath,
+		relativePath)
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledTotalChunks,
+		strconv.FormatInt(int64(totalChunks), 10))
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledTotalSize,
+		strconv.FormatInt(totalSize, 10))
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledChunkSize,
+		strconv.FormatInt(chunkSize, 10))
+
+	_ = writer.WriteField(
+		SugonMultiPartFormFiledCurrentChunkSize,
+		strconv.FormatInt(currentChunkSize, 10))
+
+	err = writer.Close()
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"writer.Close failed.",
+			" err: ", err)
+		return err
+	}
+
+	reqHttp, err := http.NewRequest(
+		http.MethodPost,
+		url,
+		body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.NewRequest failed.",
+			" err: ", err)
+		return err
+	}
+	reqHttp.Header.Set(SugonHttpHeaderToken, o.token)
+	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
+
+	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"retryablehttp.FromRequest failed.",
+			" err: ", err)
+		return err
+	}
+
+	response, err := o.sugonClient.Do(reqRetryableHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sugonClient.Do failed.",
+			" err: ", err)
+		return err
+	}
+
+	defer func(body io.ReadCloser) {
+		_err := body.Close()
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"io.ReadCloser failed.",
+				" err: ", _err)
+		}
+	}(response.Body)
+
+	respBodyBuf, err := io.ReadAll(response.Body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.ReadAll failed.",
+			" err: ", err)
+		return err
+	}
+
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"response: ", string(respBodyBuf))
 
 	resp := new(SugonBaseResponse)
-	err = json.Unmarshal(respBody, resp)
+	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
