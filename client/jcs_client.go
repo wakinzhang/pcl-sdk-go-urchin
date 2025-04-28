@@ -1674,62 +1674,105 @@ func (o *JCSClient) UploadPart(
 		"JCSClient:UploadPart request.",
 		" url: ", url)
 
-	pr, pw := io.Pipe()
-	writer := multipart.NewWriter(pw)
-	go func() {
-		defer func() {
-			errMsg := pw.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close io.Pipe pw failed.",
-					" err: ", errMsg)
+	/*
+		pr, pw := io.Pipe()
+		writer := multipart.NewWriter(pw)
+		go func() {
+			defer func() {
+				errMsg := pw.Close()
+				if errMsg != nil {
+					Logger.WithContext(ctx).Warn(
+						"close io.Pipe pw failed.",
+						" err: ", errMsg)
+				}
+				errMsg = writer.Close()
+				if errMsg != nil {
+					Logger.WithContext(ctx).Warn(
+						"close multipart.Writer failed.",
+						" err: ", errMsg)
+				}
+			}()
+
+			_ = writer.WriteField(
+				JCSMultiPartFormFiledInfo,
+				string(info))
+
+			part, err := writer.CreateFormFile(
+				JCSMultiPartFormFiledFile,
+				path)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"writer.CreateFormFile failed.",
+					" err: ", err)
+				_ = pw.CloseWithError(err)
+				return
 			}
-			errMsg = writer.Close()
-			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
-					"close multipart.Writer failed.",
-					" err: ", errMsg)
+			_, err = io.Copy(part, data)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"io.Copy failed.",
+					" err: ", err)
+				_ = pw.CloseWithError(err)
+				return
 			}
 		}()
 
-		_ = writer.WriteField(
-			JCSMultiPartFormFiledInfo,
-			string(info))
+		header := make(http.Header)
+		header.Add(HttpHeaderContentType, writer.FormDataContentType())
 
-		part, err := writer.CreateFormFile(
-			JCSMultiPartFormFiledFile,
-			path)
+		reqHttp, err := http.NewRequest(
+			http.MethodPost,
+			url,
+			pr)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"writer.CreateFormFile failed.",
+				"http.NewRequest failed.",
 				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
+			return err
 		}
-		_, err = io.Copy(part, data)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"io.Copy failed.",
-				" err: ", err)
-			_ = pw.CloseWithError(err)
-			return
-		}
-	}()
+		reqHttp.Header = header
+	*/
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile(
+		JCSMultiPartFormFiledFile,
+		path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"writer.CreateFormFile failed.",
+			" err: ", err)
+		return err
+	}
+	_, err = io.Copy(part, data)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.Copy failed.",
+			" err: ", err)
+		return err
+	}
+	_ = writer.WriteField(
+		JCSMultiPartFormFiledInfo,
+		string(info))
 
-	header := make(http.Header)
-	header.Add(HttpHeaderContentType, writer.FormDataContentType())
+	err = writer.Close()
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"writer.Close failed.",
+			" err: ", err)
+		return err
+	}
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
 		url,
-		pr)
+		body)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
 			" err: ", err)
 		return err
 	}
-	reqHttp.Header = header
+	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
