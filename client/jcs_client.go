@@ -1910,7 +1910,7 @@ func (o *JCSClient) DownloadPart(
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
 	reqHttp, err := http.NewRequest(
-		http.MethodPost,
+		http.MethodGet,
 		url,
 		nil)
 	if err != nil {
