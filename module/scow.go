@@ -218,6 +218,7 @@ type ScowDownloadPartOutput struct {
 
 type ScowDownloadCheckpoint struct {
 	XMLName       xml.Name               `xml:"DownloadFileCheckpoint"`
+	ObjectPath    string                 `xml:"ObjectPath"`
 	DownloadFile  string                 `xml:"FileUrl"`
 	ObjectInfo    ScowObjectInfo         `xml:"ObjectInfo"`
 	TempFileInfo  ScowTempFileInfo       `xml:"TempFileInfo"`

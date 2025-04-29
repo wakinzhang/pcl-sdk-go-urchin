@@ -1378,6 +1378,7 @@ func (o *Scow) resumeDownload(
 	}
 
 	if needCheckpoint {
+		dfc.ObjectPath = object.Name
 		dfc.DownloadFile = input.DownloadFile
 		dfc.ObjectInfo = ScowObjectInfo{}
 		dfc.ObjectInfo.Size = object.Size
@@ -1492,6 +1493,7 @@ func (o *Scow) downloadFileConcurrent(
 		contentRange := fmt.Sprintf("bytes=%d-%d", begin, end)
 
 		task := ScowDownloadPartTask{
+			ObjectPath:       dfc.ObjectPath,
 			DownloadFile:     dfc.DownloadFile,
 			Offset:           downloadPart.Offset,
 			Length:           downloadPart.Length,
@@ -1932,6 +1934,7 @@ func (o *Scow) UpdateDownloadFile(
 }
 
 type ScowDownloadPartTask struct {
+	ObjectPath       string
 	DownloadFile     string
 	Offset           int64
 	Length           int64
@@ -1953,7 +1956,7 @@ func (task *ScowDownloadPartTask) Run(
 	err, downloadPartOutput :=
 		task.SClient.DownloadChunks(
 			ctx,
-			task.DownloadFile,
+			task.ObjectPath,
 			task.Range)
 
 	if nil == err {

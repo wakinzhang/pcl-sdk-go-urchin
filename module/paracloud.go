@@ -63,6 +63,7 @@ type PCDownloadFileInput struct {
 
 type PCDownloadCheckpoint struct {
 	XMLName       xml.Name             `xml:"DownloadFileCheckpoint"`
+	ObjectPath    string               `xml:"ObjectPath"`
 	DownloadFile  string               `xml:"FileUrl"`
 	ObjectInfo    PCObjectInfo         `xml:"ObjectInfo"`
 	TempFileInfo  PCTempFileInfo       `xml:"TempFileInfo"`

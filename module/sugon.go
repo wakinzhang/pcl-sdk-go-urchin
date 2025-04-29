@@ -241,6 +241,7 @@ type SugonDownloadPartInfo struct {
 
 type SugonDownloadCheckpoint struct {
 	XMLName       xml.Name                `xml:"DownloadFileCheckpoint"`
+	ObjectPath    string                  `xml:"ObjectPath"`
 	DownloadFile  string                  `xml:"FileUrl"`
 	ObjectInfo    SugonFileInfo           `xml:"ObjectInfo"`
 	TempFileInfo  SugonTempFileInfo       `xml:"TempFileInfo"`

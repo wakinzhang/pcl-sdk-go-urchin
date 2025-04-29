@@ -683,6 +683,7 @@ func (o *ParaCloud) resumeDownload(
 	}
 
 	if needCheckpoint {
+		dfc.ObjectPath = object.ObjectPath
 		dfc.DownloadFile = input.DownloadFile
 		dfc.ObjectInfo = PCObjectInfo{}
 		dfc.ObjectInfo.Size = object.ObjectFileInfo.Size()
@@ -797,6 +798,7 @@ func (o *ParaCloud) downloadFileConcurrent(
 		contentRange := fmt.Sprintf("bytes=%d-%d", begin, end)
 
 		task := ParaCloudDownloadPartTask{
+			ObjectPath:       dfc.ObjectPath,
 			DownloadFile:     dfc.DownloadFile,
 			Offset:           downloadPart.Offset,
 			Length:           downloadPart.Length,
@@ -1229,6 +1231,7 @@ func (o *ParaCloud) UpdateDownloadFile(
 }
 
 type ParaCloudDownloadPartTask struct {
+	ObjectPath       string
 	DownloadFile     string
 	Offset           int64
 	Length           int64
@@ -1250,7 +1253,7 @@ func (task *ParaCloudDownloadPartTask) Run(
 	err, downloadPartOutput :=
 		task.PCClient.Download(
 			ctx,
-			task.DownloadFile,
+			task.ObjectPath,
 			task.Offset,
 			task.Length)
 

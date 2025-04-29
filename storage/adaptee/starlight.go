@@ -605,6 +605,7 @@ func (o *StarLight) uploadPartConcurrent(
 			continue
 		}
 		task := SLUploadPartTask{
+			ObjectPath:       ufc.ObjectPath,
 			PartNumber:       uploadPart.PartNumber,
 			SourceFile:       input.UploadFile,
 			Offset:           uploadPart.Offset,
@@ -1216,6 +1217,7 @@ func (o *StarLight) resumeDownload(
 	}
 
 	if needCheckpoint {
+		dfc.ObjectPath = object.Path
 		dfc.DownloadFile = input.DownloadFile
 		dfc.ObjectInfo = SLObjectInfo{}
 		dfc.ObjectInfo.Size = object.Size
@@ -1330,6 +1332,7 @@ func (o *StarLight) downloadFileConcurrent(
 		contentRange := fmt.Sprintf("bytes=%d-%d", begin, end)
 
 		task := SLDownloadPartTask{
+			ObjectPath:       dfc.ObjectPath,
 			DownloadFile:     dfc.DownloadFile,
 			Offset:           downloadPart.Offset,
 			Length:           downloadPart.Length,
@@ -1761,6 +1764,7 @@ func (o *StarLight) UpdateDownloadFile(
 }
 
 type SLDownloadPartTask struct {
+	ObjectPath       string
 	DownloadFile     string
 	Offset           int64
 	Length           int64
@@ -1782,7 +1786,7 @@ func (task *SLDownloadPartTask) Run(
 	err, downloadPartOutput :=
 		task.SlClient.DownloadChunks(
 			ctx,
-			task.DownloadFile,
+			task.ObjectPath,
 			task.Range)
 
 	if nil == err {

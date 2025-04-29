@@ -1366,6 +1366,7 @@ func (o *Sugon) resumeDownload(
 	}
 
 	if needCheckpoint {
+		dfc.ObjectPath = object.Path
 		dfc.DownloadFile = input.DownloadFile
 		dfc.ObjectInfo = SugonFileInfo{}
 		dfc.ObjectInfo.Size = object.Size
@@ -1480,6 +1481,7 @@ func (o *Sugon) downloadFileConcurrent(
 		contentRange := fmt.Sprintf("bytes=%d-%d", begin, end)
 
 		task := SugonDownloadPartTask{
+			ObjectPath:       dfc.ObjectPath,
 			DownloadFile:     dfc.DownloadFile,
 			Offset:           downloadPart.Offset,
 			Length:           downloadPart.Length,
@@ -1920,6 +1922,7 @@ func (o *Sugon) UpdateDownloadFile(
 }
 
 type SugonDownloadPartTask struct {
+	ObjectPath       string
 	DownloadFile     string
 	Offset           int64
 	Length           int64
@@ -1941,7 +1944,7 @@ func (task *SugonDownloadPartTask) Run(
 	err, downloadPartOutput :=
 		task.SClient.DownloadChunks(
 			ctx,
-			task.DownloadFile,
+			task.ObjectPath,
 			task.Range)
 
 	if nil == err {

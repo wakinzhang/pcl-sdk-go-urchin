@@ -171,7 +171,7 @@ func (o *SLClient) Mkdir(
 	}
 
 	input := new(SLStorageOperationReq)
-	input.Target = target
+	input.Target = o.basePath + target
 	input.Opt = StarLightStorageOperationMkdir
 	input.Force = "true"
 	input.Recursive = "true"
@@ -249,7 +249,7 @@ func (o *SLClient) Rm(
 	}
 
 	input := new(SLStorageOperationReq)
-	input.Target = target
+	input.Target = o.basePath + target
 	input.Opt = StarLightStorageOperationRm
 	input.Force = "true"
 	input.Recursive = "true"
@@ -331,7 +331,7 @@ func (o *SLClient) UploadChunks(
 	}
 
 	input := new(SLUploadChunksReq)
-	input.File = file
+	input.File = o.basePath + file
 	input.Overwrite = "true"
 
 	values, err := query.Values(input)
@@ -408,7 +408,7 @@ func (o *SLClient) List(
 	}
 
 	input := new(SLListReq)
-	input.Dir = path
+	input.Dir = o.basePath + path
 	input.ShowHidden = "true"
 
 	values, err := query.Values(input)
