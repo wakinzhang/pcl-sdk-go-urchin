@@ -22,7 +22,7 @@ type SLClient struct {
 	endpoint        string
 	token           string
 	tokenCreateTime time.Time
-	lustreType      string
+	basePath        string
 	slClient        *retryablehttp.Client
 }
 
@@ -31,7 +31,7 @@ func (o *SLClient) Init(
 	username,
 	password,
 	endpoint,
-	lustreType string,
+	basePath string,
 	reqTimeout,
 	maxConnection int32) {
 
@@ -40,14 +40,14 @@ func (o *SLClient) Init(
 		" username: ", "***",
 		" password: ", "***",
 		" endpoint: ", endpoint,
-		" lustreType: ", lustreType,
+		" basePath: ", basePath,
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
 
 	o.username = username
 	o.password = password
 	o.endpoint = endpoint
-	o.lustreType = lustreType
+	o.basePath = basePath
 
 	timeout := time.Duration(reqTimeout) * time.Second
 

@@ -660,8 +660,8 @@ type StorageNodeConfig struct {
 	UserId int32 `protobuf:"varint,9,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"bucket_id"
 	BucketId int32 `protobuf:"varint,10,opt,name=bucket_id,proto3" json:"bucket_id"`
-	// @inject_tag: json:"lustre_type"
-	LustreType string `protobuf:"bytes,11,opt,name=lustre_type,proto3" json:"lustre_type"`
+	// @inject_tag: json:"base_path"
+	BasePath string `protobuf:"bytes,11,opt,name=base_path,proto3" json:"base_path"`
 	// @inject_tag: json:"url"
 	Url string `protobuf:"bytes,12,opt,name=url,proto3" json:"url"`
 	// @inject_tag: json:"cluster_id"

@@ -28,7 +28,7 @@ func (o *StarLight) Init(
 	username,
 	password,
 	endpoint,
-	lustreType string,
+	basePath string,
 	reqTimeout,
 	maxConnection int32) (err error) {
 
@@ -37,7 +37,7 @@ func (o *StarLight) Init(
 		" username: ", "***",
 		" password: ", "***",
 		" endpoint: ", endpoint,
-		" lustreType: ", lustreType,
+		" basePath: ", basePath,
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
 
@@ -47,7 +47,7 @@ func (o *StarLight) Init(
 		username,
 		password,
 		endpoint,
-		lustreType,
+		basePath,
 		reqTimeout,
 		maxConnection)
 
