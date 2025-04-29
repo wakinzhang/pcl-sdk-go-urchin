@@ -609,9 +609,6 @@ func (o *JCSClient) sign(
 				"http.Request.Body.Close failed.",
 				" error:", _err)
 		}
-		Logger.WithContext(ctx).Debug(
-			"http.Request.Body ReadAll.",
-			" data: ", string(data))
 
 		req.Body = io.NopCloser(bytes.NewReader(data))
 

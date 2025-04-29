@@ -30,21 +30,36 @@ func NewStorageProxy(
 		"NewStorageProxy start. nodeType: ", nodeType)
 	if StorageCategoryEObs == nodeType ||
 		StorageCategoryEMinio == nodeType {
-		var s3proxy S3Proxy
-		err = s3proxy.Init(ctx)
+		var s3Proxy S3Proxy
+		err = s3Proxy.Init(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"s3proxy.Init failed.",
+				"S3Proxy.Init failed.",
 				" err: ", err)
 			return err, storage
 		}
 		Logger.WithContext(ctx).Debug(
 			"NewStorage S3Proxy finish.")
-		return nil, &s3proxy
+		return nil, &s3Proxy
 	} else if StorageCategoryEIpfs == nodeType {
 		Logger.WithContext(ctx).Debug(
 			"NewStorage IPFSProxy finish.")
 		return nil, new(IPFSProxy)
+	} else if StorageCategoryEJcs == nodeType {
+		var jcsProxy JCSProxy
+		err = jcsProxy.Init(
+			ctx,
+			DefaultJCSReqTimeout,
+			DefaultJCSMaxConnection)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"JCSProxy.Init failed.",
+				" err: ", err)
+			return err, storage
+		}
+		Logger.WithContext(ctx).Debug(
+			"NewStorage JCSProxy finish.")
+		return nil, &jcsProxy
 	} else {
 		Logger.WithContext(ctx).Error(
 			"invalid storage node type.")

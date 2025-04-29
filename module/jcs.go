@@ -12,6 +12,9 @@ import (
 const (
 	JCSSuccessCode = "OK"
 
+	DefaultJCSReqTimeout    = 3600
+	DefaultJCSMaxConnection = 500
+
 	JCSCreateBucketInterface                           = "/v1/bucket/create"
 	JCSCreatePackageInterface                          = "/v1/package/create"
 	JCSPreSignedObjectListInterface                    = "/v1/presigned/object/listByPath"
