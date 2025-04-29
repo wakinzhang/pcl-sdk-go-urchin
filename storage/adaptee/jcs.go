@@ -1402,6 +1402,7 @@ func (o *JCS) resumeDownload(
 
 	if needCheckpoint {
 		objectSize, _ := strconv.ParseInt(object.Size, 10, 64)
+		dfc.ObjectId = object.ObjectID
 		dfc.DownloadFile = input.DownloadFile
 		dfc.ObjectInfo = JCSObjectInfo{}
 		dfc.ObjectInfo.Size = objectSize
@@ -1443,8 +1444,7 @@ func (o *JCS) resumeDownload(
 		}
 	}
 
-	downloadFileError := o.downloadFileConcurrent(
-		ctx, input, dfc)
+	downloadFileError := o.downloadFileConcurrent(ctx, input, dfc)
 	err = o.handleDownloadFileResult(
 		ctx,
 		dfc.TempFileInfo.TempFileUrl,
