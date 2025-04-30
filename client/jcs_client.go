@@ -114,7 +114,9 @@ func (o *JCSProxyClient) ListWithSignedUrl(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"JCSProxyClient:ListWithSignedUrl response.",
+		" signedUrl: ", signedUrl,
+		" response: ", string(respBody))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
@@ -126,7 +128,8 @@ func (o *JCSProxyClient) ListWithSignedUrl(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSProxyClient:ListWithSignedUrl response failed.",
+			" signedUrl: ", signedUrl,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message), resp
@@ -185,7 +188,9 @@ func (o *JCSProxyClient) UploadFileWithSignedUrl(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"JCSProxyClient:UploadFileWithSignedUrl response.",
+		" signedUrl: ", signedUrl,
+		" response: ", string(respBody))
 
 	resp := new(JCSBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -198,7 +203,8 @@ func (o *JCSProxyClient) UploadFileWithSignedUrl(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSProxyClient:UploadFileWithSignedUrl response failed.",
+			" signedUrl: ", signedUrl,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message)
@@ -257,7 +263,9 @@ func (o *JCSProxyClient) NewMultiPartUploadWithSignedUrl(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"JCSProxyClient:NewMultiPartUploadWithSignedUrl response.",
+		" signedUrl: ", signedUrl,
+		" response: ", string(respBody))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
@@ -269,7 +277,9 @@ func (o *JCSProxyClient) NewMultiPartUploadWithSignedUrl(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSProxyClient:NewMultiPartUploadWithSignedUrl response"+
+				" failed.",
+			" signedUrl: ", signedUrl,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message), resp
@@ -330,7 +340,9 @@ func (o *JCSProxyClient) UploadPartWithSignedUrl(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"JCSProxyClient:UploadPartWithSignedUrl response.",
+		" signedUrl: ", signedUrl,
+		" response: ", string(respBody))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
@@ -342,7 +354,8 @@ func (o *JCSProxyClient) UploadPartWithSignedUrl(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSProxyClient:UploadPartWithSignedUrl response failed.",
+			" signedUrl: ", signedUrl,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message), resp
@@ -401,7 +414,10 @@ func (o *JCSProxyClient) CompleteMultiPartUploadWithSignedUrl(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"JCSProxyClient:CompleteMultiPartUploadWithSignedUrl"+
+			" response.",
+		" signedUrl: ", signedUrl,
+		" response: ", string(respBody))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
@@ -413,7 +429,9 @@ func (o *JCSProxyClient) CompleteMultiPartUploadWithSignedUrl(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSProxyClient:CompleteMultiPartUploadWithSignedUrl"+
+				" response failed.",
+			" signedUrl: ", signedUrl,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message), resp
@@ -474,7 +492,9 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 		}
 
 		Logger.WithContext(ctx).Debug(
-			"response: ", string(respBodyBuf))
+			"JCSProxyClient:DownloadPartWithSignedUrl response.",
+			" signedUrl: ", signedUrl,
+			" response: ", string(respBodyBuf))
 
 		var resp *JCSBaseResponse
 		err = json.Unmarshal(respBodyBuf, resp)
@@ -486,7 +506,8 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 		}
 
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSProxyClient:DownloadPartWithSignedUrl response failed.",
+			" signedUrl: ", signedUrl,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 
@@ -772,7 +793,9 @@ func (o *JCSClient) CreateBucket(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"JCSClient:CreateBucket response.",
+		" bucketName: ", bucketName,
+		" response: ", string(respBodyBuf))
 
 	resp = new(JCSCreateBucketResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -870,7 +893,9 @@ func (o *JCSClient) CreatePackage(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"JCSClient:CreatePackage response.",
+		" packageName: ", packageName,
+		" response: ", string(respBodyBuf))
 
 	resp = new(JCSCreatePackageResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -1360,7 +1385,14 @@ func (o *JCSClient) List(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"JCSClient:List response.",
+		" packageID: ", packageID,
+		" path: ", path,
+		" isPrefix: ", isPrefix,
+		" noRecursive: ", noRecursive,
+		" maxKeys: ", maxKeys,
+		" continuationToken: ", continuationToken,
+		" response: ", string(respBody))
 
 	resp := new(JCSListResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -1373,7 +1405,13 @@ func (o *JCSClient) List(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSClient:List response failed.",
+			" packageID: ", packageID,
+			" path: ", path,
+			" isPrefix: ", isPrefix,
+			" noRecursive: ", noRecursive,
+			" maxKeys: ", maxKeys,
+			" continuationToken: ", continuationToken,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return listObjectsData, errors.New(resp.Message)
@@ -1501,7 +1539,10 @@ func (o *JCSClient) UploadFile(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"JCSClient:UploadFile response.",
+		" packageId: ", packageId,
+		" path: ", path,
+		" response: ", string(respBodyBuf))
 
 	resp := new(JCSBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -1514,7 +1555,9 @@ func (o *JCSClient) UploadFile(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSClient:UploadFile response failed.",
+			" packageId: ", packageId,
+			" path: ", path,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message)
@@ -1609,7 +1652,10 @@ func (o *JCSClient) NewMultiPartUpload(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"JCSClient:NewMultiPartUpload response.",
+		" packageId: ", packageId,
+		" path: ", path,
+		" response: ", string(respBodyBuf))
 
 	resp = new(JCSNewMultiPartUploadResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -1741,7 +1787,11 @@ func (o *JCSClient) UploadPart(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"JCSClient:UploadPart response.",
+		" objectID: ", objectID,
+		" index: ", index,
+		" path: ", path,
+		" response: ", string(respBodyBuf))
 
 	resp := new(JCSBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -1754,7 +1804,10 @@ func (o *JCSClient) UploadPart(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSClient:UploadPart response failed.",
+			" objectID: ", objectID,
+			" index: ", index,
+			" path: ", path,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message)
@@ -1848,7 +1901,9 @@ func (o *JCSClient) CompleteMultiPartUpload(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"JCSClient:CompleteMultiPartUpload response.",
+		" objectID: ", objectID,
+		" response: ", string(respBodyBuf))
 
 	resp := new(JCSCompleteMultiPartUploadResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -1861,7 +1916,8 @@ func (o *JCSClient) CompleteMultiPartUpload(
 
 	if JCSSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSClient:CompleteMultiPartUpload response failed.",
+			" objectID: ", objectID,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 		return errors.New(resp.Message)
@@ -1967,7 +2023,11 @@ func (o *JCSClient) DownloadPart(
 		}
 
 		Logger.WithContext(ctx).Debug(
-			"response: ", string(respBodyBuf))
+			"JCSClient:DownloadPart response.",
+			" objectID: ", objectID,
+			" offset: ", offset,
+			" length: ", length,
+			" response: ", string(respBodyBuf))
 
 		var resp *JCSBaseResponse
 		err = json.Unmarshal(respBodyBuf, resp)
@@ -1979,7 +2039,10 @@ func (o *JCSClient) DownloadPart(
 		}
 
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"JCSClient:DownloadPart response failed.",
+			" objectID: ", objectID,
+			" offset: ", offset,
+			" length: ", length,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
 

@@ -209,7 +209,9 @@ func (o *SLClient) Mkdir(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"SLClient:Mkdir response.",
+		" target: ", target,
+		" response: ", string(respBody))
 
 	resp := new(SLBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -222,7 +224,8 @@ func (o *SLClient) Mkdir(
 
 	if SLSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SLClient:Mkdir response failed.",
+			" target: ", target,
 			" Code: ", resp.Code,
 			" Info: ", resp.Info)
 		return errors.New(resp.Info)
@@ -287,7 +290,9 @@ func (o *SLClient) Rm(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"SLClient:Rm response.",
+		" target: ", target,
+		" response: ", string(respBody))
 
 	resp := new(SLBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -300,7 +305,8 @@ func (o *SLClient) Rm(
 
 	if SLSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SLClient:Rm response failed.",
+			" target: ", target,
 			" Code: ", resp.Code,
 			" Info: ", resp.Info)
 		return errors.New(resp.Info)
@@ -368,7 +374,10 @@ func (o *SLClient) UploadChunks(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"SLClient:UploadChunks response.",
+		" file: ", file,
+		" contentRange: ", contentRange,
+		" response: ", string(respBody))
 
 	resp := new(SLUploadChunksResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -381,7 +390,9 @@ func (o *SLClient) UploadChunks(
 
 	if SLSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SLClient:UploadChunks response failed.",
+			" file: ", file,
+			" contentRange: ", contentRange,
 			" Code: ", resp.Code,
 			" Info: ", resp.Info)
 		return errors.New(resp.Info)
@@ -469,7 +480,9 @@ func (o *SLClient) List(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"SLClient:List response.",
+		" path: ", path,
+		" response: ", string(respBodyBuf))
 
 	var resp *SLListOutput
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -568,7 +581,10 @@ func (o *SLClient) DownloadChunks(
 		}
 
 		Logger.WithContext(ctx).Debug(
-			"response: ", string(respBodyBuf))
+			"SLClient:DownloadChunks response.",
+			" file: ", file,
+			" contentRange: ", contentRange,
+			" response: ", string(respBodyBuf))
 
 		var resp *SLBaseResponse
 		err = json.Unmarshal(respBodyBuf, resp)
@@ -580,7 +596,9 @@ func (o *SLClient) DownloadChunks(
 		}
 
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SLClient:DownloadChunks response failed.",
+			" file: ", file,
+			" contentRange: ", contentRange,
 			" Code: ", resp.Code,
 			" Info: ", resp.Info)
 

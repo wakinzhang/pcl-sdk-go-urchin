@@ -227,7 +227,9 @@ func (o *ScowClient) Mkdir(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"ScowClient:Mkdir response.",
+		" path: ", path,
+		" response: ", string(respBody))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -240,7 +242,8 @@ func (o *ScowClient) Mkdir(
 
 	if ScowSuccessCode != resp.RespCode {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"ScowClient:Mkdir response failed.",
+			" path: ", path,
 			" RespCode: ", resp.RespCode,
 			" RespError: ", resp.RespError,
 			" RespMessage: ", resp.RespMessage)
@@ -319,7 +322,9 @@ func (o *ScowClient) Delete(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"ScowClient:Delete response.",
+		" path: ", path,
+		" response: ", string(respBody))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -332,7 +337,8 @@ func (o *ScowClient) Delete(
 
 	if ScowSuccessCode != resp.RespCode {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"ScowClient:Delete response failed.",
+			" path: ", path,
 			" RespCode: ", resp.RespCode,
 			" RespError: ", resp.RespError,
 			" RespMessage: ", resp.RespMessage)
@@ -455,7 +461,10 @@ func (o *ScowClient) Upload(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"ScowClient:Upload response.",
+		" fileName: ", fileName,
+		" path: ", path,
+		" response: ", string(respBodyBuf))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -468,7 +477,9 @@ func (o *ScowClient) Upload(
 
 	if ScowSuccessCode != resp.RespCode {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"ScowClient:Upload response failed.",
+			" fileName: ", fileName,
+			" path: ", path,
 			" RespCode: ", resp.RespCode,
 			" RespError: ", resp.RespError,
 			" RespMessage: ", resp.RespMessage)
@@ -599,7 +610,12 @@ func (o *ScowClient) UploadChunks(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"ScowClient:UploadChunks response.",
+		" fileName: ", fileName,
+		" path: ", path,
+		" md5: ", md5,
+		" partNum: ", partNum,
+		" response: ", string(respBodyBuf))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -612,7 +628,11 @@ func (o *ScowClient) UploadChunks(
 
 	if ScowSuccessCode != resp.RespCode {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"ScowClient:UploadChunks response failed.",
+			" fileName: ", fileName,
+			" path: ", path,
+			" md5: ", md5,
+			" partNum: ", partNum,
 			" RespCode: ", resp.RespCode,
 			" RespError: ", resp.RespError,
 			" RespMessage: ", resp.RespMessage)
@@ -682,7 +702,11 @@ func (o *ScowClient) MergeChunks(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"ScowClient:MergeChunks response.",
+		" fileName: ", fileName,
+		" path: ", path,
+		" md5: ", md5,
+		" response: ", string(respBody))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -695,7 +719,10 @@ func (o *ScowClient) MergeChunks(
 
 	if ScowSuccessCode != resp.RespCode {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"ScowClient:MergeChunks response failed.",
+			" fileName: ", fileName,
+			" path: ", path,
+			" md5: ", md5,
 			" RespCode: ", resp.RespCode,
 			" RespError: ", resp.RespError,
 			" RespMessage: ", resp.RespMessage)
@@ -760,7 +787,9 @@ func (o *ScowClient) List(
 		return err, output
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"ScowClient:List response.",
+		" path: ", path,
+		" response: ", string(respBody))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -773,7 +802,8 @@ func (o *ScowClient) List(
 
 	if ScowSuccessCode != resp.RespCode {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"ScowClient:List response failed.",
+			" path: ", path,
 			" RespCode: ", resp.RespCode,
 			" RespError: ", resp.RespError,
 			" RespMessage: ", resp.RespMessage)

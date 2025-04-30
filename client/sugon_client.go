@@ -305,7 +305,9 @@ func (o *SugonClient) Mkdir(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"SugonClient:Mkdir response.",
+		" path: ", path,
+		" response: ", string(respBody))
 
 	resp := new(SugonBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -322,7 +324,8 @@ func (o *SugonClient) Mkdir(
 		return err
 	} else if SugonSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SugonClient:Mkdir response failed.",
+			" path: ", path,
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
 		return errors.New(resp.Msg)
@@ -386,7 +389,9 @@ func (o *SugonClient) Delete(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"SugonClient:Delete response.",
+		" paths: ", paths,
+		" response: ", string(respBody))
 
 	resp := new(SugonBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -403,7 +408,8 @@ func (o *SugonClient) Delete(
 		return err
 	} else if SugonSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SugonClient:Delete response failed.",
+			" paths: ", paths,
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
 		return errors.New(resp.Msg)
@@ -525,7 +531,10 @@ func (o *SugonClient) Upload(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBodyBuf))
+		"SugonClient:Upload response.",
+		" fileName: ", fileName,
+		" path: ", path,
+		" response: ", string(respBodyBuf))
 
 	resp := new(SugonBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
@@ -542,7 +551,9 @@ func (o *SugonClient) Upload(
 		return err
 	} else if SugonSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SugonClient:Upload response failed.",
+			" fileName: ", fileName,
+			" path: ", path,
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
 		return errors.New(resp.Msg)
@@ -700,6 +711,15 @@ func (o *SugonClient) UploadChunks(
 	}
 
 	Logger.WithContext(ctx).Debug(
+		"SugonClient:UploadChunks response.",
+		" fileName: ", fileName,
+		" path: ", path,
+		" relativePath: ", relativePath,
+		" chunkNumber: ", chunkNumber,
+		" totalChunks: ", totalChunks,
+		" totalSize: ", totalSize,
+		" chunkSize: ", chunkSize,
+		" currentChunkSize: ", currentChunkSize,
 		"response: ", string(respBodyBuf))
 
 	resp := new(SugonBaseResponse)
@@ -717,7 +737,15 @@ func (o *SugonClient) UploadChunks(
 		return err
 	} else if SugonSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SugonClient:UploadChunks response failed.",
+			" fileName: ", fileName,
+			" path: ", path,
+			" relativePath: ", relativePath,
+			" chunkNumber: ", chunkNumber,
+			" totalChunks: ", totalChunks,
+			" totalSize: ", totalSize,
+			" chunkSize: ", chunkSize,
+			" currentChunkSize: ", currentChunkSize,
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
 		return errors.New(resp.Msg)
@@ -787,7 +815,11 @@ func (o *SugonClient) MergeChunks(
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"SugonClient:MergeChunks response.",
+		" fileName: ", fileName,
+		" path: ", path,
+		" relativePath: ", relativePath,
+		" response: ", string(respBody))
 
 	resp := new(SugonBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -804,7 +836,10 @@ func (o *SugonClient) MergeChunks(
 		return err
 	} else if SugonSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SugonClient:MergeChunks response failed.",
+			" fileName: ", fileName,
+			" path: ", path,
+			" relativePath: ", relativePath,
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
 		return errors.New(resp.Msg)
@@ -873,7 +908,11 @@ func (o *SugonClient) List(
 		return err, output
 	}
 	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+		"SugonClient:List response.",
+		" path: ", path,
+		" start: ", start,
+		" limit: ", limit,
+		" response: ", string(respBody))
 
 	resp := new(SugonBaseResponse)
 	err = json.Unmarshal(respBody, resp)
@@ -886,7 +925,10 @@ func (o *SugonClient) List(
 
 	if SugonSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
-			"response failed.",
+			"SugonClient:List response failed.",
+			" path: ", path,
+			" start: ", start,
+			" limit: ", limit,
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
 		return errors.New(resp.Msg), output
