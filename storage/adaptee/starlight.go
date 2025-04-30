@@ -926,7 +926,7 @@ func (task *SLUploadPartTask) Run(
 
 	contentRange := fmt.Sprintf("bytes=%d-%d/%d",
 		task.Offset,
-		task.Offset+task.PartSize,
+		task.Offset+task.PartSize-1,
 		task.TotalSize)
 
 	err = task.SlClient.UploadChunks(
