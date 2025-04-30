@@ -494,7 +494,8 @@ func (o *ParaCloud) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord := targetPath + sourcePath + ".download_folder_record"
+	downloadFolderRecord := targetPath +
+		filepath.Base(targetPath) + ".download_folder_record"
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
 		lines := strings.Split(string(fileData), "\n")

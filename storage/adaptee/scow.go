@@ -1188,8 +1188,8 @@ func (o *Scow) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord :=
-		targetPath + sourcePath + ".download_folder_record"
+	downloadFolderRecord := targetPath +
+		filepath.Base(targetPath) + ".download_folder_record"
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -1239,6 +1239,7 @@ func (o *Scow) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
+			targetFile := targetPath + itemObject.Name
 			err = o.downloadPart(
 				ctx,
 				itemObject,
@@ -1248,7 +1249,7 @@ func (o *Scow) downloadObjects(
 				Logger.WithContext(ctx).Error(
 					"Scow:downloadPart failed.",
 					" objectName: ", itemObject.Name,
-					" targetFile: ", targetPath+itemObject.Name,
+					" targetFile: ", targetFile,
 					" err: ", err)
 				return
 			}

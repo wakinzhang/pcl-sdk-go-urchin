@@ -1208,8 +1208,8 @@ func (o *JCS) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord :=
-		targetPath + sourcePath + ".download_folder_record"
+	downloadFolderRecord := targetPath +
+		filepath.Base(targetPath) + ".download_folder_record"
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -1261,16 +1261,17 @@ func (o *JCS) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
+			targetFile := targetPath + itemObject.Path
 			err = o.downloadPart(
 				ctx,
 				itemObject,
-				targetPath+itemObject.Path)
+				targetFile)
 			if nil != err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"JCS:downloadPart failed.",
 					" objectPath: ", itemObject.Path,
-					" targetFile: ", targetPath+itemObject.Path,
+					" targetFile: ", targetFile,
 					" err: ", err)
 				return
 			}
