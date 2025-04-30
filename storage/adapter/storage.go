@@ -78,7 +78,6 @@ func NewStorage(
 			storageNodeConfig.User,
 			storageNodeConfig.Pass,
 			storageNodeConfig.Endpoint,
-			storageNodeConfig.BasePath,
 			storageNodeConfig.ReqTimeout,
 			storageNodeConfig.MaxConnection)
 		if nil != err {
