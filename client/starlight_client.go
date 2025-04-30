@@ -7,11 +7,11 @@ import (
 	"errors"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"net"
 	"net/http"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 	"time"
 	// sl "github.com/urchinfs/starlight-sdk/starlight"
 )
@@ -488,8 +488,8 @@ func (o *SLClient) List(
 		" path: ", path,
 		" response: ", string(respBodyBuf))
 
-	var resp *SLListOutput
-	err = json.Unmarshal(respBodyBuf, resp)
+	output = new(SLListOutput)
+	err = json.Unmarshal(respBodyBuf, output)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
