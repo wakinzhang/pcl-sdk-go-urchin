@@ -22,7 +22,6 @@ type SLClient struct {
 	endpoint        string
 	token           string
 	tokenCreateTime time.Time
-	basePath        string
 	slClient        *retryablehttp.Client
 }
 
@@ -30,8 +29,7 @@ func (o *SLClient) Init(
 	ctx context.Context,
 	username,
 	password,
-	endpoint,
-	basePath string,
+	endpoint string,
 	reqTimeout,
 	maxConnection int32) {
 
@@ -40,14 +38,12 @@ func (o *SLClient) Init(
 		" username: ", "***",
 		" password: ", "***",
 		" endpoint: ", endpoint,
-		" basePath: ", basePath,
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
 
 	o.username = username
 	o.password = password
 	o.endpoint = endpoint
-	o.basePath = basePath
 
 	timeout := time.Duration(reqTimeout) * time.Second
 
@@ -158,7 +154,6 @@ func (o *SLClient) Mkdir(
 	ctx context.Context,
 	target string) (err error) {
 
-	target = o.basePath + target
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Mkdir start.",
 		" target: ", target)
@@ -240,7 +235,6 @@ func (o *SLClient) Rm(
 	ctx context.Context,
 	target string) (err error) {
 
-	target = o.basePath + target
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Rm start.",
 		" target: ", target)
@@ -325,7 +319,6 @@ func (o *SLClient) UploadChunks(
 	contentRange string,
 	data io.Reader) (err error) {
 
-	file = o.basePath + file
 	Logger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks start.",
 		" file: ", file,
@@ -409,7 +402,6 @@ func (o *SLClient) List(
 	ctx context.Context,
 	path string) (err error, output *SLListOutput) {
 
-	path = o.basePath + path
 	Logger.WithContext(ctx).Debug(
 		"SLClient:List start.",
 		" path: ", path)

@@ -27,8 +27,7 @@ func (o *StarLight) Init(
 	ctx context.Context,
 	username,
 	password,
-	endpoint,
-	basePath string,
+	endpoint string,
 	reqTimeout,
 	maxConnection int32) (err error) {
 
@@ -37,7 +36,6 @@ func (o *StarLight) Init(
 		" username: ", "***",
 		" password: ", "***",
 		" endpoint: ", endpoint,
-		" basePath: ", basePath,
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
 
@@ -47,7 +45,6 @@ func (o *StarLight) Init(
 		username,
 		password,
 		endpoint,
-		basePath,
 		reqTimeout,
 		maxConnection)
 
