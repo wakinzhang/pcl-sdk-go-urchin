@@ -158,6 +158,7 @@ func (o *SLClient) Mkdir(
 	ctx context.Context,
 	target string) (err error) {
 
+	target = o.basePath + target
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Mkdir start.",
 		" target: ", target)
@@ -171,7 +172,7 @@ func (o *SLClient) Mkdir(
 	}
 
 	input := new(SLStorageOperationReq)
-	input.Target = o.basePath + target
+	input.Target = target
 	input.Opt = StarLightStorageOperationMkdir
 	input.Force = "true"
 	input.Recursive = "true"
@@ -239,6 +240,7 @@ func (o *SLClient) Rm(
 	ctx context.Context,
 	target string) (err error) {
 
+	target = o.basePath + target
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Rm start.",
 		" target: ", target)
@@ -252,7 +254,7 @@ func (o *SLClient) Rm(
 	}
 
 	input := new(SLStorageOperationReq)
-	input.Target = o.basePath + target
+	input.Target = target
 	input.Opt = StarLightStorageOperationRm
 	input.Force = "true"
 	input.Recursive = "true"
@@ -323,6 +325,7 @@ func (o *SLClient) UploadChunks(
 	contentRange string,
 	data io.Reader) (err error) {
 
+	file = o.basePath + file
 	Logger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks start.",
 		" file: ", file,
@@ -337,7 +340,7 @@ func (o *SLClient) UploadChunks(
 	}
 
 	input := new(SLUploadChunksReq)
-	input.File = o.basePath + file
+	input.File = file
 	input.Overwrite = "true"
 
 	values, err := query.Values(input)
@@ -406,6 +409,7 @@ func (o *SLClient) List(
 	ctx context.Context,
 	path string) (err error, output *SLListOutput) {
 
+	path = o.basePath + path
 	Logger.WithContext(ctx).Debug(
 		"SLClient:List start.",
 		" path: ", path)
@@ -419,7 +423,7 @@ func (o *SLClient) List(
 	}
 
 	input := new(SLListReq)
-	input.Dir = o.basePath + path
+	input.Dir = path
 	input.ShowHidden = "true"
 
 	values, err := query.Values(input)
