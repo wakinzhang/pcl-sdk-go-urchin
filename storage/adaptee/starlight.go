@@ -183,6 +183,14 @@ func (o *StarLight) Upload(
 			" err: ", err)
 		return err
 	}
+	err = o.slClient.Mkdir(ctx, targetPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"slClient.Mkdir failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return err
+	}
 	objectPath := targetPath + filepath.Base(sourcePath)
 	if stat.IsDir() {
 		err = o.slClient.Mkdir(ctx, objectPath)
