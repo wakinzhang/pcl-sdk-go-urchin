@@ -12,7 +12,7 @@ const (
 	SLSuccessCode = 200
 
 	DefaultSLUploadFileTaskNum    = 100
-	DefaultSLUploadMultiTaskNum   = 20
+	DefaultSLUploadMultiTaskNum   = 1
 	DefaultSLDownloadFileTaskNum  = 100
 	DefaultSLDownloadMultiTaskNum = 20
 	DefaultSLMaxPartSize          = 5 * 1024 * 1024 * 1024
