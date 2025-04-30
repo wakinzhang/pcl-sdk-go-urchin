@@ -75,15 +75,17 @@ type SLUploadChunksReq struct {
 }
 
 type SLUploadChunksResponse struct {
-	Uuid string                     `json:"uuid"`
-	Code int32                      `json:"code"`
-	Info string                     `json:"info"`
-	Spec SLUploadChunksResponseSpec `json:"spec"`
+	Uuid  string                     `json:"uuid"`
+	Code  int32                      `json:"code"`
+	Info  string                     `json:"info"`
+	Kind  string                     `json:"kind"`
+	Total int32                      `json:"total"`
+	Spec  SLUploadChunksResponseSpec `json:"spec"`
 }
 
 type SLUploadChunksResponseSpec struct {
 	File    string `json:"File"`
-	Written string `json:"Written"`
+	Written int64  `json:"Written"`
 }
 
 type SLListReq struct {
