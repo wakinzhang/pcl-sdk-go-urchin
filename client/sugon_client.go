@@ -221,7 +221,7 @@ func (o *SugonClient) refreshToken(
 	}
 
 	refresh := false
-	if tokenList, ok := resp.Data.([]*SugonTokenInfo); ok {
+	if tokenList, ok := resp.Data.([]SugonTokenInfo); ok {
 		for _, token := range tokenList {
 			if token.ClusterId == o.clusterId {
 				o.token = token.Token
