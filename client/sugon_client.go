@@ -203,7 +203,7 @@ func (o *SugonClient) refreshToken(
 	Logger.WithContext(ctx).Debug(
 		"response: ", string(respBody))
 
-	resp := new(SugonBaseResponse)
+	resp := new(SugonPostTokenResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -221,19 +221,12 @@ func (o *SugonClient) refreshToken(
 	}
 
 	refresh := false
-	if tokenList, ok := resp.Data.([]SugonTokenInfo); ok {
-		for _, token := range tokenList {
-			if token.ClusterId == o.clusterId {
-				o.token = token.Token
-				refresh = true
-				break
-			}
+	for _, token := range resp.Data {
+		if token.ClusterId == o.clusterId {
+			o.token = token.Token
+			refresh = true
+			break
 		}
-	} else {
-		Logger.WithContext(ctx).Error(
-			"response data invalid.",
-			" response: ", string(respBody))
-		return errors.New("response data invalid")
 	}
 
 	if true != refresh {

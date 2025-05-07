@@ -72,6 +72,12 @@ type SugonBaseResponse struct {
 	Data interface{} `json:"data"`
 }
 
+type SugonPostTokenResponse struct {
+	Code string            `json:"code"`
+	Msg  string            `json:"msg"`
+	Data []*SugonTokenInfo `json:"data"`
+}
+
 type SugonTokenInfo struct {
 	ClusterId   string `json:"clusterId"`
 	ClusterName string `json:"clusterName"`
