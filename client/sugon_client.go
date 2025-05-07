@@ -787,7 +787,7 @@ func (o *SugonClient) MergeChunks(
 		" query: ", values.Encode())
 
 	header := make(http.Header)
-	header.Add(ScowHttpHeaderAuth, o.token)
+	header.Add(SugonHttpHeaderToken, o.token)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeUrlEncoded)
 
 	err, respBody := Do(
@@ -880,7 +880,7 @@ func (o *SugonClient) List(
 		" query: ", values.Encode())
 
 	header := make(http.Header)
-	header.Add(ScowHttpHeaderAuth, o.token)
+	header.Add(SugonHttpHeaderToken, o.token)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
 	err, respBody := Do(
@@ -975,7 +975,7 @@ func (o *SugonClient) DownloadChunks(
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
-	header.Add(ScowHttpHeaderAuth, o.token)
+	header.Add(SugonHttpHeaderToken, o.token)
 	header.Add(HttpHeaderRange, contentRange)
 
 	request, err := retryablehttp.NewRequest(
