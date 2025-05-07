@@ -785,11 +785,12 @@ func (o *SugonClient) MergeChunks(
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:MergeChunks request.",
-		" url: ", url)
+		" url: ", url,
+		" request: ", values.Encode())
 
 	header := make(http.Header)
+	header.Set(HttpHeaderContentType, HttpHeaderContentTypeUrlEncoded)
 	header.Add(SugonHttpHeaderToken, o.token)
-	header.Add(HttpHeaderContentType, HttpHeaderContentTypeUrlEncoded)
 
 	err, respBody := Do(
 		ctx,
