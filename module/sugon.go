@@ -85,13 +85,13 @@ type SugonTokenInfo struct {
 }
 
 type SugonMkdirReq struct {
-	Path          string `json:"path"`
-	CreateParents bool   `json:"createParents"`
+	Path          string `url:"path"`
+	CreateParents bool   `url:"createParents"`
 }
 
 type SugonDeleteReq struct {
-	Paths     string `json:"paths"`
-	Recursive bool   `json:"recursive"`
+	Paths     string `url:"paths"`
+	Recursive bool   `url:"recursive"`
 }
 
 type SugonMergeChunksReq struct {
@@ -102,9 +102,9 @@ type SugonMergeChunksReq struct {
 }
 
 type SugonListReq struct {
-	Path  string `json:"path"`
-	Start int32  `json:"start"`
-	Limit int32  `json:"limit"`
+	Path  string `url:"path"`
+	Start int32  `url:"start"`
+	Limit int32  `url:"limit"`
 }
 
 type SugonListResponse struct {
