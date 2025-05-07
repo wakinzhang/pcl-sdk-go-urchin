@@ -95,10 +95,10 @@ type SugonDeleteReq struct {
 }
 
 type SugonMergeChunksReq struct {
-	Filename     string `json:"filename"`
-	Path         string `json:"path"`
-	RelativePath string `json:"relativePath"`
-	Cover        string `json:"cover"`
+	Filename     string `url:"filename"`
+	Path         string `url:"path"`
+	RelativePath string `url:"relativePath"`
+	Cover        string `url:"cover"`
 }
 
 type SugonListReq struct {
