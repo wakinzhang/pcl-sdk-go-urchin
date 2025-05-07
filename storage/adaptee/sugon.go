@@ -121,7 +121,7 @@ func (o *Sugon) sliceObject(
 		}
 		dfc.DownloadParts = downloadParts
 		if value := objectSize % partSize; value > 0 {
-			dfc.DownloadParts[cnt-1].Length = dfc.ObjectInfo.Size - 1
+			dfc.DownloadParts[cnt-1].Length = value
 		}
 	}
 	Logger.WithContext(ctx).Debug(
