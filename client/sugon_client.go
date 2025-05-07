@@ -785,8 +785,7 @@ func (o *SugonClient) MergeChunks(
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:MergeChunks request.",
-		" url: ", url,
-		" form: ", values.Encode())
+		" url: ", url)
 
 	header := make(http.Header)
 	header.Add(SugonHttpHeaderToken, o.token)
