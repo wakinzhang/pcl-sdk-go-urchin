@@ -91,7 +91,7 @@ func (o *SugonClient) Init(
 }
 
 func (o *SugonClient) checkToken(
-	ctx context.Context) (err error, valid bool) {
+	ctx context.Context) (valid bool) {
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:checkToken start.")
@@ -118,7 +118,7 @@ func (o *SugonClient) checkToken(
 		Logger.WithContext(ctx).Error(
 			"http.Do failed.",
 			" err: ", err)
-		return err, valid
+		return valid
 	}
 	Logger.WithContext(ctx).Debug(
 		"response: ", string(respBody))
@@ -129,33 +129,36 @@ func (o *SugonClient) checkToken(
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
 			" err: ", err)
-		return err, valid
+		return valid
 	}
 
-	if SugonSuccessCode != resp.Code {
+	if SugonSuccessCode == resp.Code {
+		if tokenState, ok := resp.Data.(string); ok {
+			if TokenStateValid == tokenState {
+				Logger.WithContext(ctx).Debug(
+					"SugonClient:checkToken token state valid.")
+				valid = true
+			} else {
+				Logger.WithContext(ctx).Debug(
+					"SugonClient:checkToken token state invalid.")
+				valid = false
+			}
+			Logger.WithContext(ctx).Debug(
+				"SugonClient:checkToken finish.")
+			return valid
+		} else {
+			Logger.WithContext(ctx).Error(
+				"response data invalid.",
+				" response: ", string(respBody))
+			return valid
+		}
+	} else {
 		Logger.WithContext(ctx).Error(
 			"response failed.",
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
-		return errors.New(resp.Msg), valid
+		return valid
 	}
-
-	if tokenState, ok := resp.Data.(string); ok {
-		if TokenStateValid == tokenState {
-			valid = true
-		} else {
-			valid = false
-		}
-	} else {
-		Logger.WithContext(ctx).Error(
-			"response data invalid.",
-			" response: ", string(respBody))
-		return errors.New("response data invalid"), valid
-	}
-
-	Logger.WithContext(ctx).Debug(
-		"SugonClient:checkToken finish.")
-	return err, valid
 }
 
 func (o *SugonClient) refreshToken(
@@ -165,14 +168,7 @@ func (o *SugonClient) refreshToken(
 		"SugonClient:refreshToken start.")
 
 	tokenValid := false
-	err, tokenValid = o.checkToken(ctx)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"SugonClient.checkToken failed.",
-			" err: ", err)
-		return err
-	}
-
+	tokenValid = o.checkToken(ctx)
 	if true == tokenValid {
 		Logger.WithContext(ctx).Info(
 			"token valid, no need refresh.")
