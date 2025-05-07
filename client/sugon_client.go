@@ -905,7 +905,7 @@ func (o *SugonClient) List(
 		" limit: ", limit,
 		" response: ", string(respBody))
 
-	resp := new(SugonBaseResponse)
+	resp := new(SugonListResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -925,18 +925,8 @@ func (o *SugonClient) List(
 		return errors.New(resp.Msg), output
 	}
 
-	if output, ok :=
-		resp.Data.(*SugonListResponseData); ok {
-
-		Logger.WithContext(ctx).Debug(
-			"SugonClient:List finish.")
-		return err, output
-	} else {
-		Logger.WithContext(ctx).Error(
-			"response body invalid.",
-			" response: ", string(respBody))
-		return errors.New("response body invalid"), output
-	}
+	output = resp.Data
+	return err, output
 }
 
 func (o *SugonClient) DownloadChunks(

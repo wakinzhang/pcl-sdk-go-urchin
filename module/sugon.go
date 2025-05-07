@@ -107,6 +107,12 @@ type SugonListReq struct {
 	Limit int32  `json:"limit"`
 }
 
+type SugonListResponse struct {
+	Code string                 `json:"code"`
+	Msg  string                 `json:"msg"`
+	Data *SugonListResponseData `json:"data"`
+}
+
 type SugonListResponseData struct {
 	Total        int32              `json:"total"`
 	Path         string             `json:"path"`
@@ -124,7 +130,7 @@ type SugonFolderInfo struct {
 
 type SugonFileInfo struct {
 	CreationTime     string                `json:"creationTime"`
-	FileKey          string                `json:"fileKey"`
+	FileKey          int64                 `json:"fileKey"`
 	Group            string                `json:"group"`
 	IsDirectory      bool                  `json:"isDirectory"`
 	IsShare          bool                  `json:"isShare"`
