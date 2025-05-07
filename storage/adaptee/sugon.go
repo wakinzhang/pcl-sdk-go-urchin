@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/panjf2000/ants/v2"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"os"
 	"path/filepath"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -716,8 +716,9 @@ func (o *Sugon) uploadPartConcurrent(
 			continue
 		}
 		task := SugonUploadPartTask{
+			File:             sourceFile,
 			FileName:         input.FileName,
-			Path:             input.ObjectPath,
+			Path:             filepath.Base(input.ObjectPath),
 			RelativePath:     input.FileName,
 			ChunkNumber:      uploadPart.PartNumber,
 			TotalChunks:      ufc.TotalParts,
@@ -999,6 +1000,7 @@ func (o *Sugon) completeParts(
 }
 
 type SugonUploadPartTask struct {
+	File             string
 	FileName         string
 	Path             string
 	RelativePath     string
@@ -1053,6 +1055,7 @@ func (task *SugonUploadPartTask) Run(
 
 	err = task.SClient.UploadChunks(
 		ctx,
+		task.File,
 		task.FileName,
 		task.Path,
 		task.RelativePath,
@@ -1066,6 +1069,7 @@ func (task *SugonUploadPartTask) Run(
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"SClient.UploadChunks failed.",
+			" task.File: ", task.File,
 			" task.FileName: ", task.FileName,
 			" task.Path: ", task.Path,
 			" task.RelativePath: ", task.RelativePath,

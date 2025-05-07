@@ -8,12 +8,12 @@ import (
 	"errors"
 	"github.com/google/go-querystring/query"
 	"github.com/hashicorp/go-retryablehttp"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"mime/multipart"
 	"net"
 	"net/http"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 	"strconv"
 	"strings"
 	"time"
@@ -555,6 +555,7 @@ func (o *SugonClient) Upload(
 
 func (o *SugonClient) UploadChunks(
 	ctx context.Context,
+	file,
 	fileName,
 	path,
 	relativePath string,
@@ -567,6 +568,7 @@ func (o *SugonClient) UploadChunks(
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:UploadChunks start.",
+		" file: ", file,
 		" fileName: ", fileName,
 		" path: ", path,
 		" relativePath: ", relativePath,
@@ -594,7 +596,7 @@ func (o *SugonClient) UploadChunks(
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile(
 		SugonMultiPartFormFiledFile,
-		fileName)
+		file)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
