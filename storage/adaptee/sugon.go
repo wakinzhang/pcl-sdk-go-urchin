@@ -971,13 +971,13 @@ func (o *Sugon) completeParts(
 	err = o.sugonClient.MergeChunks(
 		ctx,
 		input.FileName,
-		input.ObjectPath,
+		filepath.Dir(input.ObjectPath),
 		input.RelativePath)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"sugonClient.MergeChunks failed.",
 			" FileName: ", input.FileName,
-			" ObjectPath: ", input.ObjectPath,
+			" Path: ", filepath.Dir(input.ObjectPath),
 			" RelativePath: ", input.RelativePath,
 			" err: ", err)
 		return err
