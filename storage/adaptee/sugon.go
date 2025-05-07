@@ -718,7 +718,7 @@ func (o *Sugon) uploadPartConcurrent(
 		task := SugonUploadPartTask{
 			File:             sourceFile,
 			FileName:         input.FileName,
-			Path:             filepath.Base(input.ObjectPath),
+			Path:             filepath.Dir(input.ObjectPath),
 			RelativePath:     input.FileName,
 			ChunkNumber:      uploadPart.PartNumber,
 			TotalChunks:      ufc.TotalParts,
