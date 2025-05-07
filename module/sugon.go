@@ -156,7 +156,7 @@ type SugonPermissionAction struct {
 }
 
 type SugonDownloadReq struct {
-	Path string `json:"path"`
+	Path string `url:"path"`
 }
 
 type SugonDownloadPartOutput struct {

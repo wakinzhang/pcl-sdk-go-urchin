@@ -991,27 +991,50 @@ func (o *SugonClient) DownloadChunks(
 		return err, output
 	}
 
-	defer func(body io.ReadCloser) {
-		_err := body.Close()
-		if nil != _err {
+	if HttpHeaderContentTypeJson ==
+		response.Header.Get(HttpHeaderContentType) {
+
+		defer func(body io.ReadCloser) {
+			_err := body.Close()
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"io.ReadCloser failed.",
+					" err: ", _err)
+			}
+		}(response.Body)
+
+		respBodyBuf, err := io.ReadAll(response.Body)
+		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"io.ReadCloser failed.",
-				" err: ", _err)
+				"io.ReadAll failed.",
+				" err: ", err)
+			return err, output
 		}
-	}(response.Body)
 
-	respBody, err := io.ReadAll(response.Body)
-	if nil != err {
+		Logger.WithContext(ctx).Debug(
+			"SugonClient:DownloadChunks response.",
+			" path: ", path,
+			" contentRange: ", contentRange,
+			" response: ", string(respBodyBuf))
+
+		var resp *SugonBaseResponse
+		err = json.Unmarshal(respBodyBuf, resp)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"json.Unmarshal failed.",
+				" err: ", err)
+			return err, output
+		}
+
 		Logger.WithContext(ctx).Error(
-			"io.ReadAll failed.",
-			" err: ", err)
-		return err, output
-	}
+			"SugonClient:DownloadChunks response failed.",
+			" path: ", path,
+			" contentRange: ", contentRange,
+			" Code: ", resp.Code,
+			" Msg: ", resp.Msg)
 
-	Logger.WithContext(ctx).Debug(
-		"SugonClient:DownloadChunks response.",
-		" path: ", path,
-		" response: ", string(respBody))
+		return errors.New(resp.Msg), output
+	}
 
 	output = new(SugonDownloadPartOutput)
 	output.Body = response.Body
