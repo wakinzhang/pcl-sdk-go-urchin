@@ -564,7 +564,7 @@ func (o *ScowClient) UploadChunks(
 		return err
 	}
 	reqHttp.Header.Set(ScowHttpHeaderAuth, o.token)
-	reqHttp.Header.Set(HttpHeaderContentType, HttpHeaderContentTypeFormData)
+	reqHttp.Header.Set(HttpHeaderContentType, HttpHeaderContentTypeStream)
 	//reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
