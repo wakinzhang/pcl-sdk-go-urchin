@@ -1480,7 +1480,7 @@ func (o *Sugon) downloadFileConcurrent(
 		}
 
 		begin := downloadPart.Offset
-		end := downloadPart.Offset + downloadPart.Length - 1
+		end := downloadPart.Offset + downloadPart.Length
 
 		contentRange := fmt.Sprintf("bytes=%d-%d", begin, end)
 
