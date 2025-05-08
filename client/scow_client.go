@@ -29,6 +29,7 @@ type ScowClient struct {
 	tokenCreateTime time.Time
 	clusterId       string
 	scowClient      *retryablehttp.Client
+	tClient         *http.Client
 }
 
 func (o *ScowClient) Init(
@@ -83,6 +84,7 @@ func (o *ScowClient) Init(
 	o.scowClient.HTTPClient.Timeout = timeout
 	o.scowClient.HTTPClient.Transport = transport
 
+	o.tClient = &http.Client{}
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Init finish.")
 }
@@ -569,17 +571,25 @@ func (o *ScowClient) UploadChunks(
 	}
 	reqHttp.Header.Set(ScowHttpHeaderAuth, o.token)
 	reqHttp.Header.Set(HttpHeaderContentType, HttpHeaderContentTypeStream)
-	//reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
-	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"retryablehttp.FromRequest failed.",
-			" err: ", err)
-		return err
-	}
+	/*
+		reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"retryablehttp.FromRequest failed.",
+				" err: ", err)
+			return err
+		}
 
-	response, err := o.scowClient.Do(reqRetryableHttp)
+		response, err := o.scowClient.Do(reqRetryableHttp)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"scowClient.Do failed.",
+				" err: ", err)
+			return err
+		}
+	*/
+	response, err := o.tClient.Do(reqHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"scowClient.Do failed.",
