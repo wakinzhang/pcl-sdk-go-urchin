@@ -597,6 +597,12 @@ func (o *ScowClient) UploadChunks(
 		return err
 	}
 
+	Logger.WithContext(ctx).Debug(
+		"ScowClient:UploadChunks response.",
+		" Status: ", response.Status,
+		" Header: ", response.Header,
+		" StatusCode: ", response.StatusCode)
+
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
