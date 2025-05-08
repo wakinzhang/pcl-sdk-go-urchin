@@ -742,7 +742,7 @@ func (o *Scow) uploadPartConcurrent(
 			continue
 		}
 		task := ScowUploadPartTask{
-			ObjectPath:       ufc.ObjectPath,
+			ObjectPath:       filepath.Dir(ufc.ObjectPath),
 			FileName:         input.FileName,
 			Md5:              input.Md5,
 			PartNumber:       uploadPart.PartNumber,

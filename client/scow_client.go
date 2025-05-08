@@ -545,6 +545,10 @@ func (o *ScowClient) UploadChunks(
 		ScowMultiPartFormFiledFileMd5Name,
 		fileMd5Name)
 
+	Logger.WithContext(ctx).Debug(
+		"ScowClient:UploadChunks request.",
+		" fileMd5Name: ", fileMd5Name)
+
 	err = writer.Close()
 	if err != nil {
 		Logger.WithContext(ctx).Error(
