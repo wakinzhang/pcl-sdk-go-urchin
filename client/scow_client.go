@@ -117,8 +117,7 @@ func (o *ScowClient) refreshToken(
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:refreshToken request.",
-		" url: ", url,
-		" reqBody: ", string(reqBody))
+		" url: ", url)
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -139,7 +138,7 @@ func (o *ScowClient) refreshToken(
 	Logger.WithContext(ctx).Debug(
 		"response: ", string(respBody))
 
-	resp := new(ScowBaseResponse)
+	resp := new(ScowGetTokenResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -157,16 +156,7 @@ func (o *ScowClient) refreshToken(
 		return errors.New(resp.RespError)
 	}
 
-	if getTokenResponseBody, ok :=
-		resp.RespBody.(ScowGetTokenResponseBody); ok {
-
-		o.token = getTokenResponseBody.Token
-	} else {
-		Logger.WithContext(ctx).Error(
-			"response body invalid.",
-			" response: ", string(respBody))
-		return errors.New("response body invalid")
-	}
+	o.token = resp.RespBody.Token
 	o.tokenCreateTime = time.Now()
 
 	Logger.WithContext(ctx).Debug(

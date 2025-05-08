@@ -63,6 +63,13 @@ type ScowGetTokenReq struct {
 	Password string `json:"password"`
 }
 
+type ScowGetTokenResponse struct {
+	RespCode    int32                    `json:"respCode"`
+	RespError   string                   `json:"respError"`
+	RespMessage string                   `json:"respMessage"`
+	RespBody    ScowGetTokenResponseBody `json:"respBody"`
+}
+
 type ScowGetTokenResponseBody struct {
 	ID    int32  `json:"id"`
 	Token string `json:"core-sctoken"`
