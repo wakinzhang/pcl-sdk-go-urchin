@@ -132,8 +132,15 @@ type ScowMergeChunksReq struct {
 }
 
 type ScowListReq struct {
-	ClusterId string `json:"clusterId"`
-	Path      string `json:"path"`
+	ClusterId string `url:"clusterId"`
+	Path      string `url:"path"`
+}
+
+type ScowListResponse struct {
+	RespCode    int32                 `json:"respCode"`
+	RespError   string                `json:"respError"`
+	RespMessage string                `json:"respMessage"`
+	RespBody    *ScowListResponseBody `json:"respBody"`
 }
 
 type ScowListResponseBody struct {

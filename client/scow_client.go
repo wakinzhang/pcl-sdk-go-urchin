@@ -840,20 +840,19 @@ func (o *ScowClient) List(
 	input.ClusterId = o.clusterId
 	input.Path = path
 
-	reqBody, err := json.Marshal(input)
+	values, err := query.Values(input)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"json.Marshal failed.",
+			"query.Values failed.",
 			" err: ", err)
 		return err, output
 	}
 
-	url := o.endpoint + ScowListInterface
+	url := o.endpoint + ScowListInterface + "?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:List request.",
-		" url: ", url,
-		" reqBody: ", string(reqBody))
+		" url: ", url)
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
@@ -864,7 +863,7 @@ func (o *ScowClient) List(
 		url,
 		http.MethodGet,
 		header,
-		reqBody,
+		nil,
 		o.scowClient)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -877,7 +876,7 @@ func (o *ScowClient) List(
 		" path: ", path,
 		" response: ", string(respBody))
 
-	resp := new(ScowBaseResponse)
+	resp := new(ScowListResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -895,19 +894,8 @@ func (o *ScowClient) List(
 			" RespMessage: ", resp.RespMessage)
 		return errors.New(resp.RespError), output
 	}
-
-	if output, ok :=
-		resp.RespBody.(*ScowListResponseBody); ok {
-
-		Logger.WithContext(ctx).Debug(
-			"ScowClient:List finish.")
-		return err, output
-	} else {
-		Logger.WithContext(ctx).Error(
-			"response body invalid.",
-			" response: ", string(respBody))
-		return errors.New("response body invalid"), output
-	}
+	output = resp.RespBody
+	return err, output
 }
 
 func (o *ScowClient) DownloadChunks(
