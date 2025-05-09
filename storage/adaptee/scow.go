@@ -1005,13 +1005,13 @@ func (o *Scow) completeParts(
 	err = o.sClient.MergeChunks(
 		ctx,
 		input.FileName,
-		input.ObjectPath,
+		filepath.Dir(input.ObjectPath),
 		input.Md5)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"sClient.MergeChunks failed.",
 			" FileName: ", input.FileName,
-			" ObjectPath: ", input.ObjectPath,
+			" Path: ", filepath.Dir(input.ObjectPath),
 			" Md5: ", input.Md5,
 			" err: ", err)
 		return err

@@ -102,10 +102,10 @@ type ScowUploadChunksReq struct {
 }
 
 type ScowMergeChunksReq struct {
-	ClusterId string `json:"clusterId"`
-	Path      string `json:"path"`
-	Md5       string `json:"md5"`
-	FileName  string `json:"fileName"`
+	ClusterId string `url:"clusterId"`
+	Path      string `url:"path"`
+	Md5       string `url:"md5"`
+	FileName  string `url:"fileName"`
 }
 
 type ScowListReq struct {
