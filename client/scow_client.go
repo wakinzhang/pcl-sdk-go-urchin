@@ -164,6 +164,88 @@ func (o *ScowClient) refreshToken(
 	return err
 }
 
+func (o *ScowClient) checkExist(
+	ctx context.Context,
+	path string) (err error, exist bool) {
+
+	Logger.WithContext(ctx).Debug(
+		"ScowClient:checkExist start.",
+		" path: ", path)
+
+	err = o.refreshToken(ctx)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ScowClient.refreshToken failed.",
+			" err: ", err)
+		return err, exist
+	}
+
+	input := new(ScowCheckExistReq)
+	input.ClusterId = o.clusterId
+	input.Path = path
+
+	reqBody, err := json.Marshal(input)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Marshal failed.",
+			" err: ", err)
+		return err, exist
+	}
+
+	url := o.endpoint + ScowCheckExistInterface
+
+	Logger.WithContext(ctx).Debug(
+		"ScowClient:checkExist request.",
+		" url: ", url,
+		" reqBody: ", string(reqBody))
+
+	header := make(http.Header)
+	header.Add(ScowHttpHeaderAuth, o.token)
+	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
+
+	err, respBody := Do(
+		ctx,
+		url,
+		http.MethodGet,
+		header,
+		reqBody,
+		o.scowClient)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.Do failed.",
+			" err: ", err)
+		return err, exist
+	}
+	Logger.WithContext(ctx).Debug(
+		"ScowClient:checkExist response.",
+		" path: ", path,
+		" response: ", string(respBody))
+
+	resp := new(ScowCheckExistResponse)
+	err = json.Unmarshal(respBody, resp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err, exist
+	}
+
+	if ScowSuccessCode != resp.RespCode {
+		Logger.WithContext(ctx).Error(
+			"ScowClient:checkExist response failed.",
+			" path: ", path,
+			" RespCode: ", resp.RespCode,
+			" RespError: ", resp.RespError,
+			" RespMessage: ", resp.RespMessage)
+		return errors.New(resp.RespError), exist
+	}
+	exist = resp.RespBody.Data.Exists
+
+	Logger.WithContext(ctx).Debug(
+		"ScowClient:checkExist finish.")
+	return err, exist
+}
+
 func (o *ScowClient) Mkdir(
 	ctx context.Context,
 	path string) (err error) {
@@ -171,6 +253,20 @@ func (o *ScowClient) Mkdir(
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Mkdir start.",
 		" path: ", path)
+
+	err, exist := o.checkExist(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ScowClient.checkExist failed.",
+			" err: ", err)
+		return err
+	}
+	if true == exist {
+		Logger.WithContext(ctx).Info(
+			"Path already exist, no need to mkdir.",
+			" path: ", path)
+		return err
+	}
 
 	err = o.refreshToken(ctx)
 	if nil != err {

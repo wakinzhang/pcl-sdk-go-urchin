@@ -29,6 +29,7 @@ const (
 	ScowMultiPartFormFiledFile        = "file"
 
 	ScowGetTokenInterface     = "/v1/sys/user/login"
+	ScowCheckExistInterface   = "/v1/ai/api/file/checkExist"
 	ScowMkdirInterface        = "/v1/ai//api/file/mkdir"
 	ScowDeleteInterface       = "/v1/ai/api/file/delete"
 	ScowListInterface         = "/v1/ai/api/file/listDirectory"
@@ -78,6 +79,26 @@ type ScowGetTokenResponse struct {
 type ScowGetTokenResponseBody struct {
 	ID    int32  `json:"id"`
 	Token string `json:"core-sctoken"`
+}
+
+type ScowCheckExistReq struct {
+	ClusterId string `json:"clusterId"`
+	Path      string `json:"path"`
+}
+
+type ScowCheckExistResponse struct {
+	RespCode    int32                      `json:"respCode"`
+	RespError   string                     `json:"respError"`
+	RespMessage string                     `json:"respMessage"`
+	RespBody    ScowCheckExistResponseBody `json:"respBody"`
+}
+
+type ScowCheckExistResponseBody struct {
+	Data ScowCheckExistResponseBodyData `json:"data"`
+}
+
+type ScowCheckExistResponseBodyData struct {
+	Exists bool `json:"exists"`
 }
 
 type ScowMkdirReq struct {
