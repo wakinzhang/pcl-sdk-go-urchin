@@ -1389,7 +1389,7 @@ func (o *Scow) resumeDownload(
 	}
 
 	if needCheckpoint {
-		dfc.ObjectPath = object.Name
+		dfc.ObjectPath = object.PathExt
 		dfc.DownloadFile = input.DownloadFile
 		dfc.ObjectInfo = ScowObjectInfo{}
 		dfc.ObjectInfo.Size = object.Size
