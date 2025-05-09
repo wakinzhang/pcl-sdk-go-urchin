@@ -9,8 +9,10 @@ import (
 )
 
 const (
-	ScowSuccessCode    = 200
-	ScowSuccessMessage = "success"
+	ScowSuccessCode = 200
+
+	ScowSuccessMessage       = "success"
+	ScowAlreadyExistsMessage = "already exists"
 
 	DefaultScowUploadMultiSize = 500 * 1024 * 1024
 

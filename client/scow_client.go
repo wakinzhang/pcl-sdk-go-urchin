@@ -713,7 +713,8 @@ func (o *ScowClient) UploadChunks(
 		return err
 	}
 
-	if ScowSuccessMessage != resp.Message {
+	if ScowSuccessMessage != resp.Message &&
+		ScowAlreadyExistsMessage != resp.Message {
 		Logger.WithContext(ctx).Error(
 			"ScowClient:UploadChunks response failed.",
 			" fileName: ", fileName,
