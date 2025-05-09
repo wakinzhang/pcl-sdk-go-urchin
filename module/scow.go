@@ -82,8 +82,8 @@ type ScowGetTokenResponseBody struct {
 }
 
 type ScowCheckExistReq struct {
-	ClusterId string `json:"clusterId"`
-	Path      string `json:"path"`
+	ClusterId string `url:"clusterId"`
+	Path      string `url:"path"`
 }
 
 type ScowCheckExistResponse struct {
