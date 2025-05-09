@@ -184,20 +184,19 @@ func (o *ScowClient) checkExist(
 	input.ClusterId = o.clusterId
 	input.Path = path
 
-	reqBody, err := json.Marshal(input)
+	values, err := query.Values(input)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"json.Marshal failed.",
+			"query.Values failed.",
 			" err: ", err)
 		return err, exist
 	}
 
-	url := o.endpoint + ScowCheckExistInterface
+	url := o.endpoint + ScowCheckExistInterface + "?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:checkExist request.",
-		" url: ", url,
-		" reqBody: ", string(reqBody))
+		" url: ", url)
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
@@ -208,7 +207,7 @@ func (o *ScowClient) checkExist(
 		url,
 		http.MethodGet,
 		header,
-		reqBody,
+		nil,
 		o.scowClient)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
