@@ -755,30 +755,31 @@ func (o *ScowClient) MergeChunks(
 	input.Path = path
 	input.Md5 = md5
 
-	values, err := query.Values(input)
+	reqBody, err := json.Marshal(input)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"query.Values failed.",
+			"json.Marshal failed.",
 			" err: ", err)
 		return err
 	}
 
-	url := o.endpoint + ScowMergeChunksInterface + "?" + values.Encode()
+	url := o.endpoint + ScowMergeChunksInterface
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:MergeChunks request.",
-		" url: ", url)
+		" url: ", url,
+		" reqBody: ", string(reqBody))
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
-	header.Add(HttpHeaderContentType, HttpHeaderContentTypeData)
+	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
 	err, respBody := Do(
 		ctx,
 		url,
 		http.MethodPost,
 		header,
-		nil,
+		reqBody,
 		o.scowClient)
 	if nil != err {
 		Logger.WithContext(ctx).Error(

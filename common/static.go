@@ -25,6 +25,7 @@ const (
 	HttpHeaderContentTypeText       = "text/plain"
 	HttpHeaderContentTypeStream     = "application/octet-stream"
 	HttpHeaderContentTypeData       = "multipart/form-data"
+	HttpHeaderContentTypeFormData   = "form-data"
 	HttpHeaderContentTypeUrlEncoded = "application/x-www-form-urlencoded"
 
 	HttpHeaderRange        = "Range"
