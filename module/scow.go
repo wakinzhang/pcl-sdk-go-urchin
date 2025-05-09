@@ -155,11 +155,12 @@ type ScowDownloadReq struct {
 }
 
 type ScowObject struct {
-	Type  string `json:"type"`
-	Name  string `json:"name"`
-	MTime string `json:"mtime"`
-	Size  int64  `json:"size"`
-	Mode  int32  `json:"mode"`
+	Type    string `json:"type"`
+	Name    string `json:"name"`
+	MTime   string `json:"mtime"`
+	Size    int64  `json:"size"`
+	Mode    int32  `json:"mode"`
+	PathExt string `json:"path"`
 }
 
 type ScowUploadFileInput struct {

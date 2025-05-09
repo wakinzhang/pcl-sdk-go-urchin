@@ -1142,6 +1142,7 @@ func (o *Scow) Download(
 	objects := make([]*ScowObject, 0)
 	folders := make([]*ScowObject, 0)
 	for _, object := range scowListResponseBody.ScowObjects {
+		object.PathExt = sourcePath + object.Name
 		if ScowObjectTypeFile == object.Type {
 			objects = append(objects, object)
 		} else {
@@ -1163,14 +1164,14 @@ func (o *Scow) Download(
 	}
 	for _, folder := range folders {
 		var scowDownloadInput ScowDownloadInput
-		scowDownloadInput.SourcePath = folder.Name
+		scowDownloadInput.SourcePath = folder.PathExt
 		scowDownloadInput.TargetPath = targetPath
 
 		err = o.Download(ctx, scowDownloadInput)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"Scow:Download failed.",
-				" sourcePath: ", folder.Name,
+				" sourcePath: ", folder.PathExt,
 				" targetPath: ", targetPath,
 				" err: ", err)
 			return err
