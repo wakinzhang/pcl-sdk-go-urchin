@@ -149,9 +149,9 @@ type ScowListResponseBody struct {
 }
 
 type ScowDownloadReq struct {
-	ClusterId string `json:"clusterId"`
-	Path      string `json:"path"`
-	Download  string `json:"download"`
+	ClusterId string `url:"clusterId"`
+	Path      string `url:"path"`
+	Download  string `url:"download"`
 }
 
 type ScowObject struct {

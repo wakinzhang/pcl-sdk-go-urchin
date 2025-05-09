@@ -523,7 +523,7 @@ func (o *ScowClient) Upload(
 	response, err := o.scowClient.Do(reqRetryableHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"scowClient.Do failed.",
+			"ScowClient.Do failed.",
 			" err: ", err)
 		return err
 	}
@@ -674,7 +674,7 @@ func (o *ScowClient) UploadChunks(
 	response, err := o.scowClient.Do(reqRetryableHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"scowClient.Do failed.",
+			"ScowClient.Do failed.",
 			" err: ", err)
 		return err
 	}
@@ -957,9 +957,34 @@ func (o *ScowClient) DownloadChunks(
 	response, err := o.scowClient.Do(request)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"scowClient.Do failed.",
+			"ScowClient.Do failed.",
 			" err: ", err)
 		return err, output
+	}
+
+	if http.StatusOK != response.StatusCode {
+		defer func(body io.ReadCloser) {
+			_err := body.Close()
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"io.ReadCloser failed.",
+					" err: ", _err)
+			}
+		}(response.Body)
+
+		respBody, err := io.ReadAll(response.Body)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"io.ReadAll failed.",
+				" err: ", err)
+			return err, output
+		}
+		Logger.WithContext(ctx).Error(
+			"ScowClient.DownloadChunks response failed.",
+			" StatusCode: ", response.StatusCode,
+			" Status: ", response.Status,
+			" respBody: ", string(respBody))
+		return errors.New(string(respBody)), output
 	}
 
 	output = new(ScowDownloadPartOutput)
