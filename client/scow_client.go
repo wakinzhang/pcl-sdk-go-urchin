@@ -962,8 +962,8 @@ func (o *ScowClient) DownloadChunks(
 		return err, output
 	}
 
-	if 200 <= response.StatusCode &&
-		300 > response.StatusCode {
+	if 200 > response.StatusCode ||
+		300 <= response.StatusCode {
 
 		Logger.WithContext(ctx).Error(
 			"ScowClient.DownloadChunks response failed.",
