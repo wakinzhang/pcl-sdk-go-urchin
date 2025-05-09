@@ -180,6 +180,15 @@ func (o *Scow) Upload(
 		" targetPath: ", targetPath,
 		" needPure: ", needPure)
 
+	err = o.sClient.Mkdir(ctx, targetPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sClient.Mkdir failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return err
+	}
+
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
 		Logger.WithContext(ctx).Error(

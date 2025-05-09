@@ -27,9 +27,6 @@ const (
 	HttpHeaderContentTypeData       = "multipart/form-data"
 	HttpHeaderContentTypeUrlEncoded = "application/x-www-form-urlencoded"
 
-	HttpHeaderAccept         = "Accept-Encoding"
-	HttpHeaderAcceptTypeJson = "application/json"
-
 	HttpHeaderRange        = "Range"
 	HttpHeaderContentRange = "Content-Range"
 )
