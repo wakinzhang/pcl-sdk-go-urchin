@@ -456,7 +456,7 @@ func (o *ScowClient) Upload(
 		" path: ", path,
 		" response: ", string(respBodyBuf))
 
-	resp := new(ScowBaseResponse)
+	resp := new(ScowBaseMessageResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -465,15 +465,13 @@ func (o *ScowClient) Upload(
 		return err
 	}
 
-	if ScowSuccessCode != resp.RespCode {
+	if ScowSuccessMessage != resp.Message {
 		Logger.WithContext(ctx).Error(
 			"ScowClient:Upload response failed.",
 			" fileName: ", fileName,
 			" path: ", path,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
-		return errors.New(resp.RespError)
+			" Message: ", resp.Message)
+		return errors.New(resp.Message)
 	}
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Upload finish.")
@@ -611,7 +609,7 @@ func (o *ScowClient) UploadChunks(
 		" partNum: ", partNum,
 		" response: ", string(respBodyBuf))
 
-	resp := new(ScowBaseResponse)
+	resp := new(ScowBaseMessageResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -620,17 +618,15 @@ func (o *ScowClient) UploadChunks(
 		return err
 	}
 
-	if ScowSuccessCode != resp.RespCode {
+	if ScowSuccessMessage != resp.Message {
 		Logger.WithContext(ctx).Error(
 			"ScowClient:UploadChunks response failed.",
 			" fileName: ", fileName,
 			" path: ", path,
 			" md5: ", md5,
 			" partNum: ", partNum,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
-		return errors.New(resp.RespError)
+			" Message: ", resp.Message)
+		return errors.New(resp.Message)
 	}
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks finish.")

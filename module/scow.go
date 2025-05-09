@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	ScowSuccessCode = 200
+	ScowSuccessCode    = 200
+	ScowSuccessMessage = "success"
 
 	DefaultScowUploadMultiSize = 500 * 1024 * 1024
 
@@ -56,6 +57,10 @@ type ScowBaseResponse struct {
 	RespError   string      `json:"respError"`
 	RespMessage string      `json:"respMessage"`
 	RespBody    interface{} `json:"respBody"`
+}
+
+type ScowBaseMessageResponse struct {
+	Message string `json:"message"`
 }
 
 type ScowGetTokenReq struct {
