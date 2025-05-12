@@ -1770,6 +1770,19 @@ func (o *JCSClient) UploadPart(
 		return err
 	}
 
+	mapHttpHeader := make(map[string][]string, 0)
+	mapHttpHeader = reqRetryableHttp.Header
+	for key, values := range mapHttpHeader {
+		Logger.WithContext(ctx).Debug(
+			"reqRetryableHttp.Header.",
+			" key: ", key)
+		for _, value := range values {
+			Logger.WithContext(ctx).Debug(
+				"reqRetryableHttp.Header.",
+				" value: ", value)
+		}
+	}
+
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
