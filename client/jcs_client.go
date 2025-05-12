@@ -1453,7 +1453,7 @@ func (o *JCSClient) UploadFile(
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:UploadFile request.",
 		" url: ", url,
-		" info: ", info)
+		" info: ", string(info))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -1496,6 +1496,7 @@ func (o *JCSClient) UploadFile(
 		return err
 	}
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
+	reqHttp.Header.Del("Content-Length")
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
@@ -1701,7 +1702,8 @@ func (o *JCSClient) UploadPart(
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart request.",
-		" url: ", url)
+		" url: ", url,
+		" info: ", string(info))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
