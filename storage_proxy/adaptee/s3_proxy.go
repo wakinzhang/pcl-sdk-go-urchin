@@ -57,9 +57,7 @@ func (o *S3Proxy) NewFolderWithSignedUrl(
 
 	createEmptyFileSignedUrlReq := new(CreatePutObjectSignedUrlReq)
 	createEmptyFileSignedUrlReq.TaskId = taskId
-	if 0 < len(objectKey) {
-		createEmptyFileSignedUrlReq.Source = &objectKey
-	}
+	createEmptyFileSignedUrlReq.Source = objectKey
 
 	err, createEmptyFileSignedUrlResp :=
 		UClient.CreatePutObjectSignedUrl(
@@ -115,7 +113,7 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 
 	createEmptyFileSignedUrlReq := new(CreatePutObjectSignedUrlReq)
 	createEmptyFileSignedUrlReq.TaskId = taskId
-	createEmptyFileSignedUrlReq.Source = &objectKey
+	createEmptyFileSignedUrlReq.Source = objectKey
 
 	err, createPutObjectSignedUrlResp :=
 		UClient.CreatePutObjectSignedUrl(

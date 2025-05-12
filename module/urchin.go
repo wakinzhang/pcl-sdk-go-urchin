@@ -112,7 +112,7 @@ type CreatePutObjectSignedUrlReq struct {
 	// @inject_tag: json:"task_id"
 	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"source"
-	Source *string `protobuf:"bytes,2,opt,name=source,proto3,oneof" json:"source"`
+	Source string `protobuf:"bytes,2,opt,name=source,proto3" json:"source"`
 }
 
 type CreateGetObjectMetadataSignedUrlReq struct {
