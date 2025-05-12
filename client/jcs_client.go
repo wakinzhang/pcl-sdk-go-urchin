@@ -523,14 +523,15 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 }
 
 type JCSClient struct {
-	accessKey   string
-	secretKey   string
-	endPoint    string
-	authService string
-	authRegion  string
-	userID      int32
-	bucketID    int32
-	jcsClient   *retryablehttp.Client
+	accessKey     string
+	secretKey     string
+	endPoint      string
+	authService   string
+	authRegion    string
+	userID        int32
+	bucketID      int32
+	jcsClient     *retryablehttp.Client
+	jcsFileClient *http.Client
 }
 
 func (o *JCSClient) Init(
@@ -590,6 +591,11 @@ func (o *JCSClient) Init(
 	o.jcsClient.RetryWaitMax = 5 * time.Second
 	o.jcsClient.HTTPClient.Timeout = timeout
 	o.jcsClient.HTTPClient.Transport = transport
+
+	o.jcsFileClient = &http.Client{
+		Transport: transport,
+		Timeout:   timeout,
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"Function JCS:Init finish.")
@@ -1505,18 +1511,20 @@ func (o *JCSClient) UploadFile(
 		return err
 	}
 
-	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"retryablehttp.FromRequest failed.",
-			" err: ", err)
-		return err
-	}
+	/*
+		reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"retryablehttp.FromRequest failed.",
+				" err: ", err)
+			return err
+		}
+	*/
 
-	response, err := o.jcsClient.Do(reqRetryableHttp)
+	response, err := o.jcsFileClient.Do(reqHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"jcsClient.Do failed.",
+			"jcsFileClient.Do failed.",
 			" err: ", err)
 		return err
 	}
