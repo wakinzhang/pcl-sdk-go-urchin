@@ -1496,7 +1496,6 @@ func (o *JCSClient) UploadFile(
 		return err
 	}
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
-	reqHttp.Header.Del("Content-Length")
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
