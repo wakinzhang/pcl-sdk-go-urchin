@@ -523,15 +523,14 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 }
 
 type JCSClient struct {
-	accessKey     string
-	secretKey     string
-	endPoint      string
-	authService   string
-	authRegion    string
-	userID        int32
-	bucketID      int32
-	jcsClient     *retryablehttp.Client
-	jcsFileClient *http.Client
+	accessKey   string
+	secretKey   string
+	endPoint    string
+	authService string
+	authRegion  string
+	userID      int32
+	bucketID    int32
+	jcsClient   *retryablehttp.Client
 }
 
 func (o *JCSClient) Init(
@@ -591,11 +590,6 @@ func (o *JCSClient) Init(
 	o.jcsClient.RetryWaitMax = 5 * time.Second
 	o.jcsClient.HTTPClient.Timeout = timeout
 	o.jcsClient.HTTPClient.Transport = transport
-
-	o.jcsFileClient = &http.Client{
-		Transport: transport,
-		Timeout:   timeout,
-	}
 
 	Logger.WithContext(ctx).Debug(
 		"Function JCS:Init finish.")
@@ -668,6 +662,47 @@ func (o *JCSClient) sign(
 
 	Logger.WithContext(ctx).Debug(
 		"Function JCSClient:sign finish.")
+	return nil
+}
+
+func (o *JCSClient) signWithoutBody(
+	ctx context.Context,
+	req *http.Request) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Function JCSClient:signWithoutBody start.")
+
+	prod := credentials.NewStaticCredentialsProvider(
+		o.accessKey,
+		o.secretKey,
+		"")
+
+	cred, err := prod.Retrieve(context.TODO())
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"CredentialsProvider:Retrieve failed.",
+			" err: ", err)
+		return err
+	}
+
+	signer := signerV4.NewSigner()
+	err = signer.SignHTTP(
+		context.Background(),
+		cred,
+		req,
+		"",
+		o.authService,
+		o.authRegion,
+		time.Now())
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Signer.SignHTTP failed.",
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Function JCSClient:signWithoutBody finish.")
 	return nil
 }
 
@@ -1503,28 +1538,26 @@ func (o *JCSClient) UploadFile(
 	}
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
-	err = o.sign(ctx, reqHttp)
+	err = o.signWithoutBody(ctx, reqHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCSClient.sign failed.",
+			"JCSClient.signWithoutBody failed.",
 			" err: ", err)
 		return err
 	}
 
-	/*
-		reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"retryablehttp.FromRequest failed.",
-				" err: ", err)
-			return err
-		}
-	*/
-
-	response, err := o.jcsFileClient.Do(reqHttp)
+	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"jcsFileClient.Do failed.",
+			"retryablehttp.FromRequest failed.",
+			" err: ", err)
+		return err
+	}
+
+	response, err := o.jcsClient.Do(reqRetryableHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.Do failed.",
 			" err: ", err)
 		return err
 	}
@@ -1754,10 +1787,10 @@ func (o *JCSClient) UploadPart(
 	}
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
-	err = o.sign(ctx, reqHttp)
+	err = o.signWithoutBody(ctx, reqHttp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"JCSClient.sign failed.",
+			"JCSClient.signWithoutBody failed.",
 			" err: ", err)
 		return err
 	}
@@ -1768,19 +1801,6 @@ func (o *JCSClient) UploadPart(
 			"retryablehttp.FromRequest failed.",
 			" err: ", err)
 		return err
-	}
-
-	mapHttpHeader := make(map[string][]string, 0)
-	mapHttpHeader = reqRetryableHttp.Header
-	for key, values := range mapHttpHeader {
-		Logger.WithContext(ctx).Debug(
-			"reqRetryableHttp.Header.",
-			" key: ", key)
-		for _, value := range values {
-			Logger.WithContext(ctx).Debug(
-				"reqRetryableHttp.Header.",
-				" value: ", value)
-		}
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
