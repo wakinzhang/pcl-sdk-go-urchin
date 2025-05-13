@@ -55,6 +55,9 @@ func (o *S3Proxy) NewFolderWithSignedUrl(
 		" objectKey: ", objectKey,
 		" taskId: ", taskId)
 
+	if 0 < len(objectKey) && objectKey[len(objectKey)-1] != '/' {
+		objectKey = objectKey + "/"
+	}
 	createEmptyFileSignedUrlReq := new(CreatePutObjectSignedUrlReq)
 	createEmptyFileSignedUrlReq.TaskId = taskId
 	createEmptyFileSignedUrlReq.Source = objectKey
