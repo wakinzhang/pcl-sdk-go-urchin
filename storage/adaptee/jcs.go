@@ -1279,19 +1279,34 @@ func (o *JCS) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			targetFile := targetPath + itemObject.Path
-			err = o.downloadPart(
-				ctx,
-				itemObject,
-				targetFile)
-			if nil != err {
-				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
-					"JCS:downloadPart failed.",
-					" objectPath: ", itemObject.Path,
-					" targetFile: ", targetFile,
-					" err: ", err)
-				return
+			if "0" == itemObject.Size &&
+				'/' == itemObject.Path[len(itemObject.Path)-1] {
+
+				itemPath := targetPath + itemObject.Path
+				err = os.MkdirAll(itemPath, os.ModePerm)
+				if nil != err {
+					isAllSuccess = false
+					Logger.WithContext(ctx).Error(
+						"os.MkdirAll failed.",
+						" itemPath: ", itemPath,
+						" err: ", err)
+					return
+				}
+			} else {
+				targetFile := targetPath + itemObject.Path
+				err = o.downloadPart(
+					ctx,
+					itemObject,
+					targetFile)
+				if nil != err {
+					isAllSuccess = false
+					Logger.WithContext(ctx).Error(
+						"JCS:downloadPart failed.",
+						" objectPath: ", itemObject.Path,
+						" targetFile: ", targetFile,
+						" err: ", err)
+					return
+				}
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()

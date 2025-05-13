@@ -487,13 +487,13 @@ func (o *S3) Download(
 
 	marker := ""
 	for {
-		input := new(obs.ListObjectsInput)
-		input.Bucket = o.bucket
-		input.Prefix = sourcePath
+		inputList := new(obs.ListObjectsInput)
+		inputList.Bucket = o.bucket
+		inputList.Prefix = sourcePath
 		if "" != marker {
-			input.Marker = marker
+			inputList.Marker = marker
 		}
-		listObjectsOutput, err := o.obsClient.ListObjects(input)
+		listObjectsOutput, err := o.obsClient.ListObjects(inputList)
 		if nil != err {
 			if obsError, ok := err.(obs.ObsError); ok {
 				Logger.WithContext(ctx).Error(
@@ -599,28 +599,44 @@ func (o *S3) downloadObjects(
 				}
 			}()
 
-			input := new(obs.DownloadFileInput)
-			input.DownloadFile = targetPath + itemObject.Key
-			input.EnableCheckpoint = true
-			input.CheckpointFile = input.DownloadFile + ".download_file_record"
-			input.TaskNum = DefaultS3DownloadMultiTaskNum
-			input.PartSize = DefaultPartSize
-			input.Bucket = o.bucket
-			input.Key = itemObject.Key
-			_, err = o.obsClient.DownloadFile(input)
-			if nil != err {
-				isAllSuccess = false
-				if obsError, ok := err.(obs.ObsError); ok {
+			if 0 == itemObject.Size &&
+				'/' == itemObject.Key[len(itemObject.Key)-1] {
+
+				itemPath := targetPath + itemObject.Key
+				err = os.MkdirAll(itemPath, os.ModePerm)
+				if nil != err {
+					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
-						"obsClient.DownloadFile failed.",
-						" obsCode: ", obsError.Code,
-						" obsMessage: ", obsError.Message)
-					return
-				} else {
-					Logger.WithContext(ctx).Error(
-						"obsClient.DownloadFile failed.",
+						"os.MkdirAll failed.",
+						" itemPath: ", itemPath,
 						" err: ", err)
 					return
+				}
+			} else {
+				input := new(obs.DownloadFileInput)
+				input.DownloadFile = targetPath + itemObject.Key
+				input.EnableCheckpoint = true
+				input.CheckpointFile =
+					input.DownloadFile + ".download_file_record"
+				input.TaskNum = DefaultS3DownloadMultiTaskNum
+				input.PartSize = DefaultPartSize
+				input.Bucket = o.bucket
+				input.Key = itemObject.Key
+				_, err = o.obsClient.DownloadFile(input)
+				if nil != err {
+					isAllSuccess = false
+					if obsError, ok := err.(obs.ObsError); ok {
+						Logger.WithContext(ctx).Error(
+							"obsClient.DownloadFile failed.",
+							" obsCode: ", obsError.Code,
+							" obsMessage: ", obsError.Message)
+						return
+					} else {
+						Logger.WithContext(ctx).Error(
+							"obsClient.DownloadFile failed.",
+							" err: ", err)
+						return
+					}
 				}
 			}
 			fileMutex.Lock()

@@ -2067,22 +2067,37 @@ func (o *S3Proxy) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			_, err = o.downloadPartWithSignedUrl(
-				ctx,
-				bucketName,
-				itemObject.Key,
-				targetPath+itemObject.Key,
-				taskId)
-			if nil != err {
-				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
-					"S3Proxy:downloadPartWithSignedUrl failed.",
-					" bucketName: ", bucketName,
-					" objectKey: ", itemObject.Key,
-					" targetFile: ", targetPath+itemObject.Key,
-					" taskId: ", taskId,
-					" err: ", err)
-				return
+			if 0 == itemObject.Size &&
+				'/' == itemObject.Key[len(itemObject.Key)-1] {
+
+				itemPath := targetPath + itemObject.Key
+				err = os.MkdirAll(itemPath, os.ModePerm)
+				if nil != err {
+					isAllSuccess = false
+					Logger.WithContext(ctx).Error(
+						"os.MkdirAll failed.",
+						" itemPath: ", itemPath,
+						" err: ", err)
+					return
+				}
+			} else {
+				_, err = o.downloadPartWithSignedUrl(
+					ctx,
+					bucketName,
+					itemObject.Key,
+					targetPath+itemObject.Key,
+					taskId)
+				if nil != err {
+					isAllSuccess = false
+					Logger.WithContext(ctx).Error(
+						"S3Proxy:downloadPartWithSignedUrl failed.",
+						" bucketName: ", bucketName,
+						" objectKey: ", itemObject.Key,
+						" targetFile: ", targetPath+itemObject.Key,
+						" taskId: ", taskId,
+						" err: ", err)
+					return
+				}
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()

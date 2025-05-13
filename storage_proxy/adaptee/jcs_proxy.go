@@ -1464,20 +1464,37 @@ func (o *JCSProxy) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			err = o.downloadPartWithSignedUrl(
-				ctx,
-				itemObject,
-				targetPath+uuid+"/"+itemObject.Path,
-				taskId)
-			if nil != err {
-				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
-					"JCSProxy:downloadPartWithSignedUrl failed.",
-					" objectPath: ", itemObject.Path,
-					" targetFile: ", targetPath+itemObject.Path,
-					" taskId: ", taskId,
-					" err: ", err)
-				return
+
+			if "0" == itemObject.Size &&
+				'/' == itemObject.Path[len(itemObject.Path)-1] {
+
+				itemPath := targetPath + itemObject.Path
+				err = os.MkdirAll(itemPath, os.ModePerm)
+				if nil != err {
+					isAllSuccess = false
+					Logger.WithContext(ctx).Error(
+						"os.MkdirAll failed.",
+						" itemPath: ", itemPath,
+						" err: ", err)
+					return
+				}
+			} else {
+				targetFile := targetPath + itemObject.Path
+				err = o.downloadPartWithSignedUrl(
+					ctx,
+					itemObject,
+					targetFile,
+					taskId)
+				if nil != err {
+					isAllSuccess = false
+					Logger.WithContext(ctx).Error(
+						"JCSProxy:downloadPartWithSignedUrl failed.",
+						" objectPath: ", itemObject.Path,
+						" targetFile: ", targetFile,
+						" taskId: ", taskId,
+						" err: ", err)
+					return
+				}
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
