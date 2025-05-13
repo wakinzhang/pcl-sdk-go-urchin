@@ -513,16 +513,17 @@ func (o *Sugon) uploadFileStream(
 		}
 	}()
 
+	fileName := filepath.Base(objectPath)
 	path := filepath.Dir(objectPath)
 	err = o.sugonClient.Upload(
 		ctx,
-		sourceFile,
+		fileName,
 		path,
 		fd)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"sugonClient.Upload failed.",
-			" sourceFile: ", sourceFile,
+			" fileName: ", fileName,
 			" path: ", path,
 			" err: ", err)
 		return err
