@@ -189,6 +189,14 @@ func (o *Sugon) Upload(
 			" err: ", err)
 		return err
 	}
+	err = o.sugonClient.Mkdir(ctx, targetPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sugonClient.Mkdir failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return err
+	}
 	objectPath := targetPath + filepath.Base(sourcePath)
 	if stat.IsDir() {
 		err = o.sugonClient.Mkdir(ctx, objectPath)
