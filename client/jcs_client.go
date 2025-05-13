@@ -1507,12 +1507,15 @@ func (o *JCSClient) UploadFile(
 			" err: ", err)
 		return err
 	}
-	_, err = io.Copy(part, data)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"io.Copy failed.",
-			" err: ", err)
-		return err
+
+	if nil != data {
+		_, err = io.Copy(part, data)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"io.Copy failed.",
+				" err: ", err)
+			return err
+		}
 	}
 	_ = writer.WriteField(
 		JCSMultiPartFormFiledInfo,
