@@ -18,6 +18,7 @@ const (
 
 	JCSCreateBucketInterface                           = "/v1/bucket/create"
 	JCSCreatePackageInterface                          = "/v1/package/create"
+	JCSGetPackageInterface                             = "/v1/package/getByFullName"
 	JCSPreSignedObjectListInterface                    = "/v1/presigned/object/listByPath"
 	JCSPreSignedObjectUploadInterface                  = "/v1/presigned/object/upload"
 	JCSPreSignedObjectNewMultipartUploadInterface      = "/v1/presigned/object/newMultipartUpload"
@@ -296,6 +297,22 @@ type JCSCreatePackageResponse struct {
 }
 
 type JCSCreatePackageResponseData struct {
+	Package JCSPackageInfo `json:"package"`
+}
+
+type JCSGetPackageReq struct {
+	UserID      int32  `json:"userID"`
+	BucketName  string `json:"bucketName"`
+	PackageName string `json:"packageName"`
+}
+
+type JCSGetPackageResponse struct {
+	Code    string                    `json:"code"`
+	Message string                    `json:"message"`
+	Data    JCSGetPackageResponseData `json:"data"`
+}
+
+type JCSGetPackageResponseData struct {
 	Package JCSPackageInfo `json:"package"`
 }
 

@@ -32,7 +32,8 @@ func (o *JCS) Init(
 	authService,
 	authRegion string,
 	userID,
-	bucketID,
+	bucketID int32,
+	bucketName string,
 	reqTimeout,
 	maxConnection int32) (err error) {
 
@@ -45,6 +46,7 @@ func (o *JCS) Init(
 		" authRegion: ", authRegion,
 		" userID: ", userID,
 		" bucketID: ", bucketID,
+		" bucketName: ", bucketName,
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
 
@@ -58,6 +60,7 @@ func (o *JCS) Init(
 		authRegion,
 		userID,
 		bucketID,
+		bucketName,
 		reqTimeout,
 		maxConnection)
 

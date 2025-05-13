@@ -59,6 +59,7 @@ func NewStorage(
 			storageNodeConfig.AuthRegion,
 			storageNodeConfig.UserId,
 			storageNodeConfig.BucketId,
+			storageNodeConfig.BucketName,
 			storageNodeConfig.ReqTimeout,
 			storageNodeConfig.MaxConnection)
 		if nil != err {

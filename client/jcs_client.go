@@ -530,6 +530,7 @@ type JCSClient struct {
 	authRegion  string
 	userID      int32
 	bucketID    int32
+	bucketName  string
 	jcsClient   *retryablehttp.Client
 }
 
@@ -541,7 +542,8 @@ func (o *JCSClient) Init(
 	authService,
 	authRegion string,
 	userID,
-	bucketID,
+	bucketID int32,
+	bucketName string,
 	reqTimeout,
 	maxConnection int32) {
 
@@ -554,6 +556,7 @@ func (o *JCSClient) Init(
 		" authRegion: ", authRegion,
 		" userID: ", userID,
 		" bucketID: ", bucketID,
+		" bucketName: ", bucketName,
 		" reqTimeout: ", reqTimeout,
 		" maxConnection: ", maxConnection)
 
@@ -564,6 +567,7 @@ func (o *JCSClient) Init(
 	o.authRegion = authRegion
 	o.userID = userID
 	o.bucketID = bucketID
+	o.bucketName = bucketName
 
 	timeout := time.Duration(reqTimeout) * time.Second
 
@@ -949,6 +953,108 @@ func (o *JCSClient) CreatePackage(
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage finish.")
+	return resp, err
+}
+
+func (o *JCSClient) GetPackage(
+	ctx context.Context,
+	packageName string) (
+	resp *JCSGetPackageResponse, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:GetPackage start.",
+		" packageName: ", packageName)
+
+	input := new(JCSGetPackageReq)
+	input.UserID = o.userID
+	input.BucketName = o.bucketName
+	input.PackageName = packageName
+
+	values, err := query.Values(input)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"query.Values failed.",
+			" err: ", err)
+		return resp, err
+	}
+
+	url := o.endPoint + JCSGetPackageInterface + "?" + values.Encode()
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:GetPackage request.",
+		" url: ", url)
+
+	header := make(http.Header)
+	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
+
+	reqHttp, err := http.NewRequest(
+		http.MethodGet,
+		url,
+		nil)
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"http.NewRequest failed.",
+			" err: ", err)
+		return resp, err
+	}
+
+	err = o.sign(ctx, reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"JCSClient.sign failed.",
+			" err: ", err)
+		return resp, err
+	}
+
+	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"retryablehttp.FromRequest failed.",
+			" err: ", err)
+		return resp, err
+	}
+
+	response, err := o.jcsClient.Do(reqRetryableHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.Do failed.",
+			" err: ", err)
+		return resp, err
+	}
+
+	defer func(body io.ReadCloser) {
+		_err := body.Close()
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"io.ReadCloser failed.",
+				" err: ", _err)
+		}
+	}(response.Body)
+
+	respBodyBuf, err := io.ReadAll(response.Body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.ReadAll failed.",
+			" err: ", err)
+		return resp, err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:GetPackage response.",
+		" packageName: ", packageName,
+		" response: ", string(respBodyBuf))
+
+	resp = new(JCSGetPackageResponse)
+	err = json.Unmarshal(respBodyBuf, resp)
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return resp, err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:GetPackage finish.")
 	return resp, err
 }
 
@@ -1360,10 +1466,7 @@ func (o *JCSClient) List(
 		return listObjectsData, err
 	}
 
-	url := o.endPoint +
-		JCSListInterface +
-		"?" + values.Encode()
-
+	url := o.endPoint + JCSListInterface + "?" + values.Encode()
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:List request.",
 		" url: ", url)
