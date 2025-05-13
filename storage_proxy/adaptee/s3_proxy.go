@@ -55,7 +55,7 @@ func (o *S3Proxy) NewFolderWithSignedUrl(
 		" objectKey: ", objectKey,
 		" taskId: ", taskId)
 
-	if 0 < len(objectKey) && objectKey[len(objectKey)-1] != '/' {
+	if 0 < len(objectKey) && '/' != objectKey[len(objectKey)-1] {
 		objectKey = objectKey + "/"
 	}
 	createEmptyFileSignedUrlReq := new(CreatePutObjectSignedUrlReq)
@@ -899,13 +899,17 @@ func (o *S3Proxy) uploadFolder(
 	err = filepath.Walk(
 		sourcePath,
 		func(filePath string, fileInfo os.FileInfo, err error) error {
-
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
 					" sourcePath: ", sourcePath,
 					" err: ", err)
 				return err
+			}
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
 			}
 			wg.Add(1)
 			err = pool.Submit(func() {

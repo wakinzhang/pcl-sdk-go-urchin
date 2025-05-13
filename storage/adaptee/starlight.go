@@ -180,25 +180,8 @@ func (o *StarLight) Upload(
 			" err: ", err)
 		return err
 	}
-	err = o.slClient.Mkdir(ctx, targetPath)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"slClient.Mkdir failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return err
-	}
-	objectPath := targetPath + filepath.Base(sourcePath)
-	if stat.IsDir() {
-		err = o.slClient.Mkdir(ctx, objectPath)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"slClient.Mkdir failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
-			return err
-		}
 
+	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -208,6 +191,7 @@ func (o *StarLight) Upload(
 			return err
 		}
 	} else {
+		objectPath := targetPath + filepath.Base(sourcePath)
 		err = o.uploadFileResume(
 			ctx,
 			sourcePath,
@@ -273,6 +257,16 @@ func (o *StarLight) uploadFolder(
 		}
 	}
 
+	objectPath := targetPath + filepath.Base(sourcePath)
+	err = o.slClient.Mkdir(ctx, objectPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"slClient.Mkdir failed.",
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultSLUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -294,6 +288,12 @@ func (o *StarLight) uploadFolder(
 					" sourcePath: ", sourcePath,
 					" err: ", err)
 				return err
+			}
+
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
 			}
 
 			wg.Add(1)
@@ -318,7 +318,7 @@ func (o *StarLight) uploadFolder(
 						" err: ", err)
 					return
 				}
-				objectPath := targetPath + relPath
+				objectPath = targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)

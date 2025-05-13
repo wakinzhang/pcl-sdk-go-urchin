@@ -196,22 +196,7 @@ func (o *JCS) Upload(
 			" err: ", err)
 		return err
 	}
-	objectPath := targetPath + filepath.Base(sourcePath)
 	if stat.IsDir() {
-		err = o.jcsClient.UploadFile(
-			ctx,
-			packageId,
-			objectPath,
-			nil)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"jcsClient.UploadFile  mkdir failed.",
-				" packageId: ", packageId,
-				" objectPath: ", objectPath,
-				" err: ", err)
-			return err
-		}
-
 		err = o.uploadFolder(
 			ctx,
 			packageId,
@@ -228,6 +213,7 @@ func (o *JCS) Upload(
 			return err
 		}
 	} else {
+		objectPath := targetPath + filepath.Base(sourcePath)
 		err = o.uploadFile(
 			ctx,
 			packageId,
@@ -297,6 +283,26 @@ func (o *JCS) uploadFolder(
 		}
 	}
 
+	objectPath := targetPath + filepath.Base(sourcePath)
+	if 0 < len(objectPath) &&
+		'/' != objectPath[len(objectPath)-1] {
+
+		objectPath = objectPath + "/"
+	}
+	err = o.jcsClient.UploadFile(
+		ctx,
+		packageId,
+		objectPath,
+		nil)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.UploadFile mkdir failed.",
+			" packageId: ", packageId,
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultJCSUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -319,6 +325,13 @@ func (o *JCS) uploadFolder(
 					" err: ", err)
 				return err
 			}
+
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
+			}
+
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -341,13 +354,18 @@ func (o *JCS) uploadFolder(
 						" err: ", err)
 					return
 				}
-				objectPath := targetPath + relPath
+				objectPath = targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)
 					return
 				}
 				if fileInfo.IsDir() {
+					if 0 < len(objectPath) &&
+						'/' != objectPath[len(objectPath)-1] {
+
+						objectPath = objectPath + "/"
+					}
 					err = o.jcsClient.UploadFile(
 						ctx,
 						packageId,

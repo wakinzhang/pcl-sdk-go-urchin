@@ -189,25 +189,8 @@ func (o *Sugon) Upload(
 			" err: ", err)
 		return err
 	}
-	err = o.sugonClient.Mkdir(ctx, targetPath)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"sugonClient.Mkdir failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return err
-	}
-	objectPath := targetPath + filepath.Base(sourcePath)
-	if stat.IsDir() {
-		err = o.sugonClient.Mkdir(ctx, objectPath)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"sugonClient.Mkdir failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
-			return err
-		}
 
+	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -217,6 +200,7 @@ func (o *Sugon) Upload(
 			return err
 		}
 	} else {
+		objectPath := targetPath + filepath.Base(sourcePath)
 		err = o.uploadFile(
 			ctx,
 			sourcePath,
@@ -282,6 +266,16 @@ func (o *Sugon) uploadFolder(
 		}
 	}
 
+	objectPath := targetPath + filepath.Base(sourcePath)
+	err = o.sugonClient.Mkdir(ctx, objectPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sugonClient.Mkdir failed.",
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultSugonUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -304,6 +298,13 @@ func (o *Sugon) uploadFolder(
 					" err: ", err)
 				return err
 			}
+
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
+			}
+
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -326,7 +327,7 @@ func (o *Sugon) uploadFolder(
 						" err: ", err)
 					return
 				}
-				objectPath := targetPath + relPath
+				objectPath = targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)

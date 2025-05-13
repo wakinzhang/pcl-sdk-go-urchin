@@ -174,18 +174,8 @@ func (o *ParaCloud) Upload(
 			" err: ", err)
 		return err
 	}
-	objectPath := targetPath + filepath.Base(sourcePath)
-	if stat.IsDir() {
-		err = o.pcClient.Mkdir(ctx, sourcePath, objectPath)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"pcClient.Mkdir failed.",
-				" sourcePath: ", sourcePath,
-				" objectPath: ", objectPath,
-				" err: ", err)
-			return err
-		}
 
+	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -195,6 +185,7 @@ func (o *ParaCloud) Upload(
 			return err
 		}
 	} else {
+		objectPath := targetPath + filepath.Base(sourcePath)
 		err = o.pcClient.Upload(ctx, sourcePath, objectPath)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -256,6 +247,17 @@ func (o *ParaCloud) uploadFolder(
 		}
 	}
 
+	objectPath := targetPath + filepath.Base(sourcePath)
+	err = o.pcClient.Mkdir(ctx, sourcePath, objectPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"pcClient.Mkdir failed.",
+			" sourcePath: ", sourcePath,
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultParaCloudUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -278,6 +280,13 @@ func (o *ParaCloud) uploadFolder(
 					" err: ", err)
 				return err
 			}
+
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
+			}
+
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -301,7 +310,7 @@ func (o *ParaCloud) uploadFolder(
 						" err: ", err)
 					return
 				}
-				objectPath := targetPath + relPath
+				objectPath = targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)

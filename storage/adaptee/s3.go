@@ -77,7 +77,6 @@ func (o *S3) Upload(
 			" err: ", err)
 		return err
 	}
-	objectKey := targetPath + filepath.Base(sourcePath)
 	if stat.IsDir() {
 		err = o.uploadFolder(
 			ctx,
@@ -93,6 +92,7 @@ func (o *S3) Upload(
 			return err
 		}
 	} else {
+		objectKey := targetPath + filepath.Base(sourcePath)
 		err = o.uploadFile(
 			ctx,
 			sourcePath,
@@ -191,6 +191,13 @@ func (o *S3) uploadFolder(
 					" err: ", err)
 				return err
 			}
+
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
+			}
+
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {

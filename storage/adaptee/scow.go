@@ -180,15 +180,6 @@ func (o *Scow) Upload(
 		" targetPath: ", targetPath,
 		" needPure: ", needPure)
 
-	err = o.sClient.Mkdir(ctx, targetPath)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"sClient.Mkdir failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return err
-	}
-
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -197,17 +188,8 @@ func (o *Scow) Upload(
 			" err: ", err)
 		return err
 	}
-	objectPath := targetPath + filepath.Base(sourcePath)
-	if stat.IsDir() {
-		err = o.sClient.Mkdir(ctx, objectPath)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"sClient.Mkdir failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
-			return err
-		}
 
+	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -217,6 +199,7 @@ func (o *Scow) Upload(
 			return err
 		}
 	} else {
+		objectPath := targetPath + filepath.Base(sourcePath)
 		err = o.uploadFile(
 			ctx,
 			sourcePath,
@@ -282,6 +265,16 @@ func (o *Scow) uploadFolder(
 		}
 	}
 
+	objectPath := targetPath + filepath.Base(sourcePath)
+	err = o.sClient.Mkdir(ctx, objectPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sClient.Mkdir failed.",
+			" objectPath: ", objectPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultScowUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -304,6 +297,13 @@ func (o *Scow) uploadFolder(
 					" err: ", err)
 				return err
 			}
+
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
+			}
+
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -326,7 +326,7 @@ func (o *Scow) uploadFolder(
 						" err: ", err)
 					return
 				}
-				objectPath := targetPath + relPath
+				objectPath = targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)
