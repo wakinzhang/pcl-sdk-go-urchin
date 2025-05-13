@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	JCSSuccessCode = "OK"
+	JCSSuccessCode     = "OK"
+	JCSCodeEDataExists = "DataExists"
 
 	DefaultJCSReqTimeout    = 3600
 	DefaultJCSMaxConnection = 500
