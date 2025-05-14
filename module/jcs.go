@@ -301,9 +301,9 @@ type JCSCreatePackageResponseData struct {
 }
 
 type JCSGetPackageReq struct {
-	UserID      int32  `json:"userID"`
-	BucketName  string `json:"bucketName"`
-	PackageName string `json:"packageName"`
+	UserID      int32  `url:"userID"`
+	BucketName  string `url:"bucketName"`
+	PackageName string `url:"packageName"`
 }
 
 type JCSGetPackageResponse struct {
