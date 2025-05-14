@@ -19,6 +19,7 @@ import (
 	"mime/multipart"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -778,16 +779,16 @@ func (o *JCSClient) CreateBucket(
 		return resp, err
 	}
 
-	url := o.endPoint + JCSCreateBucketInterface
+	reqUrl := o.endPoint + JCSCreateBucketInterface
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreateBucket request.",
-		" url: ", url,
+		" reqUrl: ", reqUrl,
 		" reqBody: ", string(reqBody))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
 		Logger.WithContext(ctx).Error(
@@ -878,16 +879,16 @@ func (o *JCSClient) CreatePackage(
 		return resp, err
 	}
 
-	url := o.endPoint + JCSCreatePackageInterface
+	reqUrl := o.endPoint + JCSCreatePackageInterface
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage request.",
-		" url: ", url,
+		" reqUrl: ", reqUrl,
 		" reqBody: ", string(reqBody))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
 		Logger.WithContext(ctx).Error(
@@ -978,18 +979,18 @@ func (o *JCSClient) GetPackage(
 		return resp, err
 	}
 
-	url := o.endPoint + JCSGetPackageInterface + "?" + values.Encode()
+	reqUrl := o.endPoint + JCSGetPackageInterface + "?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:GetPackage request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
 	reqHttp, err := http.NewRequest(
 		http.MethodGet,
-		url,
+		reqUrl,
 		nil)
 	if err != nil {
 		Logger.WithContext(ctx).Error(
@@ -1095,17 +1096,17 @@ func (o *JCSClient) CreatePreSignedObjectListSignedUrl(
 		return signedUrl, err
 	}
 
-	url := o.endPoint +
+	reqUrl := o.endPoint +
 		JCSPreSignedObjectListInterface +
 		"?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectListSignedUrl request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	req, err := http.NewRequest(
 		http.MethodGet,
-		url,
+		reqUrl,
 		nil)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1154,17 +1155,17 @@ func (o *JCSClient) CreatePreSignedObjectUploadSignedUrl(
 		return signedUrl, err
 	}
 
-	url := o.endPoint +
+	reqUrl := o.endPoint +
 		JCSPreSignedObjectUploadInterface +
 		"?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadSignedUrl request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1214,18 +1215,18 @@ func (o *JCSClient) CreatePreSignedObjectNewMultipartUploadSignedUrl(
 		return signedUrl, err
 	}
 
-	url := o.endPoint +
+	reqUrl := o.endPoint +
 		JCSPreSignedObjectNewMultipartUploadInterface +
 		"?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectNewMultipartUploadSignedUrl"+
 			" request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1275,17 +1276,17 @@ func (o *JCSClient) CreatePreSignedObjectUploadPartSignedUrl(
 		return signedUrl, err
 	}
 
-	url := o.endPoint +
+	reqUrl := o.endPoint +
 		JCSPreSignedObjectUploadPartInterface +
 		"?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadPartSignedUrl request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1334,18 +1335,18 @@ func (o *JCSClient) CreatePreSignedObjectCompleteMultipartUploadSignedUrl(
 		return signedUrl, err
 	}
 
-	url := o.endPoint +
+	reqUrl := o.endPoint +
 		JCSPreSignedObjectCompleteMultipartUploadInterface +
 		"?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:"+
 			"CreatePreSignedObjectCompleteMultipartUploadSignedUrl request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	req, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1398,17 +1399,17 @@ func (o *JCSClient) CreatePreSignedObjectDownloadSignedUrl(
 		return signedUrl, err
 	}
 
-	url := o.endPoint +
+	reqUrl := o.endPoint +
 		JCSPreSignedObjectDownloadInterface +
 		"?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectDownloadSignedUrl request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	req, err := http.NewRequest(
 		http.MethodGet,
-		url,
+		reqUrl,
 		nil)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1466,17 +1467,17 @@ func (o *JCSClient) List(
 		return listObjectsData, err
 	}
 
-	url := o.endPoint + JCSListInterface + "?" + values.Encode()
+	reqUrl := o.endPoint + JCSListInterface + "?" + values.Encode()
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:List request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
 	reqHttp, err := http.NewRequest(
 		http.MethodGet,
-		url,
+		reqUrl,
 		nil)
 	if err != nil {
 		Logger.WithContext(ctx).Error(
@@ -1592,18 +1593,18 @@ func (o *JCSClient) UploadFile(
 		return err
 	}
 
-	url := o.endPoint + JCSUploadInterface
+	reqUrl := o.endPoint + JCSUploadInterface
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:UploadFile request.",
-		" url: ", url,
+		" reqUrl: ", reqUrl,
 		" info: ", string(info))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile(
 		JCSMultiPartFormFiledFiles,
-		path)
+		url.PathEscape(path))
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
@@ -1634,7 +1635,7 @@ func (o *JCSClient) UploadFile(
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		body)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1739,16 +1740,16 @@ func (o *JCSClient) NewMultiPartUpload(
 		return resp, err
 	}
 
-	url := o.endPoint + JCSNewMultipartUploadInterface
+	reqUrl := o.endPoint + JCSNewMultipartUploadInterface
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage request.",
-		" url: ", url,
+		" reqUrl: ", reqUrl,
 		" reqBody: ", string(reqBody))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
 		Logger.WithContext(ctx).Error(
@@ -1844,18 +1845,18 @@ func (o *JCSClient) UploadPart(
 		return err
 	}
 
-	url := o.endPoint + JCSUploadPartInterface
+	reqUrl := o.endPoint + JCSUploadPartInterface
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart request.",
-		" url: ", url,
+		" reqUrl: ", reqUrl,
 		" info: ", string(info))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile(
 		JCSMultiPartFormFiledFile,
-		path)
+		url.PathEscape(path))
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
@@ -1883,7 +1884,7 @@ func (o *JCSClient) UploadPart(
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		body)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1989,16 +1990,16 @@ func (o *JCSClient) CompleteMultiPartUpload(
 		return err
 	}
 
-	url := o.endPoint + JCSCompleteMultipartUploadInterface
+	reqUrl := o.endPoint + JCSCompleteMultipartUploadInterface
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:CompleteMultiPartUpload request.",
-		" url: ", url,
+		" reqUrl: ", reqUrl,
 		" reqBody: ", string(reqBody))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
-		url,
+		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
 		Logger.WithContext(ctx).Error(
@@ -2102,20 +2103,18 @@ func (o *JCSClient) DownloadPart(
 		return err, output
 	}
 
-	url := o.endPoint +
-		JCSDownloadInterface +
-		"?" + values.Encode()
+	reqUrl := o.endPoint + JCSDownloadInterface + "?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:DownloadPart request.",
-		" url: ", url)
+		" reqUrl: ", reqUrl)
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
 	reqHttp, err := http.NewRequest(
 		http.MethodGet,
-		url,
+		reqUrl,
 		nil)
 	if err != nil {
 		Logger.WithContext(ctx).Error(
