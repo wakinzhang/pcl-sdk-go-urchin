@@ -456,6 +456,18 @@ func (o *ParaCloud) Download(
 		}
 	}
 
+	for _, folder := range folders {
+		itemPath := targetPath + folder.ObjectPath
+		err = os.MkdirAll(itemPath, folder.ObjectFileInfo.Mode())
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"os.MkdirAll failed.",
+				" itemPath: ", itemPath,
+				" err: ", err)
+			return
+		}
+	}
+
 	err = o.downloadObjects(
 		ctx,
 		sourcePath,

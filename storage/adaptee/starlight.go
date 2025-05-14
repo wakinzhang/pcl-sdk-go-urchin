@@ -987,6 +987,19 @@ func (o *StarLight) Download(
 			folders = append(folders, object)
 		}
 	}
+
+	for _, folder := range folders {
+		itemPath := targetPath + folder.Path
+		err = os.MkdirAll(itemPath, os.ModePerm)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"os.MkdirAll failed.",
+				" itemPath: ", itemPath,
+				" err: ", err)
+			return
+		}
+	}
+
 	err = o.downloadObjects(
 		ctx,
 		sourcePath,
