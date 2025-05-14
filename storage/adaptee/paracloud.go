@@ -299,7 +299,9 @@ func (o *ParaCloud) uploadFolder(
 					}
 				}()
 
-				relPath, err := filepath.Rel(sourcePath, filePath)
+				relPath, err := filepath.Rel(
+					filepath.Dir(sourcePath),
+					filePath)
 				if nil != err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
