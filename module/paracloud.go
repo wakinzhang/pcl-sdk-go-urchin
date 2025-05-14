@@ -13,6 +13,10 @@ type PCDownloadPartOutput struct {
 }
 
 const (
+	ParaCloudLockConflictCode = 423
+	ParaCloudAttempts         = 3
+	ParaCloudDelay            = 1
+
 	DefaultParaCloudUploadFileTaskNum    = 100
 	DefaultParaCloudDownloadFileTaskNum  = 100
 	DefaultParaCloudDownloadMultiTaskNum = 20

@@ -6,6 +6,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"os"
+	"time"
 	// ParaCloud "github.com/urchinfs/paracloud-sdk/paracloud"
 )
 
@@ -14,6 +15,30 @@ type ParaCloudClient struct {
 	password string
 	endpoint string
 	pcClient *gowebdav.Client
+}
+
+func paraCloudRetryWithBackoff(
+	ctx context.Context,
+	attempts int,
+	delay time.Duration,
+	fn func() error) (err error) {
+
+	for attempt := 0; attempt < attempts; attempt++ {
+		err = fn()
+		if err == nil {
+			return nil
+		}
+		Logger.WithContext(ctx).Error(
+			"pcClient opt failed.",
+			" attempt: ", attempt,
+			" err: ", err)
+		if !gowebdav.IsErrCode(err, ParaCloudLockConflictCode) {
+			return err
+		}
+		time.Sleep(delay)
+		delay *= 2
+	}
+	return err
 }
 
 func (o *ParaCloudClient) Init(
@@ -56,7 +81,13 @@ func (o *ParaCloudClient) Mkdir(
 		return err
 	}
 
-	err = o.pcClient.MkdirAll(targetFolder, stat.Mode())
+	err = paraCloudRetryWithBackoff(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() error {
+			return o.pcClient.MkdirAll(targetFolder, stat.Mode())
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"pcClient.MkdirAll failed.",
@@ -114,7 +145,16 @@ func (o *ParaCloudClient) Upload(
 	readerWrapper.TotalCount = stat.Size()
 	readerWrapper.Mark = 0
 
-	err = o.pcClient.WriteStream(targetFile, readerWrapper, stat.Mode())
+	err = paraCloudRetryWithBackoff(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() error {
+			return o.pcClient.WriteStream(
+				targetFile,
+				readerWrapper,
+				stat.Mode())
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"pcClient.WriteStream failed.",
@@ -191,7 +231,13 @@ func (o *ParaCloudClient) Rm(
 		"ParaCloudClient:Rm start.",
 		" path: ", path)
 
-	err = o.pcClient.RemoveAll(path)
+	err = paraCloudRetryWithBackoff(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() error {
+			return o.pcClient.RemoveAll(path)
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"pcClient.RemoveAll failed.",
