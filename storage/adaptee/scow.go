@@ -317,24 +317,24 @@ func (o *Scow) uploadFolder(
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
-					if err := recover(); nil != err {
+					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"Scow:uploadFileResume failed.",
-							" err: ", err)
+							" err: ", _err)
 						isAllSuccess = false
 					}
 				}()
-				relPath, err := filepath.Rel(
+				relPath, _err := filepath.Rel(
 					filepath.Dir(sourcePath),
 					filePath)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
 						" relPath: ", relPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				objectPath := targetPath + relPath
@@ -350,41 +350,42 @@ func (o *Scow) uploadFolder(
 						" filePath: ", filePath,
 						" relPath: ", relPath,
 						" objectPath: ", objectPath)
-					err = o.sClient.Mkdir(ctx, objectPath)
-					if nil != err {
+					_err = o.sClient.Mkdir(ctx, objectPath)
+					if nil != _err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"sClient.Mkdir failed.",
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				} else {
-					err = o.uploadFile(
+					_err = o.uploadFile(
 						ctx,
 						filePath,
 						objectPath,
 						needPure)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"Scow:uploadFile failed.",
 							" filePath: ", filePath,
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 				fileMutex.Lock()
 				defer fileMutex.Unlock()
-				f, err := os.OpenFile(
+				f, _err := os.OpenFile(
 					uploadFolderRecord,
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				defer func() {
@@ -395,14 +396,14 @@ func (o *Scow) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectPath + "\n"))
-				if nil != err {
+				_, _err = f.Write([]byte(objectPath + "\n"))
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectPath: ", objectPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				return
@@ -798,7 +799,7 @@ func (o *Scow) uploadPartConcurrent(
 				wg.Done()
 			}()
 			result := task.Run(ctx, sourceFile)
-			err = o.handleUploadTaskResult(
+			_err := o.handleUploadTaskResult(
 				ctx,
 				result,
 				ufc,
@@ -806,15 +807,15 @@ func (o *Scow) uploadPartConcurrent(
 				input.EnableCheckpoint,
 				input.CheckpointFile,
 				lock)
-			if nil != err &&
+			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 				Logger.WithContext(ctx).Error(
 					"Scow:handleUploadTaskResult failed.",
 					" partNumber: ", task.PartNumber,
 					" checkpointFile: ", input.CheckpointFile,
-					" err: ", err)
-				uploadPartError.Store(err)
+					" err: ", _err)
+				uploadPartError.Store(_err)
 			}
 			Logger.WithContext(ctx).Debug(
 				"Scow:handleUploadTaskResult finish.")
@@ -1285,38 +1286,38 @@ func (o *Scow) downloadObjects(
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); nil != err {
+				if _err := recover(); nil != _err {
 					Logger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", err)
+						" err: ", _err)
 					isAllSuccess = false
 				}
 			}()
 			targetFile := targetPath + itemObject.Name
-			err = o.downloadPart(
+			_err := o.downloadPart(
 				ctx,
 				itemObject,
 				targetPath+itemObject.Name)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"Scow:downloadPart failed.",
 					" objectName: ", itemObject.Name,
 					" targetFile: ", targetFile,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
-			f, err := os.OpenFile(
+			f, _err := os.OpenFile(
 				downloadFolderRecord,
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			defer func() {
@@ -1328,14 +1329,14 @@ func (o *Scow) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.Name + "\n"))
-			if nil != err {
+			_, _err = f.Write([]byte(itemObject.Name + "\n"))
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
 					" objectName: ", itemObject.Name,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 		})
@@ -1577,22 +1578,22 @@ func (o *Scow) downloadFileConcurrent(
 				dfc.DownloadParts[task.PartNumber-1].IsCompleted = true
 
 				if input.EnableCheckpoint {
-					err := o.updateCheckpointFile(
+					_err := o.updateCheckpointFile(
 						ctx,
 						dfc,
 						input.CheckpointFile)
-					if nil != err {
+					if nil != _err {
 						Logger.WithContext(ctx).Error(
 							"Scow:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
-							" err: ", err)
-						downloadPartError.Store(err)
+							" err: ", _err)
+						downloadPartError.Store(_err)
 					}
 				}
 				return
 			} else {
 				result := task.Run(ctx)
-				err = o.handleDownloadTaskResult(
+				_err := o.handleDownloadTaskResult(
 					ctx,
 					result,
 					dfc,
@@ -1600,15 +1601,15 @@ func (o *Scow) downloadFileConcurrent(
 					input.EnableCheckpoint,
 					input.CheckpointFile,
 					lock)
-				if nil != err &&
+				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
 						"Scow:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
-						" err: ", err)
-					downloadPartError.Store(err)
+						" err: ", _err)
+					downloadPartError.Store(_err)
 				}
 				return
 			}

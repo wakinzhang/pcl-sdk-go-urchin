@@ -532,24 +532,24 @@ func (o *JCSProxy) uploadFolder(
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
-					if err := recover(); nil != err {
+					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"JCSProxy:uploadFileResume failed.",
-							" err: ", err)
+							" err: ", _err)
 						isAllSuccess = false
 					}
 				}()
-				relFilePath, err := filepath.Rel(
+				relFilePath, _err := filepath.Rel(
 					filepath.Dir(sourcePath),
 					filePath)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
 						" relFilePath: ", relFilePath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				objectKey := objectPath + relFilePath
@@ -561,46 +561,46 @@ func (o *JCSProxy) uploadFolder(
 					return
 				}
 				if fileInfo.IsDir() {
-					err = o.NewFolderWithSignedUrl(
+					_err = o.NewFolderWithSignedUrl(
 						ctx,
 						objectKey,
 						taskId)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"JCSProxy:NewFolderWithSignedUrl failed.",
 							" objectKey: ", objectKey,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				} else {
-					err = o.uploadFileResume(
+					_err = o.uploadFileResume(
 						ctx,
 						filePath,
 						objectKey,
 						taskId,
 						needPure)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"JCSProxy:uploadFileResume failed.",
 							" filePath: ", filePath,
 							" objectKey: ", objectKey,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 				fileMutex.Lock()
 				defer fileMutex.Unlock()
-				f, err := os.OpenFile(
+				f, _err := os.OpenFile(
 					uploadFolderRecord,
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				defer func() {
@@ -611,14 +611,14 @@ func (o *JCSProxy) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectKey + "\n"))
-				if nil != err {
+				_, _err = f.Write([]byte(objectKey + "\n"))
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectKey: ", objectKey,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				return
@@ -945,7 +945,7 @@ func (o *JCSProxy) uploadPartConcurrent(
 				wg.Done()
 			}()
 			result := task.Run(ctx, sourceFile, taskId)
-			err = o.handleUploadTaskResult(
+			_err := o.handleUploadTaskResult(
 				ctx,
 				result,
 				ufc,
@@ -953,15 +953,15 @@ func (o *JCSProxy) uploadPartConcurrent(
 				input.EnableCheckpoint,
 				input.CheckpointFile,
 				lock)
-			if nil != err &&
+			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 				Logger.WithContext(ctx).Error(
 					"JCSProxy:handleUploadTaskResult failed.",
 					" partNumber: ", task.PartNumber,
 					" checkpointFile: ", input.CheckpointFile,
-					" err: ", err)
-				uploadPartError.Store(err)
+					" err: ", _err)
+				uploadPartError.Store(_err)
 			}
 			Logger.WithContext(ctx).Debug(
 				"JCSProxy:handleUploadTaskResult finish.")
@@ -1459,10 +1459,10 @@ func (o *JCSProxy) downloadObjects(
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); nil != err {
+				if _err := recover(); nil != _err {
 					Logger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", err)
+						" err: ", _err)
 					isAllSuccess = false
 				}
 			}()
@@ -1471,44 +1471,44 @@ func (o *JCSProxy) downloadObjects(
 				'/' == itemObject.Path[len(itemObject.Path)-1] {
 
 				itemPath := targetPath + itemObject.Path
-				err = os.MkdirAll(itemPath, os.ModePerm)
-				if nil != err {
+				_err := os.MkdirAll(itemPath, os.ModePerm)
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.MkdirAll failed.",
 						" itemPath: ", itemPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 			} else {
 				targetFile := targetPath + itemObject.Path
-				err = o.downloadPartWithSignedUrl(
+				_err := o.downloadPartWithSignedUrl(
 					ctx,
 					itemObject,
 					targetFile,
 					taskId)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"JCSProxy:downloadPartWithSignedUrl failed.",
 						" objectPath: ", itemObject.Path,
 						" targetFile: ", targetFile,
 						" taskId: ", taskId,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
-			f, err := os.OpenFile(
+			f, _err := os.OpenFile(
 				downloadFolderRecord,
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			defer func() {
@@ -1520,14 +1520,14 @@ func (o *JCSProxy) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.Path + "\n"))
-			if nil != err {
+			_, _err = f.Write([]byte(itemObject.Path + "\n"))
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
 					" objectKey: ", itemObject.Path,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 		})
@@ -1774,22 +1774,22 @@ func (o *JCSProxy) downloadFileConcurrent(
 				dfc.DownloadParts[task.PartNumber-1].IsCompleted = true
 
 				if input.EnableCheckpoint {
-					err := o.updateCheckpointFile(
+					_err := o.updateCheckpointFile(
 						ctx,
 						dfc,
 						input.CheckpointFile)
-					if nil != err {
+					if nil != _err {
 						Logger.WithContext(ctx).Error(
 							"JCSProxy:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
-							" err: ", err)
-						downloadPartError.Store(err)
+							" err: ", _err)
+						downloadPartError.Store(_err)
 					}
 				}
 				return
 			} else {
 				result := task.Run(ctx, taskId)
-				err = o.handleDownloadTaskResult(
+				_err := o.handleDownloadTaskResult(
 					ctx,
 					result,
 					dfc,
@@ -1797,15 +1797,15 @@ func (o *JCSProxy) downloadFileConcurrent(
 					input.EnableCheckpoint,
 					input.CheckpointFile,
 					lock)
-				if nil != err &&
+				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
 						"JCSProxy:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
-						" err: ", err)
-					downloadPartError.Store(err)
+						" err: ", _err)
+					downloadPartError.Store(_err)
 				}
 				return
 			}

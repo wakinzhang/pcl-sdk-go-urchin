@@ -234,198 +234,6 @@ func (o *S3Proxy) InitiateMultipartUploadWithSignedUrl(
 	return output, err
 }
 
-func (o *S3Proxy) UploadPartWithSignedUrl(
-	ctx context.Context,
-	sourceFile,
-	objectKey,
-	uploadId string,
-	taskId int32) (partSlice PartSlice, err error) {
-
-	Logger.WithContext(ctx).Debug(
-		"S3Proxy:UploadPartWithSignedUrl start.",
-		" sourceFile: ", sourceFile,
-		" objectKey: ", objectKey,
-		" uploadId: ", uploadId,
-		" taskId: ", taskId)
-
-	var partSize int64 = DefaultPartSize
-	stat, err := os.Stat(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Stat failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return partSlice, err
-	}
-	fileSize := stat.Size()
-
-	// 计算需要上传的段数
-	partCount := int(fileSize / partSize)
-
-	if fileSize%partSize != 0 {
-		partCount++
-	}
-
-	// 执行并发上传段
-	partChan := make(chan XPart, partCount)
-
-	pool, err := ants.NewPool(DefaultS3UploadMultiTaskNum)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"ants.NewPool for upload part failed.",
-			" err: ", err)
-		return partSlice, err
-	}
-	defer pool.Release()
-
-	var isGlobalSuccess = true
-	for i := 0; i < partCount; i++ {
-		partNumber := i + 1
-		offset := int64(i) * partSize
-		currPartSize := partSize
-		if i+1 == partCount {
-			currPartSize = fileSize - offset
-		}
-		err = pool.Submit(func() {
-			fd, _err := os.Open(sourceFile)
-			if nil != _err {
-				err = _err
-				panic(err)
-			}
-			defer func() {
-				errMsg := fd.Close()
-				if errMsg != nil {
-					Logger.WithContext(ctx).Warn(
-						"Failed to close file with reason: ", errMsg)
-				}
-			}()
-
-			readerWrapper := new(ReaderWrapper)
-			readerWrapper.Reader = fd
-
-			if offset < 0 || offset > fileSize {
-				offset = 0
-			}
-
-			if currPartSize <= 0 || currPartSize > (fileSize-offset) {
-				currPartSize = fileSize - offset
-			}
-			readerWrapper.TotalCount = currPartSize
-			readerWrapper.Mark = offset
-			if _, err = fd.Seek(offset, io.SeekStart); nil != err {
-				return
-			}
-
-			createUploadPartSignedUrlReq := new(CreateUploadPartSignedUrlReq)
-			createUploadPartSignedUrlReq.UploadId = uploadId
-			createUploadPartSignedUrlReq.PartNumber = int32(partNumber)
-			createUploadPartSignedUrlReq.TaskId = taskId
-			createUploadPartSignedUrlReq.Source = objectKey
-			err, createUploadPartSignedUrlResp :=
-				UClient.CreateUploadPartSignedUrl(
-					ctx,
-					createUploadPartSignedUrlReq)
-			if nil != err {
-				Logger.WithContext(ctx).Error(
-					"CreateUploadPartSignedUrl failed.",
-					" err: ", err)
-				isGlobalSuccess = false
-				partChan <- XPart{
-					PartNumber: partNumber}
-			}
-			var uploadPartWithSignedUrlHeader = http.Header{}
-			for key, item := range createUploadPartSignedUrlResp.Header {
-				for _, value := range item.Values {
-					uploadPartWithSignedUrlHeader.Set(key, value)
-				}
-			}
-
-			uploadPartWithSignedUrlHeader.Set("Content-Length",
-				strconv.FormatInt(currPartSize, 10))
-
-			uploadPartOutput, err := o.obsClient.UploadPartWithSignedUrl(
-				createUploadPartSignedUrlResp.SignedUrl,
-				uploadPartWithSignedUrlHeader,
-				readerWrapper)
-
-			if nil != err {
-				if obsError, ok := err.(obs.ObsError); ok {
-					Logger.WithContext(ctx).Error(
-						"obsClient.UploadPartWithSignedUrl failed.",
-						" signedUrl: ", createUploadPartSignedUrlResp.SignedUrl,
-						" sourceFile: ", sourceFile,
-						" objectKey: ", objectKey,
-						" partNumber: ", partNumber,
-						" offset: ", offset,
-						" currPartSize: ", currPartSize,
-						" obsCode: ", obsError.Code,
-						" obsMessage: ", obsError.Message)
-				} else {
-					Logger.WithContext(ctx).Error(
-						"obsClient.UploadPartWithSignedUrl failed.",
-						" signedUrl: ", createUploadPartSignedUrlResp.SignedUrl,
-						" sourceFile: ", sourceFile,
-						" objectKey: ", objectKey,
-						" partNumber: ", partNumber,
-						" offset: ", offset,
-						" currPartSize: ", currPartSize,
-						" err: ", err)
-				}
-				isGlobalSuccess = false
-				partChan <- XPart{
-					PartNumber: partNumber}
-			}
-			Logger.WithContext(ctx).Info(
-				"obsClient.UploadPartWithSignedUrl success.",
-				" signedUrl: ", createUploadPartSignedUrlResp.SignedUrl,
-				" sourceFile: ", sourceFile,
-				" objectKey: ", objectKey,
-				" partNumber: ", partNumber,
-				" offset: ", offset,
-				" currPartSize: ", currPartSize,
-				" ETag: ", strings.Trim(uploadPartOutput.ETag, "\""))
-			partChan <- XPart{
-				ETag:       strings.Trim(uploadPartOutput.ETag, "\""),
-				PartNumber: partNumber}
-		})
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"ants.Submit for upload part failed.",
-				" err: ", err)
-			return partSlice, err
-		}
-	}
-
-	parts := make([]XPart, 0, partCount)
-	// 等待上传完成
-	for {
-		part, ok := <-partChan
-		if !ok {
-			break
-		}
-		parts = append(parts, part)
-
-		if len(parts) == partCount {
-			close(partChan)
-		}
-	}
-	partSlice = parts
-	sort.Sort(partSlice)
-
-	if !isGlobalSuccess {
-		Logger.WithContext(ctx).Error(
-			"S3Proxy:uploadPartWithSignedUrl some part failed.",
-			" sourceFile: ", sourceFile,
-			" objectKey: ", objectKey,
-			" uploadId: ", uploadId)
-		return partSlice, errors.New("some part upload failed")
-	}
-
-	Logger.WithContext(ctx).Debug(
-		"S3Proxy:UploadPartWithSignedUrl finish.")
-	return partSlice, nil
-}
-
 func (o *S3Proxy) CompleteMultipartUploadWithSignedUrl(
 	ctx context.Context,
 	objectKey,
@@ -915,22 +723,22 @@ func (o *S3Proxy) uploadFolder(
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
-					if err := recover(); nil != err {
+					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"S3Proxy:uploadFileResume failed.",
-							" err: ", err)
+							" err: ", _err)
 						isAllSuccess = false
 					}
 				}()
-				objectKey, err := filepath.Rel(sourcePath, filePath)
-				if nil != err {
+				objectKey, _err := filepath.Rel(sourcePath, filePath)
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
 						" objectKey: ", objectKey,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				if _, exists := fileMap[objectKey]; exists {
@@ -939,26 +747,26 @@ func (o *S3Proxy) uploadFolder(
 					return
 				}
 				if fileInfo.IsDir() {
-					err = o.NewFolderWithSignedUrl(
+					_err = o.NewFolderWithSignedUrl(
 						ctx,
 						objectKey,
 						taskId)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"S3Proxy:NewFolderWithSignedUrl failed.",
 							" objectKey: ", objectKey,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				} else {
-					err = o.uploadFile(
+					_err = o.uploadFile(
 						ctx,
 						filePath,
 						objectKey,
 						taskId,
 						needPure)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"S3Proxy:uploadFile failed.",
@@ -966,21 +774,21 @@ func (o *S3Proxy) uploadFolder(
 							" objectKey: ", objectKey,
 							" taskId: ", taskId,
 							" needPure: ", needPure,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 				fileMutex.Lock()
 				defer fileMutex.Unlock()
-				f, err := os.OpenFile(
+				f, _err := os.OpenFile(
 					uploadFolderRecord,
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				defer func() {
@@ -991,14 +799,14 @@ func (o *S3Proxy) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectKey + "\n"))
-				if nil != err {
+				_, _err = f.Write([]byte(objectKey + "\n"))
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectKey: ", objectKey,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				return
@@ -1358,7 +1166,7 @@ func (o *S3Proxy) uploadPartConcurrent(
 				wg.Done()
 			}()
 			result := task.Run(ctx, sourceFile, ufc.UploadId, taskId)
-			err = o.handleUploadTaskResult(
+			_err := o.handleUploadTaskResult(
 				ctx,
 				result,
 				ufc,
@@ -1366,15 +1174,15 @@ func (o *S3Proxy) uploadPartConcurrent(
 				input.EnableCheckpoint,
 				input.CheckpointFile,
 				lock)
-			if nil != err &&
+			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 				Logger.WithContext(ctx).Error(
 					"S3Proxy:handleUploadTaskResult failed.",
 					" partNumber: ", task.PartNumber,
 					" checkpointFile: ", input.CheckpointFile,
-					" err: ", err)
-				uploadPartError.Store(err)
+					" err: ", _err)
+				uploadPartError.Store(_err)
 			}
 			Logger.WithContext(ctx).Debug(
 				"S3Proxy:handleUploadTaskResult finish.")
@@ -2060,10 +1868,10 @@ func (o *S3Proxy) downloadObjects(
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); nil != err {
+				if _err := recover(); nil != _err {
 					Logger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", err)
+						" err: ", _err)
 					isAllSuccess = false
 				}
 			}()
@@ -2071,23 +1879,23 @@ func (o *S3Proxy) downloadObjects(
 				'/' == itemObject.Key[len(itemObject.Key)-1] {
 
 				itemPath := targetPath + itemObject.Key
-				err = os.MkdirAll(itemPath, os.ModePerm)
-				if nil != err {
+				_err := os.MkdirAll(itemPath, os.ModePerm)
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.MkdirAll failed.",
 						" itemPath: ", itemPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 			} else {
-				_, err = o.downloadPartWithSignedUrl(
+				_, _err := o.downloadPartWithSignedUrl(
 					ctx,
 					bucketName,
 					itemObject.Key,
 					targetPath+itemObject.Key,
 					taskId)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"S3Proxy:downloadPartWithSignedUrl failed.",
@@ -2095,21 +1903,21 @@ func (o *S3Proxy) downloadObjects(
 						" objectKey: ", itemObject.Key,
 						" targetFile: ", targetPath+itemObject.Key,
 						" taskId: ", taskId,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
-			f, err := os.OpenFile(
+			f, _err := os.OpenFile(
 				downloadFolderRecord,
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			defer func() {
@@ -2121,14 +1929,14 @@ func (o *S3Proxy) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.Key + "\n"))
-			if nil != err {
+			_, _err = f.Write([]byte(itemObject.Key + "\n"))
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
 					" objectKey: ", itemObject.Key,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 		})
@@ -2445,22 +2253,22 @@ func (o *S3Proxy) downloadFileConcurrent(
 				dfc.DownloadParts[task.partNumber-1].IsCompleted = true
 
 				if input.EnableCheckpoint {
-					err := o.updateCheckpointFile(
+					_err := o.updateCheckpointFile(
 						ctx,
 						dfc,
 						input.CheckpointFile)
-					if nil != err {
+					if nil != _err {
 						Logger.WithContext(ctx).Error(
 							"S3Proxy:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
-							" err: ", err)
-						downloadPartError.Store(err)
+							" err: ", _err)
+						downloadPartError.Store(_err)
 					}
 				}
 				return
 			} else {
 				result := task.Run(ctx, objectKey, taskId)
-				err := o.handleDownloadTaskResult(
+				_err := o.handleDownloadTaskResult(
 					ctx,
 					result,
 					dfc,
@@ -2468,15 +2276,15 @@ func (o *S3Proxy) downloadFileConcurrent(
 					input.EnableCheckpoint,
 					input.CheckpointFile,
 					lock)
-				if nil != err &&
+				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
 						"S3Proxy:handleDownloadTaskResult failed.",
 						" partNumber: ", task.partNumber,
 						" checkpointFile: ", input.CheckpointFile,
-						" err: ", err)
-					downloadPartError.Store(err)
+						" err: ", _err)
+					downloadPartError.Store(_err)
 				}
 				return
 			}

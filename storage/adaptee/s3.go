@@ -160,11 +160,12 @@ func (o *S3) uploadFolder(
 		}
 	}
 
-	objectKey := targetPath + filepath.Base(sourcePath)
-	err = o.mkdir(ctx, objectKey)
+	path := targetPath + filepath.Base(sourcePath)
+	err = o.mkdir(ctx, path)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"S3:mkdir failed.",
+			" path: ", path,
 			" err: ", err)
 		return err
 	}
@@ -202,25 +203,25 @@ func (o *S3) uploadFolder(
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
-					if err := recover(); nil != err {
+					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"S3:uploadFileResume failed.",
-							" err: ", err)
+							" err: ", _err)
 						isAllSuccess = false
 					}
 				}()
-				relPath, err := filepath.Rel(sourcePath, filePath)
-				if nil != err {
+				relPath, _err := filepath.Rel(sourcePath, filePath)
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
 						" relPath: ", relPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
-				objectKey = targetPath + relPath
+				objectKey := targetPath + relPath
 				if _, exists := fileMap[objectKey]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish.",
@@ -228,43 +229,43 @@ func (o *S3) uploadFolder(
 					return
 				}
 				if fileInfo.IsDir() {
-					err = o.mkdir(ctx, objectKey)
-					if nil != err {
+					_err = o.mkdir(ctx, objectKey)
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"S3:mkdir failed.",
 							" objectKey: ", objectKey,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				} else {
-					err = o.uploadFile(
+					_err = o.uploadFile(
 						ctx,
 						filePath,
 						objectKey,
 						needPure)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"S3:uploadFile failed.",
 							" filePath: ", filePath,
 							" objectKey: ", objectKey,
 							" needPure: ", needPure,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 				fileMutex.Lock()
 				defer fileMutex.Unlock()
-				f, err := os.OpenFile(
+				f, _err := os.OpenFile(
 					uploadFolderRecord,
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				defer func() {
@@ -275,14 +276,14 @@ func (o *S3) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectKey + "\n"))
-				if nil != err {
+				_, _err = f.Write([]byte(objectKey + "\n"))
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectKey: ", objectKey,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				return
@@ -591,10 +592,10 @@ func (o *S3) downloadObjects(
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); nil != err {
+				if _err := recover(); nil != _err {
 					Logger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", err)
+						" err: ", _err)
 					isAllSuccess = false
 				}
 			}()
@@ -603,13 +604,13 @@ func (o *S3) downloadObjects(
 				'/' == itemObject.Key[len(itemObject.Key)-1] {
 
 				itemPath := targetPath + itemObject.Key
-				err = os.MkdirAll(itemPath, os.ModePerm)
-				if nil != err {
+				_err := os.MkdirAll(itemPath, os.ModePerm)
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.MkdirAll failed.",
 						" itemPath: ", itemPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 			} else {
@@ -622,10 +623,10 @@ func (o *S3) downloadObjects(
 				input.PartSize = DefaultPartSize
 				input.Bucket = o.bucket
 				input.Key = itemObject.Key
-				_, err = o.obsClient.DownloadFile(input)
-				if nil != err {
+				_, _err := o.obsClient.DownloadFile(input)
+				if nil != _err {
 					isAllSuccess = false
-					if obsError, ok := err.(obs.ObsError); ok {
+					if obsError, ok := _err.(obs.ObsError); ok {
 						Logger.WithContext(ctx).Error(
 							"obsClient.DownloadFile failed.",
 							" obsCode: ", obsError.Code,
@@ -634,22 +635,22 @@ func (o *S3) downloadObjects(
 					} else {
 						Logger.WithContext(ctx).Error(
 							"obsClient.DownloadFile failed.",
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
-			f, err := os.OpenFile(
+			f, _err := os.OpenFile(
 				downloadFolderRecord,
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			defer func() {
@@ -661,14 +662,14 @@ func (o *S3) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.Key + "\n"))
-			if nil != err {
+			_, _err = f.Write([]byte(itemObject.Key + "\n"))
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
 					" objectKey: ", itemObject.Key,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 		})

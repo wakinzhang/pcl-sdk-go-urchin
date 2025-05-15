@@ -257,12 +257,12 @@ func (o *StarLight) uploadFolder(
 		}
 	}
 
-	objectPath := targetPath + filepath.Base(sourcePath)
-	err = o.slClient.Mkdir(ctx, objectPath)
+	path := targetPath + filepath.Base(sourcePath)
+	err = o.slClient.Mkdir(ctx, path)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"slClient.Mkdir failed.",
-			" objectPath: ", objectPath,
+			" path: ", path,
 			" err: ", err)
 		return err
 	}
@@ -300,68 +300,69 @@ func (o *StarLight) uploadFolder(
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
-					if err := recover(); nil != err {
+					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"StarLight:uploadFileResume failed.",
-							" err: ", err)
+							" err: ", _err)
 						isAllSuccess = false
 					}
 				}()
-				relPath, err := filepath.Rel(
+				relPath, _err := filepath.Rel(
 					filepath.Dir(sourcePath),
 					filePath)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
 						" relPath: ", relPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
-				objectPath = targetPath + relPath
+				objectPath := targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)
 					return
 				}
 				if fileInfo.IsDir() {
-					err = o.slClient.Mkdir(ctx, objectPath)
-					if nil != err {
+					_err = o.slClient.Mkdir(ctx, objectPath)
+					if nil != _err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"slClient.Mkdir failed.",
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				} else {
-					err = o.uploadFileResume(
+					_err = o.uploadFileResume(
 						ctx,
 						filePath,
 						objectPath,
 						needPure)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"StarLight:uploadFileResume failed.",
 							" filePath: ", filePath,
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 				fileMutex.Lock()
 				defer fileMutex.Unlock()
-				f, err := os.OpenFile(
+				f, _err := os.OpenFile(
 					uploadFolderRecord,
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				defer func() {
@@ -372,14 +373,14 @@ func (o *StarLight) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectPath + "\n"))
-				if nil != err {
+				_, _err = f.Write([]byte(objectPath + "\n"))
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectPath: ", objectPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				return
@@ -627,7 +628,7 @@ func (o *StarLight) uploadPartConcurrent(
 				wg.Done()
 			}()
 			result := task.Run(ctx, sourceFile)
-			err = o.handleUploadTaskResult(
+			_err := o.handleUploadTaskResult(
 				ctx,
 				result,
 				ufc,
@@ -635,15 +636,15 @@ func (o *StarLight) uploadPartConcurrent(
 				input.EnableCheckpoint,
 				input.CheckpointFile,
 				lock)
-			if nil != err &&
+			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 				Logger.WithContext(ctx).Error(
 					"StarLight:handleUploadTaskResult failed.",
 					" partNumber: ", task.PartNumber,
 					" checkpointFile: ", input.CheckpointFile,
-					" err: ", err)
-				uploadPartError.Store(err)
+					" err: ", _err)
+				uploadPartError.Store(_err)
 			}
 			Logger.WithContext(ctx).Debug(
 				"StarLight:handleUploadTaskResult finish.")
@@ -1092,38 +1093,38 @@ func (o *StarLight) downloadObjects(
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); nil != err {
+				if _err := recover(); nil != _err {
 					Logger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", err)
+						" err: ", _err)
 					isAllSuccess = false
 				}
 			}()
 			targetFile := targetPath + itemObject.Path
-			err = o.downloadPart(
+			_err := o.downloadPart(
 				ctx,
 				itemObject,
 				targetFile)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"StarLight:downloadPart failed.",
 					" objectPath: ", itemObject.Path,
 					" targetFile: ", targetFile,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
-			f, err := os.OpenFile(
+			f, _err := os.OpenFile(
 				downloadFolderRecord,
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			defer func() {
@@ -1135,14 +1136,14 @@ func (o *StarLight) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.Path + "\n"))
-			if nil != err {
+			_, _err = f.Write([]byte(itemObject.Path + "\n"))
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
 					" objectPath: ", itemObject.Path,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 		})
@@ -1384,22 +1385,22 @@ func (o *StarLight) downloadFileConcurrent(
 				dfc.DownloadParts[task.PartNumber-1].IsCompleted = true
 
 				if input.EnableCheckpoint {
-					err := o.updateCheckpointFile(
+					_err := o.updateCheckpointFile(
 						ctx,
 						dfc,
 						input.CheckpointFile)
-					if nil != err {
+					if nil != _err {
 						Logger.WithContext(ctx).Error(
 							"StarLight:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
-							" err: ", err)
-						downloadPartError.Store(err)
+							" err: ", _err)
+						downloadPartError.Store(_err)
 					}
 				}
 				return
 			} else {
 				result := task.Run(ctx)
-				err = o.handleDownloadTaskResult(
+				_err := o.handleDownloadTaskResult(
 					ctx,
 					result,
 					dfc,
@@ -1407,15 +1408,15 @@ func (o *StarLight) downloadFileConcurrent(
 					input.EnableCheckpoint,
 					input.CheckpointFile,
 					lock)
-				if nil != err &&
+				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
 						"StarLight:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
-						" err: ", err)
-					downloadPartError.Store(err)
+						" err: ", _err)
+					downloadPartError.Store(_err)
 				}
 				return
 			}

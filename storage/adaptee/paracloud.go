@@ -247,13 +247,13 @@ func (o *ParaCloud) uploadFolder(
 		}
 	}
 
-	objectPath := targetPath + filepath.Base(sourcePath)
-	err = o.pcClient.Mkdir(ctx, sourcePath, objectPath)
+	path := targetPath + filepath.Base(sourcePath)
+	err = o.pcClient.Mkdir(ctx, sourcePath, path)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"pcClient.Mkdir failed.",
 			" sourcePath: ", sourcePath,
-			" objectPath: ", objectPath,
+			" path: ", path,
 			" err: ", err)
 		return err
 	}
@@ -291,28 +291,28 @@ func (o *ParaCloud) uploadFolder(
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
-					if err := recover(); nil != err {
+					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"pcClient.Upload failed.",
-							" err: ", err)
+							" err: ", _err)
 						isAllSuccess = false
 					}
 				}()
 
-				relPath, err := filepath.Rel(
+				relPath, _err := filepath.Rel(
 					filepath.Dir(sourcePath),
 					filePath)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
 						" relPath: ", relPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
-				objectPath = targetPath + relPath
+				objectPath := targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)
@@ -320,37 +320,39 @@ func (o *ParaCloud) uploadFolder(
 				}
 
 				if fileInfo.IsDir() {
-					err = o.pcClient.Mkdir(ctx, filePath, objectPath)
-					if nil != err {
+					_err = o.pcClient.Mkdir(ctx, filePath, objectPath)
+					if nil != _err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"pcClient.Mkdir failed.",
 							" filePath: ", filePath,
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				} else {
-					err = o.pcClient.Upload(ctx, filePath, objectPath)
-					if nil != err {
+					_err = o.pcClient.Upload(ctx, filePath, objectPath)
+					if nil != _err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"pcClient.Upload failed.",
 							" filePath: ", filePath,
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 				fileMutex.Lock()
 				defer fileMutex.Unlock()
-				f, err := os.OpenFile(
+				f, _err := os.OpenFile(
 					uploadFolderRecord,
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				defer func() {
@@ -361,14 +363,14 @@ func (o *ParaCloud) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectPath + "\n"))
-				if nil != err {
+				_, _err = f.Write([]byte(objectPath + "\n"))
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectPath: ", objectPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				return
@@ -563,38 +565,38 @@ func (o *ParaCloud) downloadObjects(
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); nil != err {
+				if _err := recover(); nil != _err {
 					Logger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", err)
+						" err: ", _err)
 					isAllSuccess = false
 				}
 			}()
 			targetFile := targetPath + itemObject.ObjectPath
-			err = o.downloadPart(
+			_err := o.downloadPart(
 				ctx,
 				itemObject,
 				targetFile)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"ParaCloud:downloadPart failed.",
 					" objectPath: ", itemObject.ObjectPath,
 					" targetFile: ", targetFile,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
-			f, err := os.OpenFile(
+			f, _err := os.OpenFile(
 				downloadFolderRecord,
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			defer func() {
@@ -606,14 +608,14 @@ func (o *ParaCloud) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.ObjectPath + "\n"))
-			if nil != err {
+			_, _err = f.Write([]byte(itemObject.ObjectPath + "\n"))
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
 					" objectPath: ", itemObject.ObjectPath,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 		})
@@ -855,22 +857,22 @@ func (o *ParaCloud) downloadFileConcurrent(
 				dfc.DownloadParts[task.PartNumber-1].IsCompleted = true
 
 				if input.EnableCheckpoint {
-					err := o.updateCheckpointFile(
+					_err := o.updateCheckpointFile(
 						ctx,
 						dfc,
 						input.CheckpointFile)
-					if nil != err {
+					if nil != _err {
 						Logger.WithContext(ctx).Error(
 							"ParaCloud:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
-							" err: ", err)
-						downloadPartError.Store(err)
+							" err: ", _err)
+						downloadPartError.Store(_err)
 					}
 				}
 				return
 			} else {
 				result := task.Run(ctx)
-				err = o.handleDownloadTaskResult(
+				_err := o.handleDownloadTaskResult(
 					ctx,
 					result,
 					dfc,
@@ -878,15 +880,15 @@ func (o *ParaCloud) downloadFileConcurrent(
 					input.EnableCheckpoint,
 					input.CheckpointFile,
 					lock)
-				if nil != err &&
+				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
 						"ParaCloud:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
-						" err: ", err)
-					downloadPartError.Store(err)
+						" err: ", _err)
+					downloadPartError.Store(_err)
 				}
 				return
 			}

@@ -286,22 +286,22 @@ func (o *JCS) uploadFolder(
 		}
 	}
 
-	objectPath := targetPath + filepath.Base(sourcePath)
-	if 0 < len(objectPath) &&
-		'/' != objectPath[len(objectPath)-1] {
+	path := targetPath + filepath.Base(sourcePath)
+	if 0 < len(path) &&
+		'/' != path[len(path)-1] {
 
-		objectPath = objectPath + "/"
+		path = path + "/"
 	}
 	err = o.jcsClient.UploadFile(
 		ctx,
 		packageId,
-		objectPath,
+		path,
 		nil)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"jcsClient.UploadFile mkdir failed.",
 			" packageId: ", packageId,
-			" objectPath: ", objectPath,
+			" path: ", path,
 			" err: ", err)
 		return err
 	}
@@ -339,27 +339,27 @@ func (o *JCS) uploadFolder(
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
-					if err := recover(); nil != err {
+					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"JCS:uploadFileResume failed.",
-							" err: ", err)
+							" err: ", _err)
 						isAllSuccess = false
 					}
 				}()
-				relPath, err := filepath.Rel(
+				relPath, _err := filepath.Rel(
 					filepath.Dir(sourcePath),
 					filePath)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
 						" relPath: ", relPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
-				objectPath = targetPath + relPath
+				objectPath := targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)
@@ -371,48 +371,49 @@ func (o *JCS) uploadFolder(
 
 						objectPath = objectPath + "/"
 					}
-					err = o.jcsClient.UploadFile(
+					_err = o.jcsClient.UploadFile(
 						ctx,
 						packageId,
 						objectPath,
 						nil)
-					if nil != err {
+					if nil != _err {
+						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"jcsClient.UploadFile mkdir failed.",
 							" packageId: ", packageId,
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				} else {
-					err = o.uploadFile(
+					_err = o.uploadFile(
 						ctx,
 						packageId,
 						filePath,
 						objectPath,
 						needPure)
-					if nil != err {
+					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
 							"JCS:uploadFile failed.",
 							" packageId: ", packageId,
 							" filePath: ", filePath,
 							" objectPath: ", objectPath,
-							" err: ", err)
+							" err: ", _err)
 						return
 					}
 				}
 				fileMutex.Lock()
 				defer fileMutex.Unlock()
-				f, err := os.OpenFile(
+				f, _err := os.OpenFile(
 					uploadFolderRecord,
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				defer func() {
@@ -423,14 +424,14 @@ func (o *JCS) uploadFolder(
 							" err: ", errMsg)
 					}
 				}()
-				_, err = f.Write([]byte(objectPath + "\n"))
-				if nil != err {
+				_, _err = f.Write([]byte(objectPath + "\n"))
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectPath: ", objectPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 				return
@@ -797,7 +798,7 @@ func (o *JCS) uploadPartConcurrent(
 				wg.Done()
 			}()
 			result := task.Run(ctx, sourceFile)
-			err = o.handleUploadTaskResult(
+			_err := o.handleUploadTaskResult(
 				ctx,
 				result,
 				ufc,
@@ -805,15 +806,15 @@ func (o *JCS) uploadPartConcurrent(
 				input.EnableCheckpoint,
 				input.CheckpointFile,
 				lock)
-			if nil != err &&
+			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 				Logger.WithContext(ctx).Error(
 					"JCS:handleUploadTaskResult failed.",
 					" PartNumber: ", task.PartNumber,
 					" checkpointFile: ", input.CheckpointFile,
-					" err: ", err)
-				uploadPartError.Store(err)
+					" err: ", _err)
+				uploadPartError.Store(_err)
 			}
 			Logger.WithContext(ctx).Debug(
 				"JCS:handleUploadTaskResult finish.")
@@ -1277,10 +1278,10 @@ func (o *JCS) downloadObjects(
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
-				if err := recover(); nil != err {
+				if _err := recover(); nil != _err {
 					Logger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", err)
+						" err: ", _err)
 					isAllSuccess = false
 				}
 			}()
@@ -1288,42 +1289,42 @@ func (o *JCS) downloadObjects(
 				'/' == itemObject.Path[len(itemObject.Path)-1] {
 
 				itemPath := targetPath + itemObject.Path
-				err = os.MkdirAll(itemPath, os.ModePerm)
-				if nil != err {
+				_err := os.MkdirAll(itemPath, os.ModePerm)
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"os.MkdirAll failed.",
 						" itemPath: ", itemPath,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 			} else {
 				targetFile := targetPath + itemObject.Path
-				err = o.downloadPart(
+				_err := o.downloadPart(
 					ctx,
 					itemObject,
 					targetFile)
-				if nil != err {
+				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"JCS:downloadPart failed.",
 						" objectPath: ", itemObject.Path,
 						" targetFile: ", targetFile,
-						" err: ", err)
+						" err: ", _err)
 					return
 				}
 			}
 			fileMutex.Lock()
 			defer fileMutex.Unlock()
-			f, err := os.OpenFile(
+			f, _err := os.OpenFile(
 				downloadFolderRecord,
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-			if nil != err {
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 			defer func() {
@@ -1335,14 +1336,14 @@ func (o *JCS) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, err = f.Write([]byte(itemObject.Path + "\n"))
-			if nil != err {
+			_, _err = f.Write([]byte(itemObject.Path + "\n"))
+			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
 					" objectPath: ", itemObject.Path,
-					" err: ", err)
+					" err: ", _err)
 				return
 			}
 		})
@@ -1577,22 +1578,22 @@ func (o *JCS) downloadFileConcurrent(
 				dfc.DownloadParts[task.PartNumber-1].IsCompleted = true
 
 				if input.EnableCheckpoint {
-					err := o.updateCheckpointFile(
+					_err := o.updateCheckpointFile(
 						ctx,
 						dfc,
 						input.CheckpointFile)
-					if nil != err {
+					if nil != _err {
 						Logger.WithContext(ctx).Error(
 							"JCS:updateCheckpointFile failed.",
 							" checkpointFile: ", input.CheckpointFile,
-							" err: ", err)
-						downloadPartError.Store(err)
+							" err: ", _err)
+						downloadPartError.Store(_err)
 					}
 				}
 				return
 			} else {
 				result := task.Run(ctx)
-				err = o.handleDownloadTaskResult(
+				_err := o.handleDownloadTaskResult(
 					ctx,
 					result,
 					dfc,
@@ -1600,15 +1601,15 @@ func (o *JCS) downloadFileConcurrent(
 					input.EnableCheckpoint,
 					input.CheckpointFile,
 					lock)
-				if nil != err &&
+				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
 					Logger.WithContext(ctx).Error(
 						"JCS:handleDownloadTaskResult failed.",
 						" partNumber: ", task.PartNumber,
 						" checkpointFile: ", input.CheckpointFile,
-						" err: ", err)
-					downloadPartError.Store(err)
+						" err: ", _err)
+					downloadPartError.Store(_err)
 				}
 				return
 			}
