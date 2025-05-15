@@ -274,12 +274,12 @@ func (o *Scow) uploadFolder(
 		}
 	}
 
-	objectPath := targetPath + filepath.Base(sourcePath)
-	err = o.sClient.Mkdir(ctx, objectPath)
+	path := targetPath + filepath.Base(sourcePath)
+	err = o.sClient.Mkdir(ctx, path)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"sClient.Mkdir failed.",
-			" objectPath: ", objectPath,
+			" path: ", path,
 			" err: ", err)
 		return err
 	}
@@ -337,7 +337,7 @@ func (o *Scow) uploadFolder(
 						" err: ", err)
 					return
 				}
-				objectPath = targetPath + relPath
+				objectPath := targetPath + relPath
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)
