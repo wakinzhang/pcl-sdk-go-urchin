@@ -32,7 +32,7 @@ const (
 
 	ScowGetTokenInterface     = "/v1/sys/user/login"
 	ScowCheckExistInterface   = "/v1/ai/api/file/checkExist"
-	ScowMkdirInterface        = "/v1/ai//api/file/mkdir"
+	ScowMkdirInterface        = "/v1/ai/api/file/mkdir"
 	ScowDeleteInterface       = "/v1/ai/api/file/delete"
 	ScowListInterface         = "/v1/ai/api/file/listDirectory"
 	ScowUploadInterface       = "/v1/ai/api/files/upload"
