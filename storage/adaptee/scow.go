@@ -1183,7 +1183,9 @@ func (o *Scow) Download(
 	}
 
 	for _, folder := range folders {
-		itemPath := targetPath + folder.PathExt
+		itemPath :=
+			strings.TrimSuffix(targetPath, "/") +
+				folder.PathExt
 		err = os.MkdirAll(itemPath, os.ModePerm)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -1243,8 +1245,14 @@ func (o *Scow) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord := targetPath +
-		filepath.Base(targetPath) + ".download_folder_record"
+	path := strings.TrimSuffix(targetPath, "/") + sourcePath
+	downloadFolderRecord :=
+		filepath.Dir(path) +
+			filepath.Base(path) +
+			".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -1277,10 +1285,10 @@ func (o *Scow) downloadObjects(
 			" Name: ", object.Name,
 			" size: ", object.Size)
 		itemObject := object
-		if _, exists := fileMap[itemObject.Name]; exists {
+		if _, exists := fileMap[itemObject.PathExt]; exists {
 			Logger.WithContext(ctx).Info(
 				"file already success.",
-				" Name: ", itemObject.Name)
+				" objectPath: ", itemObject.PathExt)
 			continue
 		}
 		wg.Add(1)
@@ -1294,11 +1302,13 @@ func (o *Scow) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			targetFile := targetPath + itemObject.Name
+			targetFile :=
+				strings.TrimSuffix(targetPath, "/") +
+					itemObject.PathExt
 			_err := o.downloadPart(
 				ctx,
 				itemObject,
-				targetPath+itemObject.Name)
+				targetFile)
 			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
@@ -1330,13 +1340,13 @@ func (o *Scow) downloadObjects(
 						" err: ", errMsg)
 				}
 			}()
-			_, _err = f.Write([]byte(itemObject.Name + "\n"))
+			_, _err = f.Write([]byte(itemObject.PathExt + "\n"))
 			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"write file failed.",
 					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectName: ", itemObject.Name,
+					" objectPath: ", itemObject.PathExt,
 					" err: ", _err)
 				return
 			}

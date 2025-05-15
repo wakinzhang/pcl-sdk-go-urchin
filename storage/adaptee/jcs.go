@@ -1232,8 +1232,14 @@ func (o *JCS) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord := targetPath +
-		filepath.Base(targetPath) + ".download_folder_record"
+	path := strings.TrimSuffix(targetPath, "/") + sourcePath
+	downloadFolderRecord :=
+		filepath.Dir(path) +
+			filepath.Base(path) +
+			".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {

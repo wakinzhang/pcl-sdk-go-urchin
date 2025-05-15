@@ -547,8 +547,14 @@ func (o *S3) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
+	path := strings.TrimSuffix(targetPath, "/") + sourcePath
 	downloadFolderRecord :=
-		targetPath + sourcePath + ".download_folder_record"
+		filepath.Dir(path) +
+			filepath.Base(path) +
+			".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
