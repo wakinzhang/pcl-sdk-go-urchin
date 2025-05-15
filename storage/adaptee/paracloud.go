@@ -426,6 +426,8 @@ func (o *ParaCloud) Download(
 		return errors.New("input param invalid")
 	}
 
+	targetPath = strings.TrimSuffix(targetPath, "/")
+
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:Download start.",
 		" sourcePath: ", sourcePath,
@@ -450,6 +452,7 @@ func (o *ParaCloud) Download(
 		pcObject.ObjectPath = sourcePath + file.Name()
 		pcObject.ObjectFileInfo = file
 		if file.IsDir() {
+			pcObject.ObjectPath = pcObject.ObjectPath + "/"
 			folders = append(folders, pcObject)
 		} else {
 			objects = append(objects, pcObject)
