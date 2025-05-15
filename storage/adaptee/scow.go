@@ -344,6 +344,12 @@ func (o *Scow) uploadFolder(
 					return
 				}
 				if fileInfo.IsDir() {
+					Logger.WithContext(ctx).Debug(
+						"file is dir.",
+						" fileName: ", fileInfo.Name(),
+						" filePath: ", filePath,
+						" relPath: ", relPath,
+						" objectPath: ", objectPath)
 					err = o.sClient.Mkdir(ctx, objectPath)
 					if nil != err {
 						Logger.WithContext(ctx).Error(
