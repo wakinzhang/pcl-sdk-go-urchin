@@ -1175,6 +1175,7 @@ func (o *Scow) Download(
 	for _, object := range scowListResponseBody.ScowObjects {
 		object.PathExt = sourcePath + object.Name
 		if ScowObjectTypeFile == object.Type {
+			object.PathExt = object.PathExt + "/"
 			objects = append(objects, object)
 		} else {
 			folders = append(folders, object)
