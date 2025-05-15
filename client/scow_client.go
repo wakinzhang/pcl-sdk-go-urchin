@@ -164,12 +164,12 @@ func (o *ScowClient) refreshToken(
 	return err
 }
 
-func (o *ScowClient) checkExist(
+func (o *ScowClient) CheckExist(
 	ctx context.Context,
 	path string) (err error, exist bool) {
 
 	Logger.WithContext(ctx).Debug(
-		"ScowClient:checkExist start.",
+		"ScowClient:CheckExist start.",
 		" path: ", path)
 
 	err = o.refreshToken(ctx)
@@ -195,7 +195,7 @@ func (o *ScowClient) checkExist(
 	url := o.endpoint + ScowCheckExistInterface + "?" + values.Encode()
 
 	Logger.WithContext(ctx).Debug(
-		"ScowClient:checkExist request.",
+		"ScowClient:CheckExist request.",
 		" url: ", url)
 
 	header := make(http.Header)
@@ -216,7 +216,7 @@ func (o *ScowClient) checkExist(
 		return err, exist
 	}
 	Logger.WithContext(ctx).Debug(
-		"ScowClient:checkExist response.",
+		"ScowClient:CheckExist response.",
 		" path: ", path,
 		" response: ", string(respBody))
 
@@ -231,7 +231,7 @@ func (o *ScowClient) checkExist(
 
 	if ScowSuccessCode != resp.RespCode {
 		Logger.WithContext(ctx).Error(
-			"ScowClient:checkExist response failed.",
+			"ScowClient:CheckExist response failed.",
 			" path: ", path,
 			" RespCode: ", resp.RespCode,
 			" RespError: ", resp.RespError,
@@ -241,7 +241,7 @@ func (o *ScowClient) checkExist(
 	exist = resp.RespBody.Data.Exists
 
 	Logger.WithContext(ctx).Debug(
-		"ScowClient:checkExist finish.")
+		"ScowClient:CheckExist finish.")
 	return err, exist
 }
 
@@ -253,10 +253,10 @@ func (o *ScowClient) Mkdir(
 		"ScowClient:Mkdir start.",
 		" path: ", path)
 
-	err, exist := o.checkExist(ctx, path)
+	err, exist := o.CheckExist(ctx, path)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ScowClient.checkExist failed.",
+			"ScowClient.CheckExist failed.",
 			" err: ", err)
 		return err
 	}
@@ -347,6 +347,20 @@ func (o *ScowClient) Delete(
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Delete start.",
 		" path: ", path)
+
+	err, exist := o.CheckExist(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ScowClient.CheckExist failed.",
+			" err: ", err)
+		return err
+	}
+	if false == exist {
+		Logger.WithContext(ctx).Info(
+			"Path already not exist, no need to delete.",
+			" path: ", path)
+		return err
+	}
 
 	err = o.refreshToken(ctx)
 	if nil != err {
@@ -445,6 +459,20 @@ func (o *ScowClient) Upload(
 		"ScowClient:Upload start.",
 		" fileName: ", fileName,
 		" path: ", path)
+
+	err, exist := o.CheckExist(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ScowClient.CheckExist failed.",
+			" err: ", err)
+		return err
+	}
+	if true == exist {
+		Logger.WithContext(ctx).Info(
+			"Path already exist, no need to upload.",
+			" path: ", path)
+		return err
+	}
 
 	err = o.refreshToken(ctx)
 	if nil != err {

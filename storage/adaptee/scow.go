@@ -462,6 +462,19 @@ func (o *Scow) uploadFile(
 	}
 
 	if DefaultScowUploadMultiSize < sourceFileStat.Size() {
+		err, exist := o.sClient.CheckExist(ctx, objectPath)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"sClient.CheckExist failed.",
+				" err: ", err)
+			return err
+		}
+		if true == exist {
+			Logger.WithContext(ctx).Info(
+				"Path already exist, no need to upload.",
+				" objectPath: ", objectPath)
+			return err
+		}
 		err = o.uploadFileResume(
 			ctx,
 			sourceFile,
