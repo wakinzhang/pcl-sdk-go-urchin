@@ -486,6 +486,21 @@ func (o *S3) Download(
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath)
 
+	err = os.MkdirAll(targetPath, os.ModePerm)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.MkdirAll failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return
+	}
+
+	downloadFolderRecord :=
+		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
+
 	marker := ""
 	for {
 		inputList := new(obs.ListObjectsInput)
@@ -513,12 +528,14 @@ func (o *S3) Download(
 			ctx,
 			sourcePath,
 			targetPath,
-			listObjectsOutput)
+			listObjectsOutput,
+			downloadFolderRecord)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"S3:downloadObjects failed.",
 				" sourcePath: ", sourcePath,
 				" targetPath: ", targetPath,
+				" downloadFolderRecord: ", downloadFolderRecord,
 				" err: ", err)
 			return err
 		}
@@ -526,6 +543,15 @@ func (o *S3) Download(
 			marker = listObjectsOutput.NextMarker
 		} else {
 			break
+		}
+	}
+	err = os.Remove(downloadFolderRecord)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
 		}
 	}
 	Logger.WithContext(ctx).Debug(
@@ -537,30 +563,17 @@ func (o *S3) downloadObjects(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
-	listObjectsOutput *obs.ListObjectsOutput) (err error) {
+	listObjectsOutput *obs.ListObjectsOutput,
+	downloadFolderRecord string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"S3:downloadObjects start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
-
-	err = os.MkdirAll(targetPath, os.ModePerm)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return
-	}
-
-	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
-	Logger.WithContext(ctx).Debug(
-		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -699,16 +712,6 @@ func (o *S3) downloadObjects(
 			" sourcePath: ", sourcePath)
 
 		return errors.New("downloadObjects not all success")
-	} else {
-		_err := os.Remove(downloadFolderRecord)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
-			}
-		}
 	}
 
 	Logger.WithContext(ctx).Debug(

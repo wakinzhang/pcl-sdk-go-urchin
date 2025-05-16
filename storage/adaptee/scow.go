@@ -1268,6 +1268,63 @@ func (o *Scow) Download(
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath)
 
+	err = os.MkdirAll(targetPath, os.ModePerm)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.MkdirAll failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return
+	}
+
+	downloadFolderRecord :=
+		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
+
+	err = o.downloadBatch(
+		ctx,
+		sourcePath,
+		targetPath,
+		downloadFolderRecord)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Scow:downloadBatch failed.",
+			" sourcePath: ", sourcePath,
+			" targetPath: ", targetPath,
+			" downloadFolderRecord: ", downloadFolderRecord,
+			" err: ", err)
+		return err
+	}
+
+	err = os.Remove(downloadFolderRecord)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
+		}
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:Download finish.")
+	return nil
+}
+
+func (o *Scow) downloadBatch(
+	ctx context.Context,
+	sourcePath,
+	targetPath,
+	downloadFolderRecord string) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:downloadBatch start.",
+		" sourcePath: ", sourcePath,
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
+
 	scowListResponseBody := new(ScowListResponseBody)
 	err, scowListResponseBody = o.sClient.List(
 		ctx,
@@ -1310,12 +1367,14 @@ func (o *Scow) Download(
 		ctx,
 		sourcePath,
 		targetPath,
-		objects)
+		objects,
+		downloadFolderRecord)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"Scow:downloadObjects failed.",
 			" sourcePath: ", sourcePath,
 			" targetPath: ", targetPath,
+			" downloadFolderRecord: ", downloadFolderRecord,
 			" err: ", err)
 		return err
 	}
@@ -1324,10 +1383,14 @@ func (o *Scow) Download(
 		scowDownloadInput.SourcePath = folder.PathExt
 		scowDownloadInput.TargetPath = targetPath
 
-		err = o.Download(ctx, scowDownloadInput)
+		err = o.downloadBatch(
+			ctx,
+			folder.PathExt,
+			targetPath,
+			downloadFolderRecord)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"Scow:Download failed.",
+				"Scow:downloadBatch failed.",
 				" sourcePath: ", folder.PathExt,
 				" targetPath: ", targetPath,
 				" err: ", err)
@@ -1336,7 +1399,7 @@ func (o *Scow) Download(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"Scow:Download finish.",
+		"Scow:downloadBatch finish.",
 		" sourcePath: ", sourcePath)
 	return nil
 }
@@ -1345,30 +1408,17 @@ func (o *Scow) downloadObjects(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
-	objects []*ScowObject) (err error) {
+	objects []*ScowObject,
+	downloadFolderRecord string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:downloadObjects start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
-
-	err = os.MkdirAll(targetPath, os.ModePerm)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return
-	}
-
-	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
-	Logger.WithContext(ctx).Debug(
-		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -1480,16 +1530,6 @@ func (o *Scow) downloadObjects(
 			"Scow:downloadObjects not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("downloadObjects not all success")
-	} else {
-		_err := os.Remove(downloadFolderRecord)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
-			}
-		}
 	}
 
 	Logger.WithContext(ctx).Debug(

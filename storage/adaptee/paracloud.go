@@ -545,6 +545,63 @@ func (o *ParaCloud) Download(
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath)
 
+	err = os.MkdirAll(targetPath, os.ModePerm)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.MkdirAll failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return
+	}
+
+	downloadFolderRecord :=
+		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
+
+	err = o.downloadBatch(
+		ctx,
+		sourcePath,
+		targetPath,
+		downloadFolderRecord)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ParaCloud:downloadBatch failed.",
+			" sourcePath: ", sourcePath,
+			" targetPath: ", targetPath,
+			" downloadFolderRecord: ", downloadFolderRecord,
+			" err: ", err)
+		return err
+	}
+
+	err = os.Remove(downloadFolderRecord)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
+		}
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:Download finish.")
+	return nil
+}
+
+func (o *ParaCloud) downloadBatch(
+	ctx context.Context,
+	sourcePath,
+	targetPath,
+	downloadFolderRecord string) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:downloadBatch start.",
+		" sourcePath: ", sourcePath,
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
+
 	fileInfoList := make([]os.FileInfo, 0)
 	err, fileInfoList = o.pcClient.List(
 		ctx,
@@ -587,12 +644,14 @@ func (o *ParaCloud) Download(
 		ctx,
 		sourcePath,
 		targetPath,
-		objects)
+		objects,
+		downloadFolderRecord)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ParaCloud:downloadObjects failed.",
 			" sourcePath: ", sourcePath,
 			" targetPath: ", targetPath,
+			" downloadFolderRecord: ", downloadFolderRecord,
 			" err: ", err)
 		return err
 	}
@@ -601,19 +660,24 @@ func (o *ParaCloud) Download(
 		paraCloudDownloadInput.SourcePath = folder.ObjectPath
 		paraCloudDownloadInput.TargetPath = targetPath
 
-		err = o.Download(ctx, paraCloudDownloadInput)
+		err = o.downloadBatch(
+			ctx,
+			folder.ObjectPath,
+			targetPath,
+			downloadFolderRecord)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"ParaCloud:Download failed.",
+				"ParaCloud:downloadBatch failed.",
 				" sourcePath: ", folder.ObjectPath,
 				" targetPath: ", targetPath,
+				" downloadFolderRecord: ", downloadFolderRecord,
 				" err: ", err)
 			return err
 		}
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:Download finish.",
+		"ParaCloud:downloadBatch finish.",
 		" sourcePath: ", sourcePath)
 	return nil
 }
@@ -622,30 +686,17 @@ func (o *ParaCloud) downloadObjects(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
-	objects []*PCObject) (err error) {
+	objects []*PCObject,
+	downloadFolderRecord string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:downloadObjects start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
-
-	err = os.MkdirAll(targetPath, os.ModePerm)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return
-	}
-
-	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
-	Logger.WithContext(ctx).Debug(
-		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -755,16 +806,6 @@ func (o *ParaCloud) downloadObjects(
 			"ParaCloud:downloadObjects not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("downloadObjects not all success")
-	} else {
-		_err := os.Remove(downloadFolderRecord)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
-			}
-		}
 	}
 
 	Logger.WithContext(ctx).Debug(

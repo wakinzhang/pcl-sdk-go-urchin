@@ -1229,6 +1229,63 @@ func (o *Sugon) Download(
 		" sourcePath: ", sourcePath,
 		" targetPath: ", targetPath)
 
+	err = os.MkdirAll(targetPath, os.ModePerm)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.MkdirAll failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return
+	}
+
+	downloadFolderRecord :=
+		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
+
+	err = o.downloadBatch(
+		ctx,
+		sourcePath,
+		targetPath,
+		downloadFolderRecord)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Sugon:downloadBatch failed.",
+			" sourcePath: ", sourcePath,
+			" targetPath: ", targetPath,
+			" downloadFolderRecord: ", downloadFolderRecord,
+			" err: ", err)
+		return err
+	}
+
+	err = os.Remove(downloadFolderRecord)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
+		}
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:Download finish.")
+	return nil
+}
+
+func (o *Sugon) downloadBatch(
+	ctx context.Context,
+	sourcePath,
+	targetPath,
+	downloadFolderRecord string) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:downloadBatch start.",
+		" sourcePath: ", sourcePath,
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
+
 	var start int32 = 0
 	var limit int32 = DefaultSugonListLimit
 	for {
@@ -1264,12 +1321,14 @@ func (o *Sugon) Download(
 			ctx,
 			sourcePath,
 			targetPath,
-			sugonListResponseData.FileList)
+			sugonListResponseData.FileList,
+			downloadFolderRecord)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"Sugon:downloadObjects failed.",
 				" sourcePath: ", sourcePath,
 				" targetPath: ", targetPath,
+				" downloadFolderRecord: ", downloadFolderRecord,
 				" err: ", err)
 			return err
 		}
@@ -1279,12 +1338,17 @@ func (o *Sugon) Download(
 			sugonDownloadInput.SourcePath = folder.Path
 			sugonDownloadInput.TargetPath = targetPath
 
-			err = o.Download(ctx, sugonDownloadInput)
+			err = o.downloadBatch(
+				ctx,
+				folder.Path,
+				targetPath,
+				downloadFolderRecord)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"Sugon:Download failed.",
+					"Sugon:downloadBatch failed.",
 					" sourcePath: ", folder.Path,
 					" targetPath: ", targetPath,
+					" downloadFolderRecord: ", downloadFolderRecord,
 					" err: ", err)
 				return err
 			}
@@ -1297,7 +1361,7 @@ func (o *Sugon) Download(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"Sugon:Download finish.",
+		"Sugon:downloadBatch finish.",
 		" sourcePath: ", sourcePath)
 	return nil
 }
@@ -1306,30 +1370,17 @@ func (o *Sugon) downloadObjects(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
-	objects []*SugonFileInfo) (err error) {
+	objects []*SugonFileInfo,
+	downloadFolderRecord string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:downloadObjects start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
-
-	err = os.MkdirAll(targetPath, os.ModePerm)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return
-	}
-
-	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
-	Logger.WithContext(ctx).Debug(
-		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -1447,16 +1498,6 @@ func (o *Sugon) downloadObjects(
 			"Sugon:downloadObjects not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("downloadObjects not all success")
-	} else {
-		_err := os.Remove(downloadFolderRecord)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
-			}
-		}
 	}
 
 	Logger.WithContext(ctx).Debug(

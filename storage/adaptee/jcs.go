@@ -1170,6 +1170,21 @@ func (o *JCS) Download(
 		" targetPath: ", targetPath,
 		" packageId: ", packageId)
 
+	err = os.MkdirAll(targetPath, os.ModePerm)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.MkdirAll failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return
+	}
+
+	downloadFolderRecord :=
+		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"downloadFolderRecord file info.",
+		" downloadFolderRecord: ", downloadFolderRecord)
+
 	continuationToken := ""
 	for {
 		listObjectsData := new(JCSListData)
@@ -1195,12 +1210,14 @@ func (o *JCS) Download(
 			ctx,
 			sourcePath,
 			targetPath,
-			listObjectsData)
+			listObjectsData,
+			downloadFolderRecord)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"JCS:downloadObjects failed.",
 				" sourcePath: ", sourcePath,
 				" targetPath: ", targetPath,
+				" downloadFolderRecord: ", downloadFolderRecord,
 				" err: ", err)
 			return err
 		}
@@ -1209,6 +1226,15 @@ func (o *JCS) Download(
 			continuationToken = listObjectsData.NextContinuationToken
 		} else {
 			break
+		}
+	}
+	err = os.Remove(downloadFolderRecord)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
 		}
 	}
 
@@ -1222,30 +1248,17 @@ func (o *JCS) downloadObjects(
 	ctx context.Context,
 	sourcePath,
 	targetPath string,
-	listObjectsData *JCSListData) (err error) {
+	listObjectsData *JCSListData,
+	downloadFolderRecord string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"JCS:downloadObjects start.",
 		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		" targetPath: ", targetPath,
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
-
-	err = os.MkdirAll(targetPath, os.ModePerm)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return
-	}
-
-	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
-	Logger.WithContext(ctx).Debug(
-		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
 
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
@@ -1372,16 +1385,6 @@ func (o *JCS) downloadObjects(
 			"JCS:downloadObjects not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("downloadObjects not all success")
-	} else {
-		_err := os.Remove(downloadFolderRecord)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
-			}
-		}
 	}
 
 	Logger.WithContext(ctx).Debug(
