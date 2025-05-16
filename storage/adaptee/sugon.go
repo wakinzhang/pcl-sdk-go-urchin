@@ -1244,8 +1244,18 @@ func (o *Sugon) downloadObjects(
 		Logger.WithContext(ctx).Debug(
 			"object content.",
 			" index: ", index,
-			" Path: ", object.Path)
+			" Path: ", object.Path,
+			" IsDirectory: ", object.IsDirectory)
+
 		itemObject := object
+
+		if itemObject.IsDirectory {
+			Logger.WithContext(ctx).Info(
+				"dir already process, pass.",
+				" Path: ", itemObject.Path)
+			continue
+		}
+
 		if _, exists := fileMap[itemObject.Path]; exists {
 			Logger.WithContext(ctx).Info(
 				"file already success.",

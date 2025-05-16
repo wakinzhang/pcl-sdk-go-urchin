@@ -123,7 +123,7 @@ type SugonListResponseData struct {
 }
 
 type SugonFolderInfo struct {
-	Id    string `json:"id"`
+	Id    int32  `json:"id"`
 	Label string `json:"label"`
 	Path  string `json:"path"`
 }
