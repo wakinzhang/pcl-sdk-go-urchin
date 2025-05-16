@@ -244,8 +244,10 @@ func (o *Scow) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		filepath.Dir(sourcePath) + "/" +
-			filepath.Base(sourcePath) + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+	Logger.WithContext(ctx).Debug(
+		"uploadFolderRecord file info.",
+		" uploadFolderRecord: ", uploadFolderRecord)
 
 	if needPure {
 		err = os.Remove(uploadFolderRecord)
