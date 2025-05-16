@@ -268,7 +268,8 @@ func (o *ParaCloud) uploadFolder(
 	defer pool.Release()
 
 	var isAllSuccess = true
-	var wg sync.WaitGroup
+
+	var dirWaitGroup sync.WaitGroup
 	err = filepath.Walk(
 		sourcePath,
 		func(filePath string, fileInfo os.FileInfo, err error) error {
@@ -287,10 +288,10 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
-			wg.Add(1)
+			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
-					wg.Done()
+					dirWaitGroup.Done()
 					if _err := recover(); nil != _err {
 						Logger.WithContext(ctx).Error(
 							"pcClient.Upload failed.",
@@ -299,27 +300,26 @@ func (o *ParaCloud) uploadFolder(
 					}
 				}()
 
-				relPath, _err := filepath.Rel(
-					filepath.Dir(sourcePath),
-					filePath)
-				if nil != _err {
-					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
-						"filepath.Rel failed.",
-						" sourcePath: ", sourcePath,
-						" filePath: ", filePath,
-						" relPath: ", relPath,
-						" err: ", _err)
-					return
-				}
-				objectPath := targetPath + relPath
-				if _, exists := fileMap[objectPath]; exists {
-					Logger.WithContext(ctx).Info(
-						"already finish. objectPath: ", objectPath)
-					return
-				}
-
 				if fileInfo.IsDir() {
+					relPath, _err := filepath.Rel(
+						filepath.Dir(sourcePath),
+						filePath)
+					if nil != _err {
+						isAllSuccess = false
+						Logger.WithContext(ctx).Error(
+							"filepath.Rel failed.",
+							" sourcePath: ", sourcePath,
+							" filePath: ", filePath,
+							" relPath: ", relPath,
+							" err: ", _err)
+						return
+					}
+					objectPath := targetPath + relPath
+					if _, exists := fileMap[objectPath]; exists {
+						Logger.WithContext(ctx).Info(
+							"already finish. objectPath: ", objectPath)
+						return
+					}
 					_err = o.pcClient.Mkdir(ctx, filePath, objectPath)
 					if nil != _err {
 						isAllSuccess = false
@@ -330,48 +330,38 @@ func (o *ParaCloud) uploadFolder(
 							" err: ", _err)
 						return
 					}
-				} else {
-					_err = o.pcClient.Upload(ctx, filePath, objectPath)
+
+					fileMutex.Lock()
+					defer fileMutex.Unlock()
+					f, _err := os.OpenFile(
+						uploadFolderRecord,
+						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"pcClient.Upload failed.",
-							" filePath: ", filePath,
+							"os.OpenFile failed.",
+							" uploadFolderRecord: ", uploadFolderRecord,
+							" err: ", _err)
+						return
+					}
+					defer func() {
+						errMsg := f.Close()
+						if errMsg != nil {
+							Logger.WithContext(ctx).Warn(
+								"close file failed.",
+								" err: ", errMsg)
+						}
+					}()
+					_, _err = f.Write([]byte(objectPath + "\n"))
+					if nil != _err {
+						isAllSuccess = false
+						Logger.WithContext(ctx).Error(
+							"write file failed.",
+							" uploadFolderRecord: ", uploadFolderRecord,
 							" objectPath: ", objectPath,
 							" err: ", _err)
 						return
 					}
-				}
-				fileMutex.Lock()
-				defer fileMutex.Unlock()
-				f, _err := os.OpenFile(
-					uploadFolderRecord,
-					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-				if nil != _err {
-					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
-						"os.OpenFile failed.",
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", _err)
-					return
-				}
-				defer func() {
-					errMsg := f.Close()
-					if errMsg != nil {
-						Logger.WithContext(ctx).Warn(
-							"close file failed.",
-							" err: ", errMsg)
-					}
-				}()
-				_, _err = f.Write([]byte(objectPath + "\n"))
-				if nil != _err {
-					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
-						"write file failed.",
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" objectPath: ", objectPath,
-						" err: ", _err)
-					return
 				}
 				return
 			})
@@ -383,7 +373,7 @@ func (o *ParaCloud) uploadFolder(
 			}
 			return nil
 		})
-	wg.Wait()
+	dirWaitGroup.Wait()
 
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -397,15 +387,135 @@ func (o *ParaCloud) uploadFolder(
 			"ParaCloud:uploadFolder not all success.",
 			" sourcePath: ", sourcePath)
 		return errors.New("uploadFolder not all success")
-	} else {
-		_err := os.Remove(uploadFolderRecord)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
+	}
+
+	var fileWaitGroup sync.WaitGroup
+	err = filepath.Walk(
+		sourcePath,
+		func(filePath string, fileInfo os.FileInfo, err error) error {
+
+			if nil != err {
 				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", _err)
+					"filepath.Walk failed.",
+					" sourcePath: ", sourcePath,
+					" err: ", err)
+				return err
 			}
+
+			if sourcePath == filePath {
+				Logger.WithContext(ctx).Debug(
+					"root dir no need todo.")
+				return nil
+			}
+
+			fileWaitGroup.Add(1)
+			err = pool.Submit(func() {
+				defer func() {
+					fileWaitGroup.Done()
+					if _err := recover(); nil != _err {
+						Logger.WithContext(ctx).Error(
+							"pcClient.Upload failed.",
+							" err: ", _err)
+						isAllSuccess = false
+					}
+				}()
+
+				if !fileInfo.IsDir() {
+					relPath, _err := filepath.Rel(
+						filepath.Dir(sourcePath),
+						filePath)
+					if nil != _err {
+						isAllSuccess = false
+						Logger.WithContext(ctx).Error(
+							"filepath.Rel failed.",
+							" sourcePath: ", sourcePath,
+							" filePath: ", filePath,
+							" relPath: ", relPath,
+							" err: ", _err)
+						return
+					}
+					objectPath := targetPath + relPath
+					if _, exists := fileMap[objectPath]; exists {
+						Logger.WithContext(ctx).Info(
+							"already finish. objectPath: ", objectPath)
+						return
+					}
+					_err = o.pcClient.Upload(ctx, filePath, objectPath)
+					if nil != _err {
+						isAllSuccess = false
+						Logger.WithContext(ctx).Error(
+							"pcClient.Upload failed.",
+							" filePath: ", filePath,
+							" objectPath: ", objectPath,
+							" err: ", _err)
+						return
+					}
+					fileMutex.Lock()
+					defer fileMutex.Unlock()
+					f, _err := os.OpenFile(
+						uploadFolderRecord,
+						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+					if nil != _err {
+						isAllSuccess = false
+						Logger.WithContext(ctx).Error(
+							"os.OpenFile failed.",
+							" uploadFolderRecord: ", uploadFolderRecord,
+							" err: ", _err)
+						return
+					}
+					defer func() {
+						errMsg := f.Close()
+						if errMsg != nil {
+							Logger.WithContext(ctx).Warn(
+								"close file failed.",
+								" err: ", errMsg)
+						}
+					}()
+					_, _err = f.Write([]byte(objectPath + "\n"))
+					if nil != _err {
+						isAllSuccess = false
+						Logger.WithContext(ctx).Error(
+							"write file failed.",
+							" uploadFolderRecord: ", uploadFolderRecord,
+							" objectPath: ", objectPath,
+							" err: ", _err)
+						return
+					}
+				}
+				return
+			})
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"ants.Submit failed.",
+					" err: ", err)
+				return err
+			}
+			return nil
+		})
+	fileWaitGroup.Wait()
+
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"filepath.Walk failed.",
+			" sourcePath: ", sourcePath,
+			" err: ", err)
+		return err
+	}
+
+	if !isAllSuccess {
+		Logger.WithContext(ctx).Error(
+			"ParaCloud:uploadFolder not all success.",
+			" sourcePath: ", sourcePath)
+		return errors.New("uploadFolder not all success")
+	}
+
+	_err := os.Remove(uploadFolderRecord)
+	if nil != _err {
+		if !os.IsNotExist(_err) {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" uploadFolderRecord: ", uploadFolderRecord,
+				" err: ", _err)
 		}
 	}
 
