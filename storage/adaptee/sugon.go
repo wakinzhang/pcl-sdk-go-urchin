@@ -1316,9 +1316,17 @@ func (o *Sugon) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	path := strings.TrimSuffix(
-		strings.TrimSuffix(targetPath, "/")+sourcePath, "/")
-	downloadFolderRecord := path + ".download_folder_record"
+	err = os.MkdirAll(targetPath, os.ModePerm)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.MkdirAll failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return
+	}
+
+	downloadFolderRecord :=
+		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
 	Logger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
 		" downloadFolderRecord: ", downloadFolderRecord)
