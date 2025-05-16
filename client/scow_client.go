@@ -31,6 +31,31 @@ type ScowClient struct {
 	scowClient      *retryablehttp.Client
 }
 
+func scowRetryWithBackoff(
+	ctx context.Context,
+	attempts int,
+	delay time.Duration,
+	fn func() (int32, error)) (err error) {
+
+	for attempt := 0; attempt < attempts; attempt++ {
+		code, err := fn()
+		if ScowSuccessCode == code {
+			return nil
+		}
+		Logger.WithContext(ctx).Error(
+			"scowClient opt failed.",
+			" attempt: ", attempt,
+			" code: ", code,
+			" err: ", err)
+		if ScowSSHErrorCode != code {
+			return err
+		}
+		time.Sleep(delay)
+		delay *= 2
+	}
+	return err
+}
+
 func (o *ScowClient) Init(
 	ctx context.Context,
 	username,
@@ -298,41 +323,55 @@ func (o *ScowClient) Mkdir(
 	header.Add(ScowHttpHeaderAuth, o.token)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
-	err, respBody := Do(
+	err = scowRetryWithBackoff(
 		ctx,
-		url,
-		http.MethodPost,
-		header,
-		reqBody,
-		o.scowClient)
+		ScowAttempts,
+		ScowDelay*time.Second,
+		func() (int32, error) {
+			_err, respBody := Do(
+				ctx,
+				url,
+				http.MethodPost,
+				header,
+				reqBody,
+				o.scowClient)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"http.Do failed.",
+					" err: ", _err)
+				return ScowDefaultErrorCode, _err
+			}
+			Logger.WithContext(ctx).Debug(
+				"ScowClient:Mkdir response.",
+				" path: ", path,
+				" response: ", string(respBody))
+
+			resp := new(ScowBaseResponse)
+			_err = json.Unmarshal(respBody, resp)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"json.Unmarshal failed.",
+					" err: ", _err)
+				return ScowDefaultErrorCode, _err
+			}
+
+			if ScowSuccessCode != resp.RespCode {
+				Logger.WithContext(ctx).Error(
+					"ScowClient:Mkdir response failed.",
+					" path: ", path,
+					" RespCode: ", resp.RespCode,
+					" RespError: ", resp.RespError,
+					" RespMessage: ", resp.RespMessage)
+				return resp.RespCode, errors.New(resp.RespError)
+			}
+			return resp.RespCode, nil
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
-			" err: ", err)
-		return err
-	}
-	Logger.WithContext(ctx).Debug(
-		"ScowClient:Mkdir response.",
-		" path: ", path,
-		" response: ", string(respBody))
-
-	resp := new(ScowBaseResponse)
-	err = json.Unmarshal(respBody, resp)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"json.Unmarshal failed.",
-			" err: ", err)
-		return err
-	}
-
-	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
-			"ScowClient:Mkdir response failed.",
+			"ScowClient.MkdirAll failed.",
 			" path: ", path,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
-		return errors.New(resp.RespError)
+			" err: ", err)
+		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -407,41 +446,55 @@ func (o *ScowClient) Delete(
 	header.Add(ScowHttpHeaderAuth, o.token)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
-	err, respBody := Do(
+	err = scowRetryWithBackoff(
 		ctx,
-		url,
-		http.MethodPost,
-		header,
-		reqBody,
-		o.scowClient)
+		ScowAttempts,
+		ScowDelay*time.Second,
+		func() (int32, error) {
+			err, respBody := Do(
+				ctx,
+				url,
+				http.MethodPost,
+				header,
+				reqBody,
+				o.scowClient)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"http.Do failed.",
+					" err: ", err)
+				return ScowDefaultErrorCode, err
+			}
+			Logger.WithContext(ctx).Debug(
+				"ScowClient:Delete response.",
+				" path: ", path,
+				" response: ", string(respBody))
+
+			resp := new(ScowBaseResponse)
+			err = json.Unmarshal(respBody, resp)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"json.Unmarshal failed.",
+					" err: ", err)
+				return ScowDefaultErrorCode, err
+			}
+
+			if ScowSuccessCode != resp.RespCode {
+				Logger.WithContext(ctx).Error(
+					"ScowClient:Delete response failed.",
+					" path: ", path,
+					" RespCode: ", resp.RespCode,
+					" RespError: ", resp.RespError,
+					" RespMessage: ", resp.RespMessage)
+				return resp.RespCode, errors.New(resp.RespError)
+			}
+			return resp.RespCode, nil
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
-			" err: ", err)
-		return err
-	}
-	Logger.WithContext(ctx).Debug(
-		"ScowClient:Delete response.",
-		" path: ", path,
-		" response: ", string(respBody))
-
-	resp := new(ScowBaseResponse)
-	err = json.Unmarshal(respBody, resp)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"json.Unmarshal failed.",
-			" err: ", err)
-		return err
-	}
-
-	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
-			"ScowClient:Delete response failed.",
+			"ScowClient.Delete failed.",
 			" path: ", path,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
-		return errors.New(resp.RespError)
+			" err: ", err)
+		return err
 	}
 
 	Logger.WithContext(ctx).Debug(

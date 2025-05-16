@@ -9,7 +9,12 @@ import (
 )
 
 const (
-	ScowSuccessCode = 200
+	ScowDefaultErrorCode = -1
+	ScowSuccessCode      = 200
+	ScowSSHErrorCode     = 400
+
+	ScowAttempts = 3
+	ScowDelay    = 1
 
 	ScowSuccessMessage       = "success"
 	ScowAlreadyExistsMessage = "already exists"

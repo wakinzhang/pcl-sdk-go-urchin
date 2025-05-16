@@ -25,7 +25,7 @@ func paraCloudRetryWithBackoff(
 
 	for attempt := 0; attempt < attempts; attempt++ {
 		err = fn()
-		if err == nil {
+		if nil == err {
 			return nil
 		}
 		Logger.WithContext(ctx).Error(
