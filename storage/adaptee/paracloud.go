@@ -632,11 +632,9 @@ func (o *ParaCloud) downloadObjects(
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	path := strings.TrimSuffix(targetPath, "/") + sourcePath
-	downloadFolderRecord :=
-		filepath.Dir(path) +
-			filepath.Base(path) +
-			".download_folder_record"
+	path := strings.TrimSuffix(
+		strings.TrimSuffix(targetPath, "/")+sourcePath, "/")
+	downloadFolderRecord := path + ".download_folder_record"
 	Logger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
 		" downloadFolderRecord: ", downloadFolderRecord)
