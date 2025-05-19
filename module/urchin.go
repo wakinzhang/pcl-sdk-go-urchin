@@ -14,6 +14,7 @@ const (
 
 	UrchinClientCreateInitiateMultipartUploadSignedUrlInterface          = "/v1/object/auth/create_init_multi_part_upload_signed_url"
 	UrchinClientCreateUploadPartSignedUrlInterface                       = "/v1/object/auth/create_upload_part_signed_url"
+	UrchinClientCreateListPartsSignedUrlInterface                        = "/v1/object/auth/create_list_parts_signed_url"
 	UrchinClientCreateCompleteMultipartUploadSignedUrlInterface          = "/v1/object/auth/create_complete_multi_part_upload_signed_url"
 	UrchinClientCreateAbortMultipartUploadSignedUrlInterface             = "/v1/object/auth/create_abort_multi_part_upload_signed_url"
 	UrchinClientCreatePutObjectSignedUrlInterface                        = "/v1/object/auth/create_put_object_signed_url"
@@ -88,6 +89,19 @@ type CreateUploadPartSignedUrlReq struct {
 	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"source"
 	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source"`
+}
+
+type CreateListPartsSignedUrlReq struct {
+	// @inject_tag: json:"upload_id"
+	UploadId string `protobuf:"bytes,1,opt,name=upload_id,proto3" json:"upload_id"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,2,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+	// @inject_tag: json:"max_parts"
+	MaxParts *int32 `protobuf:"varint,4,opt,name=max_parts,proto3,oneof" json:"max_parts"`
+	// @inject_tag: json:"part_number_marker"
+	PartNumberMarker *int32 `protobuf:"varint,5,opt,name=part_number_marker,proto3,oneof" json:"part_number_marker"`
 }
 
 type CreateCompleteMultipartUploadSignedUrlReq struct {

@@ -234,6 +234,198 @@ func (o *S3Proxy) InitiateMultipartUploadWithSignedUrl(
 	return output, err
 }
 
+func (o *S3Proxy) UploadPartWithSignedUrl(
+	ctx context.Context,
+	sourceFile, uploadId string,
+	taskId int32,
+	objectKey string,
+	partNumber int32,
+	offset,
+	partSize int64) (output *obs.UploadPartOutput, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:UploadPartWithSignedUrl start.",
+		" sourceFile: ", sourceFile,
+		" uploadId: ", uploadId,
+		" taskId: ", taskId,
+		" objectKey: ", objectKey,
+		" partNumber: ", partNumber,
+		" offset: ", offset,
+		" partSize: ", partSize)
+
+	fd, err := os.Open(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Open failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return output, err
+	}
+	defer func() {
+		errMsg := fd.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" sourceFile: ", sourceFile,
+				" err: ", errMsg)
+		}
+	}()
+
+	readerWrapper := new(ReaderWrapper)
+	readerWrapper.Reader = fd
+
+	readerWrapper.TotalCount = partSize
+	readerWrapper.Mark = offset
+	if _, err = fd.Seek(offset, io.SeekStart); nil != err {
+		Logger.WithContext(ctx).Error(
+			"fd.Seek failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return output, err
+	}
+
+	createUploadPartSignedUrlReq := new(CreateUploadPartSignedUrlReq)
+	createUploadPartSignedUrlReq.UploadId = uploadId
+	createUploadPartSignedUrlReq.PartNumber = partNumber
+	createUploadPartSignedUrlReq.TaskId = taskId
+	createUploadPartSignedUrlReq.Source = objectKey
+	err, createUploadPartSignedUrlResp :=
+		UClient.CreateUploadPartSignedUrl(
+			ctx,
+			createUploadPartSignedUrlReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateUploadPartSignedUrl failed.",
+			" uploadId: ", uploadId,
+			" partNumber: ", partNumber,
+			" taskId: ", taskId,
+			" source: ", objectKey,
+			" err: ", err)
+		return output, err
+	}
+	var uploadPartWithSignedUrlHeader = http.Header{}
+	for key, item := range createUploadPartSignedUrlResp.Header {
+		for _, value := range item.Values {
+			uploadPartWithSignedUrlHeader.Set(key, value)
+		}
+	}
+
+	uploadPartWithSignedUrlHeader.Set("Content-Length",
+		strconv.FormatInt(partSize, 10))
+
+	output, err = o.obsClient.UploadPartWithSignedUrl(
+		createUploadPartSignedUrlResp.SignedUrl,
+		uploadPartWithSignedUrlHeader,
+		readerWrapper)
+
+	if nil != err {
+		if obsError, ok := err.(obs.ObsError); ok &&
+			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
+
+			Logger.WithContext(ctx).Error(
+				"obsClient.UploadPartWithSignedUrl failed.",
+				" uploadId: ", uploadId,
+				" partNumber: ", partNumber,
+				" taskId: ", taskId,
+				" source: ", objectKey,
+				" obsCode: ", obsError.Code,
+				" obsMessage: ", obsError.Message)
+		} else {
+			Logger.WithContext(ctx).Error(
+				"obsClient.UploadPartWithSignedUrl failed.",
+				" uploadId: ", uploadId,
+				" partNumber: ", partNumber,
+				" taskId: ", taskId,
+				" source: ", objectKey,
+				" err: ", err)
+		}
+		return output, err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:UploadPartWithSignedUrl finish.")
+	return output, err
+}
+
+func (o *S3Proxy) ListPartsWithSignedUrl(
+	ctx context.Context,
+	uploadId string,
+	taskId int32,
+	objectKey string,
+	partNumberMarker,
+	maxParts int32) (output *obs.ListPartsOutput, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:ListPartsWithSignedUrl start.",
+		" uploadId: ", uploadId,
+		" taskId: ", taskId,
+		" objectKey: ", objectKey,
+		" partNumberMarker: ", partNumberMarker,
+		" maxParts: ", maxParts)
+
+	createListPartsSignedUrlReq := new(CreateListPartsSignedUrlReq)
+	createListPartsSignedUrlReq.UploadId = uploadId
+	createListPartsSignedUrlReq.TaskId = taskId
+	createListPartsSignedUrlReq.Source = objectKey
+	createListPartsSignedUrlReq.PartNumberMarker = &partNumberMarker
+	createListPartsSignedUrlReq.MaxParts = &maxParts
+
+	err, createListPartsSignedUrlResp :=
+		UClient.CreateListPartsSignedUrl(
+			ctx,
+			createListPartsSignedUrlReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateListPartsSignedUrl failed.",
+			" uploadId: ", uploadId,
+			" taskId: ", taskId,
+			" source: ", objectKey,
+			" partNumberMarker: ", partNumberMarker,
+			" maxParts: ", maxParts,
+			" err: ", err)
+		return output, err
+	}
+	var listPartsWithSignedUrlHeader = http.Header{}
+	for key, item := range createListPartsSignedUrlResp.Header {
+		for _, value := range item.Values {
+			listPartsWithSignedUrlHeader.Set(key, value)
+		}
+	}
+
+	output, err = o.obsClient.ListPartsWithSignedUrl(
+		createListPartsSignedUrlResp.SignedUrl,
+		listPartsWithSignedUrlHeader)
+
+	if nil != err {
+		if obsError, ok := err.(obs.ObsError); ok &&
+			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
+
+			Logger.WithContext(ctx).Error(
+				"obsClient.ListPartsWithSignedUrl failed.",
+				" uploadId: ", uploadId,
+				" taskId: ", taskId,
+				" source: ", objectKey,
+				" partNumberMarker: ", partNumberMarker,
+				" maxParts: ", maxParts,
+				" obsCode: ", obsError.Code,
+				" obsMessage: ", obsError.Message)
+		} else {
+			Logger.WithContext(ctx).Error(
+				"obsClient.ListPartsWithSignedUrl failed.",
+				" uploadId: ", uploadId,
+				" taskId: ", taskId,
+				" source: ", objectKey,
+				" partNumberMarker: ", partNumberMarker,
+				" maxParts: ", maxParts,
+				" err: ", err)
+		}
+		return output, err
+	}
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:ListPartsWithSignedUrl finish.")
+	return output, err
+}
+
 func (o *S3Proxy) CompleteMultipartUploadWithSignedUrl(
 	ctx context.Context,
 	objectKey,
@@ -486,6 +678,81 @@ func (o *S3Proxy) ListObjectsWithSignedUrl(
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:ListObjectsWithSignedUrl finish.")
 	return listObjectsOutput, nil
+}
+
+func (o *S3Proxy) GetObjectWithSignedUrl(
+	ctx context.Context,
+	objectKey string,
+	taskId int32,
+	partNumber,
+	rangeStart,
+	rangeEnd int64) (output *obs.GetObjectOutput, err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:GetObjectWithSignedUrl start.",
+		" objectKey: ", objectKey,
+		" taskId: ", taskId,
+		" partNumber: ", partNumber,
+		" rangeStart: ", rangeStart,
+		" rangeEnd: ", rangeEnd)
+
+	createGetObjectSignedUrlReq := new(CreateGetObjectSignedUrlReq)
+	createGetObjectSignedUrlReq.TaskId = taskId
+	createGetObjectSignedUrlReq.Source = objectKey
+	createGetObjectSignedUrlReq.RangeStart = rangeStart
+	createGetObjectSignedUrlReq.RangeEnd = rangeEnd
+
+	err, createGetObjectSignedUrlResp :=
+		UClient.CreateGetObjectSignedUrl(
+			ctx,
+			createGetObjectSignedUrlReq)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"UrchinClient.CreateGetObjectSignedUrl failed.",
+			" err: ", err)
+		return output, err
+	}
+	var getObjectWithSignedUrlHeader = http.Header{}
+	for key, item := range createGetObjectSignedUrlResp.Header {
+		for _, value := range item.Values {
+			getObjectWithSignedUrlHeader.Set(key, value)
+		}
+	}
+
+	output, err =
+		o.obsClient.GetObjectWithSignedUrl(
+			createGetObjectSignedUrlResp.SignedUrl,
+			getObjectWithSignedUrlHeader)
+
+	if nil != err {
+		if obsError, ok := err.(obs.ObsError); ok &&
+			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
+
+			Logger.WithContext(ctx).Error(
+				"obsClient.GetObjectWithSignedUrl failed.",
+				" source: ", objectKey,
+				" taskId: ", taskId,
+				" partNumber: ", partNumber,
+				" rangeStart: ", rangeStart,
+				" rangeEnd: ", rangeEnd,
+				" obsCode: ", obsError.Code,
+				" obsMessage: ", obsError.Message)
+		} else {
+			Logger.WithContext(ctx).Error(
+				"obsClient.GetObjectWithSignedUrl failed.",
+				" source: ", objectKey,
+				" taskId: ", taskId,
+				" partNumber: ", partNumber,
+				" rangeStart: ", rangeStart,
+				" rangeEnd: ", rangeEnd,
+				" err: ", err)
+		}
+		return output, err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:GetObjectWithSignedUrl finish.")
+	return output, err
 }
 
 func (o *S3Proxy) loadCheckpointFile(
@@ -1158,7 +1425,7 @@ func (o *S3Proxy) uploadPartConcurrent(
 				Offset:     uploadPart.Offset,
 				PartSize:   uploadPart.PartSize,
 			},
-			obsClient:        o.obsClient,
+			s3Proxy:          o,
 			abort:            &abort,
 			enableCheckpoint: input.EnableCheckpoint,
 		}
@@ -1591,7 +1858,7 @@ func (ufc *UploadCheckpoint) isValid(
 
 type UploadPartTask struct {
 	obs.UploadPartInput
-	obsClient        *obs.ObsClient
+	s3Proxy          *S3Proxy
 	abort            *int32
 	enableCheckpoint bool
 }
@@ -1613,70 +1880,15 @@ func (task *UploadPartTask) Run(
 		return ErrAbort
 	}
 
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return err
-	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
-		}
-	}()
-
-	readerWrapper := new(ReaderWrapper)
-	readerWrapper.Reader = fd
-
-	readerWrapper.TotalCount = task.PartSize
-	readerWrapper.Mark = task.Offset
-	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
-		Logger.WithContext(ctx).Error(
-			"fd.Seek failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return err
-	}
-
-	createUploadPartSignedUrlReq := new(CreateUploadPartSignedUrlReq)
-	createUploadPartSignedUrlReq.UploadId = uploadId
-	createUploadPartSignedUrlReq.PartNumber = int32(task.PartNumber)
-	createUploadPartSignedUrlReq.TaskId = taskId
-	createUploadPartSignedUrlReq.Source = task.Key
-	err, createUploadPartSignedUrlResp :=
-		UClient.CreateUploadPartSignedUrl(
-			ctx,
-			createUploadPartSignedUrlReq)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"UrchinClient.CreateUploadPartSignedUrl failed.",
-			" uploadId: ", uploadId,
-			" partNumber: ", int32(task.PartNumber),
-			" taskId: ", taskId,
-			" source: ", task.Key,
-			" err: ", err)
-		return err
-	}
-	var uploadPartWithSignedUrlHeader = http.Header{}
-	for key, item := range createUploadPartSignedUrlResp.Header {
-		for _, value := range item.Values {
-			uploadPartWithSignedUrlHeader.Set(key, value)
-		}
-	}
-
-	uploadPartWithSignedUrlHeader.Set("Content-Length",
-		strconv.FormatInt(task.PartSize, 10))
-
-	uploadPartOutput, err := task.obsClient.UploadPartWithSignedUrl(
-		createUploadPartSignedUrlResp.SignedUrl,
-		uploadPartWithSignedUrlHeader,
-		readerWrapper)
+	uploadPartOutput, err := task.s3Proxy.UploadPartWithSignedUrl(
+		ctx,
+		sourceFile,
+		uploadId,
+		taskId,
+		task.Key,
+		int32(task.PartNumber),
+		task.Offset,
+		task.PartSize)
 
 	if nil == err {
 		if uploadPartOutput.ETag == "" {
@@ -2229,7 +2441,6 @@ func (o *S3Proxy) downloadFileConcurrent(
 				RangeStart:             downloadPart.Offset,
 				RangeEnd:               downloadPart.RangeEnd,
 			},
-			obsClient:        o.obsClient,
 			s3proxy:          o,
 			abort:            &abort,
 			partNumber:       downloadPart.PartNumber,
@@ -2769,33 +2980,14 @@ func (task *DownloadPartTask) Run(
 		return ErrAbort
 	}
 
-	createGetObjectSignedUrlReq := new(CreateGetObjectSignedUrlReq)
-	createGetObjectSignedUrlReq.TaskId = taskId
-	createGetObjectSignedUrlReq.Source = objectKey
-	createGetObjectSignedUrlReq.RangeStart = task.RangeStart
-	createGetObjectSignedUrlReq.RangeEnd = task.RangeEnd
-
-	err, createGetObjectSignedUrlResp :=
-		UClient.CreateGetObjectSignedUrl(
-			ctx,
-			createGetObjectSignedUrlReq)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"UrchinClient.CreateGetObjectSignedUrl failed.",
-			" err: ", err)
-		return err
-	}
-	var getObjectWithSignedUrlHeader = http.Header{}
-	for key, item := range createGetObjectSignedUrlResp.Header {
-		for _, value := range item.Values {
-			getObjectWithSignedUrlHeader.Set(key, value)
-		}
-	}
-
 	getObjectWithSignedUrlOutput, err :=
-		task.obsClient.GetObjectWithSignedUrl(
-			createGetObjectSignedUrlResp.SignedUrl,
-			getObjectWithSignedUrlHeader)
+		task.s3proxy.GetObjectWithSignedUrl(
+			ctx,
+			objectKey,
+			taskId,
+			task.partNumber,
+			task.RangeStart,
+			task.RangeEnd)
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
