@@ -72,13 +72,17 @@ func (o *ParaCloudClient) Mkdir(
 		" sourceFolder: ", sourceFolder,
 		" targetFolder: ", targetFolder)
 
-	stat, err := os.Stat(sourceFolder)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Stat failed.",
-			" sourceFolder: ", sourceFolder,
-			" err: ", err)
-		return err
+	fileMode := os.ModePerm
+	if "" != sourceFolder {
+		stat, err := os.Stat(sourceFolder)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"os.Stat failed.",
+				" sourceFolder: ", sourceFolder,
+				" err: ", err)
+			return err
+		}
+		fileMode = stat.Mode()
 	}
 
 	err = paraCloudRetryWithBackoff(
@@ -86,7 +90,7 @@ func (o *ParaCloudClient) Mkdir(
 		ParaCloudAttempts,
 		ParaCloudDelay*time.Second,
 		func() error {
-			return o.pcClient.MkdirAll(targetFolder, stat.Mode())
+			return o.pcClient.MkdirAll(targetFolder, fileMode)
 		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
