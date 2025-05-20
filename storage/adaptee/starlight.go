@@ -53,6 +53,37 @@ func (o *StarLight) Init(
 	return nil
 }
 
+func (o *StarLight) Mkdir(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var target string
+	if starLightMkdirInput, ok := input.(StarLightMkdirInput); ok {
+		target = starLightMkdirInput.Target
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:Mkdir start.",
+		" target: ", target)
+
+	err = o.slClient.Mkdir(ctx, target)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"slClient.Mkdir failed.",
+			" target: ", target,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:Mkdir finish.")
+	return nil
+}
+
 func (o *StarLight) loadCheckpointFile(
 	ctx context.Context,
 	checkpointFile string,
@@ -260,10 +291,13 @@ func (o *StarLight) uploadFolder(
 	}
 
 	path := targetPath + filepath.Base(sourcePath)
-	err = o.slClient.Mkdir(ctx, path)
+
+	starLightMkdirInput := StarLightMkdirInput{}
+	starLightMkdirInput.Target = path
+	err = o.Mkdir(ctx, starLightMkdirInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"slClient.Mkdir failed.",
+			"StarLight.Mkdir failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -330,11 +364,14 @@ func (o *StarLight) uploadFolder(
 							"already finish. objectPath: ", objectPath)
 						return
 					}
-					_err = o.slClient.Mkdir(ctx, objectPath)
+
+					input := StarLightMkdirInput{}
+					input.Target = objectPath
+					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"slClient.Mkdir failed.",
+							"StarLight.Mkdir failed.",
 							" objectPath: ", objectPath,
 							" err: ", _err)
 						return

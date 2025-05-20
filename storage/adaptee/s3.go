@@ -47,6 +47,47 @@ func (o *S3) Init(
 	return nil
 }
 
+func (o *S3) Mkdir(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var objectKey string
+	if s3MkdirInput, ok := input.(S3MkdirInput); ok {
+		objectKey = s3MkdirInput.ObjectKey
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"S3:Mkdir start.",
+		" objectKey: ", objectKey)
+
+	putObjectInput := new(obs.PutObjectInput)
+	putObjectInput.Bucket = o.bucket
+	putObjectInput.Key = objectKey
+	_, err = o.obsClient.PutObject(putObjectInput)
+	if nil != err {
+		if obsError, ok := err.(obs.ObsError); ok {
+			Logger.WithContext(ctx).Error(
+				"obsClient.PutObject failed.",
+				" obsCode: ", obsError.Code,
+				" obsMessage: ", obsError.Message)
+			return err
+		} else {
+			Logger.WithContext(ctx).Error(
+				"obsClient.PutObject failed.",
+				" err: ", err)
+			return err
+		}
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"S3:Mkdir finish.")
+	return nil
+}
+
 func (o *S3) Upload(
 	ctx context.Context,
 	input interface{}) (err error) {
@@ -163,10 +204,12 @@ func (o *S3) uploadFolder(
 	}
 
 	path := targetPath + filepath.Base(sourcePath)
-	err = o.mkdir(ctx, path)
+	s3MkdirInput := S3MkdirInput{}
+	s3MkdirInput.ObjectKey = path
+	err = o.Mkdir(ctx, s3MkdirInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"S3:mkdir failed.",
+			"S3:Mkdir failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -231,11 +274,13 @@ func (o *S3) uploadFolder(
 					return
 				}
 				if fileInfo.IsDir() {
-					_err = o.mkdir(ctx, objectKey)
+					input := S3MkdirInput{}
+					input.ObjectKey = objectKey
+					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"S3:mkdir failed.",
+							"S3:Mkdir failed.",
 							" objectKey: ", objectKey,
 							" err: ", _err)
 						return
@@ -326,38 +371,6 @@ func (o *S3) uploadFolder(
 
 	Logger.WithContext(ctx).Debug(
 		"S3:uploadFolder finish.")
-	return nil
-}
-
-func (o *S3) mkdir(
-	ctx context.Context,
-	objectKey string) (err error) {
-
-	Logger.WithContext(ctx).Debug(
-		"S3:mkdir start.",
-		" objectKey: ", objectKey)
-
-	input := new(obs.PutObjectInput)
-	input.Bucket = o.bucket
-	input.Key = objectKey
-	_, err = o.obsClient.PutObject(input)
-	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
-			Logger.WithContext(ctx).Error(
-				"obsClient.PutObject failed.",
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
-			return err
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.PutObject failed.",
-				" err: ", err)
-			return err
-		}
-	}
-
-	Logger.WithContext(ctx).Debug(
-		"S3:mkdir finish.")
 	return nil
 }
 

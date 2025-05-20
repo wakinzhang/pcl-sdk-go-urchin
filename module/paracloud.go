@@ -22,6 +22,11 @@ const (
 	DefaultParaCloudDownloadMultiTaskNum = 20
 )
 
+type ParaCloudMkdirInput struct {
+	SourceFolder string
+	TargetFolder string
+}
+
 type ParaCloudUploadInput struct {
 	SourcePath string
 	TargetPath string

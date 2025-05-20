@@ -7,12 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"github.com/panjf2000/ants/v2"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"io"
 	"os"
 	"path/filepath"
+	. "pcl-sdk-go-urchin/client"
+	. "pcl-sdk-go-urchin/common"
+	. "pcl-sdk-go-urchin/module"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -59,6 +59,37 @@ func (o *Sugon) Init(
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:Init finish.")
+	return nil
+}
+
+func (o *Sugon) Mkdir(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var path string
+	if sugonMkdirInput, ok := input.(SugonMkdirInput); ok {
+		path = sugonMkdirInput.Path
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:Mkdir start.",
+		" path: ", path)
+
+	err = o.sugonClient.Mkdir(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sugonClient.Mkdir failed.",
+			" path: ", path,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:Mkdir finish.")
 	return nil
 }
 
@@ -269,10 +300,13 @@ func (o *Sugon) uploadFolder(
 	}
 
 	path := targetPath + filepath.Base(sourcePath)
-	err = o.sugonClient.Mkdir(ctx, path)
+
+	sugonMkdirInput := SugonMkdirInput{}
+	sugonMkdirInput.Path = path
+	err = o.Mkdir(ctx, sugonMkdirInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sugonClient.Mkdir failed.",
+			"Sugon.Mkdir failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -339,11 +373,14 @@ func (o *Sugon) uploadFolder(
 							"already finish. objectPath: ", objectPath)
 						return
 					}
-					_err = o.sugonClient.Mkdir(ctx, objectPath)
+
+					input := SugonMkdirInput{}
+					input.Path = path
+					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"sugonClient.Mkdir failed.",
+							"Sugon.Mkdir failed.",
 							" objectPath: ", objectPath,
 							" err: ", _err)
 						return

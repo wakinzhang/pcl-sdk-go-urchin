@@ -49,6 +49,10 @@ const (
 	ScowObjectTypeFolder = "DIR"
 )
 
+type ScowMkdirInput struct {
+	Path string
+}
+
 type ScowUploadInput struct {
 	SourcePath string
 	TargetPath string

@@ -47,6 +47,11 @@ const (
 	JCSMultiPartFormFiledFiles = "files"
 )
 
+type JCSMkdirInput struct {
+	PackageId int32
+	Path      string
+}
+
 type JCSUploadInput struct {
 	SourcePath string
 	TargetPath string

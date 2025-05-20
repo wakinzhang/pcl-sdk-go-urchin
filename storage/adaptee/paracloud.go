@@ -47,6 +47,40 @@ func (o *ParaCloud) Init(
 	return nil
 }
 
+func (o *ParaCloud) Mkdir(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var sourceFolder, targetFolder string
+	if paraCloudMkdirInput, ok := input.(ParaCloudMkdirInput); ok {
+		sourceFolder = paraCloudMkdirInput.SourceFolder
+		targetFolder = paraCloudMkdirInput.TargetFolder
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:Mkdir start.",
+		" sourceFolder: ", sourceFolder,
+		" targetFolder: ", targetFolder)
+
+	err = o.pcClient.Mkdir(ctx, sourceFolder, targetFolder)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"pcClient.Mkdir failed.",
+			" sourceFolder: ", sourceFolder,
+			" targetFolder: ", targetFolder,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:Mkdir finish.")
+	return nil
+}
+
 func (o *ParaCloud) loadCheckpointFile(
 	ctx context.Context,
 	checkpointFile string,
@@ -250,10 +284,14 @@ func (o *ParaCloud) uploadFolder(
 	}
 
 	path := targetPath + filepath.Base(sourcePath)
-	err = o.pcClient.Mkdir(ctx, sourcePath, path)
+
+	paraCloudMkdirInput := ParaCloudMkdirInput{}
+	paraCloudMkdirInput.SourceFolder = sourcePath
+	paraCloudMkdirInput.TargetFolder = path
+	err = o.Mkdir(ctx, paraCloudMkdirInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"pcClient.Mkdir failed.",
+			"ParaCloud.Mkdir failed.",
 			" sourcePath: ", sourcePath,
 			" path: ", path,
 			" err: ", err)
@@ -322,11 +360,15 @@ func (o *ParaCloud) uploadFolder(
 							"already finish. objectPath: ", objectPath)
 						return
 					}
-					_err = o.pcClient.Mkdir(ctx, filePath, objectPath)
+
+					input := ParaCloudMkdirInput{}
+					input.SourceFolder = filePath
+					input.TargetFolder = objectPath
+					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"pcClient.Mkdir failed.",
+							"ParaCloud.Mkdir failed.",
 							" filePath: ", filePath,
 							" objectPath: ", objectPath,
 							" err: ", _err)

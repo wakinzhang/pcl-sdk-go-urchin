@@ -61,6 +61,37 @@ func (o *Scow) Init(
 	return nil
 }
 
+func (o *Scow) Mkdir(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var path string
+	if scowMkdirInput, ok := input.(ScowMkdirInput); ok {
+		path = scowMkdirInput.Path
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:Mkdir start.",
+		" path: ", path)
+
+	err = o.sClient.Mkdir(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sClient.Mkdir failed.",
+			" path: ", path,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:Mkdir finish.")
+	return nil
+}
+
 func (o *Scow) loadCheckpointFile(
 	ctx context.Context,
 	checkpointFile string,
@@ -277,10 +308,13 @@ func (o *Scow) uploadFolder(
 	}
 
 	path := targetPath + filepath.Base(sourcePath)
-	err = o.sClient.Mkdir(ctx, path)
+
+	scowMkdirInput := ScowMkdirInput{}
+	scowMkdirInput.Path = path
+	err = o.Mkdir(ctx, scowMkdirInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sClient.Mkdir failed.",
+			"Scow.Mkdir failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -353,11 +387,14 @@ func (o *Scow) uploadFolder(
 						" filePath: ", filePath,
 						" relPath: ", relPath,
 						" objectPath: ", objectPath)
-					_err = o.sClient.Mkdir(ctx, objectPath)
+
+					input := ScowMkdirInput{}
+					input.Path = objectPath
+					_err = o.Mkdir(ctx, scowMkdirInput)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"sClient.Mkdir failed.",
+							"Scow.Mkdir failed.",
 							" objectPath: ", objectPath,
 							" err: ", _err)
 						return

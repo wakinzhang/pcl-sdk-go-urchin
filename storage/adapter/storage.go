@@ -9,6 +9,10 @@ import (
 )
 
 type Storage interface {
+	Mkdir(
+		ctx context.Context,
+		input interface{}) error
+
 	Upload(
 		ctx context.Context,
 		input interface{}) error

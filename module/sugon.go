@@ -55,6 +55,10 @@ const (
 	SugonMultiPartFormFiledCoverECover = "cover"
 )
 
+type SugonMkdirInput struct {
+	Path string
+}
+
 type SugonUploadInput struct {
 	SourcePath string
 	TargetPath string

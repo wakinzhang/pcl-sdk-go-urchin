@@ -9,6 +9,10 @@ const (
 	DefaultS3DownloadMultiTaskNum = 20
 )
 
+type S3MkdirInput struct {
+	ObjectKey string
+}
+
 type S3UploadInput struct {
 	SourcePath string
 	TargetPath string

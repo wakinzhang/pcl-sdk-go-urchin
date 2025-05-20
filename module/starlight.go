@@ -35,6 +35,10 @@ const (
 	SLObjectTypeFolder = 1
 )
 
+type StarLightMkdirInput struct {
+	Target string
+}
+
 type StarLightUploadInput struct {
 	SourcePath string
 	TargetPath string

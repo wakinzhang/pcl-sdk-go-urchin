@@ -69,6 +69,45 @@ func (o *JCS) Init(
 	return nil
 }
 
+func (o *JCS) Mkdir(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var packageId int32
+	var path string
+
+	if jcsMkdirInput, ok := input.(JCSMkdirInput); ok {
+		packageId = jcsMkdirInput.PackageId
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:Mkdir start.",
+		" packageId: ", packageId,
+		" path: ", path)
+
+	err = o.jcsClient.UploadFile(
+		ctx,
+		packageId,
+		path,
+		nil)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.UploadFile mkdir failed.",
+			" packageId: ", packageId,
+			" path: ", path,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:Mkdir finish.")
+	return nil
+}
+
 func (o *JCS) loadCheckpointFile(
 	ctx context.Context,
 	checkpointFile string,
@@ -294,14 +333,14 @@ func (o *JCS) uploadFolder(
 
 		path = path + "/"
 	}
-	err = o.jcsClient.UploadFile(
-		ctx,
-		packageId,
-		path,
-		nil)
+
+	jcsMkdirInput := JCSMkdirInput{}
+	jcsMkdirInput.PackageId = packageId
+	jcsMkdirInput.Path = path
+	err = o.Mkdir(ctx, jcsMkdirInput)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"jcsClient.UploadFile mkdir failed.",
+			"JCS.Mkdir failed.",
 			" packageId: ", packageId,
 			" path: ", path,
 			" err: ", err)
@@ -373,15 +412,15 @@ func (o *JCS) uploadFolder(
 
 						objectPath = objectPath + "/"
 					}
-					_err = o.jcsClient.UploadFile(
-						ctx,
-						packageId,
-						objectPath,
-						nil)
+
+					input := JCSMkdirInput{}
+					input.PackageId = packageId
+					input.Path = objectPath
+					_err = o.Mkdir(ctx, jcsMkdirInput)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"jcsClient.UploadFile mkdir failed.",
+							"JCS.Mkdir failed.",
 							" packageId: ", packageId,
 							" objectPath: ", objectPath,
 							" err: ", _err)
