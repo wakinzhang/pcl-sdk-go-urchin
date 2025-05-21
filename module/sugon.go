@@ -70,6 +70,10 @@ type SugonDownloadInput struct {
 	TargetPath string
 }
 
+type SugonDeleteInput struct {
+	Path string
+}
+
 type SugonBaseResponse struct {
 	Code string      `json:"code"`
 	Msg  string      `json:"msg"`

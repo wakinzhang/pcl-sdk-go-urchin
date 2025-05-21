@@ -1059,6 +1059,113 @@ func (o *JCSClient) GetPackage(
 	return resp, err
 }
 
+func (o *JCSClient) DeletePackage(
+	ctx context.Context,
+	packageId int32) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:DeletePackage start.",
+		" packageId: ", packageId)
+
+	input := new(JCSDeletePackageReq)
+	input.UserID = o.userID
+	input.PackageID = packageId
+
+	reqBody, err := json.Marshal(input)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Marshal failed.",
+			" err: ", err)
+		return err
+	}
+
+	reqUrl := o.endPoint + JCSDeletePackageInterface
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:DeletePackage request.",
+		" reqUrl: ", reqUrl,
+		" reqBody: ", string(reqBody))
+
+	reqHttp, err := http.NewRequest(
+		http.MethodPost,
+		reqUrl,
+		strings.NewReader(string(reqBody)))
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"http.NewRequest failed.",
+			" err: ", err)
+		return err
+	}
+
+	err = o.sign(ctx, reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"JCSClient.sign failed.",
+			" err: ", err)
+		return err
+	}
+
+	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"retryablehttp.FromRequest failed.",
+			" err: ", err)
+		return err
+	}
+
+	response, err := o.jcsClient.Do(reqRetryableHttp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.Do failed.",
+			" err: ", err)
+		return err
+	}
+
+	defer func(body io.ReadCloser) {
+		_err := body.Close()
+		if nil != _err {
+			Logger.WithContext(ctx).Error(
+				"io.ReadCloser failed.",
+				" err: ", _err)
+		}
+	}(response.Body)
+
+	respBodyBuf, err := io.ReadAll(response.Body)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"io.ReadAll failed.",
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:DeletePackage response.",
+		" packageId: ", packageId,
+		" response: ", string(respBodyBuf))
+
+	resp := new(JCSBaseResponse)
+	err = json.Unmarshal(respBodyBuf, resp)
+	if err != nil {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err
+	}
+
+	if JCSSuccessCode != resp.Code {
+		Logger.WithContext(ctx).Error(
+			"JCSClient:DeletePackage response failed.",
+			" packageId: ", packageId,
+			" errCode: ", resp.Code,
+			" errMessage: ", resp.Message)
+		return errors.New(resp.Message)
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCSClient:DeletePackage finish.")
+	return err
+}
+
 func (o *JCSClient) CreatePreSignedObjectListSignedUrl(
 	ctx context.Context,
 	packageID int32,

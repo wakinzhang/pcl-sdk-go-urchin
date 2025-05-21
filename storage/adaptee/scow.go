@@ -2194,6 +2194,37 @@ func (o *Scow) UpdateDownloadFile(
 	return nil
 }
 
+func (o *Scow) Delete(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var path string
+	if scowDeleteInput, ok := input.(ScowDeleteInput); ok {
+		path = scowDeleteInput.Path
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:Delete start.",
+		" path: ", path)
+
+	err = o.sClient.Delete(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sClient.Delete failed.",
+			" path: ", path,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:Delete finish.")
+	return nil
+}
+
 type ScowDownloadPartTask struct {
 	ObjectPath       string
 	DownloadFile     string

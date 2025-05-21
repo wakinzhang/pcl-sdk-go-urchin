@@ -733,3 +733,88 @@ func (o *S3) downloadObjects(
 		"S3:downloadObjects finish.")
 	return nil
 }
+
+func (o *S3) Delete(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var path string
+	if s3DeleteInput, ok := input.(S3DeleteInput); ok {
+		path = s3DeleteInput.Path
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"S3:Delete start.",
+		" path: ", path)
+
+	marker := ""
+	for {
+		inputList := new(obs.ListObjectsInput)
+		inputList.Bucket = o.bucket
+		inputList.Prefix = path
+		if "" != marker {
+			inputList.Marker = marker
+		}
+		listObjectsOutput, err := o.obsClient.ListObjects(inputList)
+		if nil != err {
+			if obsError, ok := err.(obs.ObsError); ok {
+				Logger.WithContext(ctx).Error(
+					"obsClient.ListObjects failed.",
+					" obsCode: ", obsError.Code,
+					" obsMessage: ", obsError.Message)
+				return err
+			} else {
+				Logger.WithContext(ctx).Error(
+					"obsClient.ListObjects failed.",
+					" err: ", err)
+				return err
+			}
+		}
+
+		objects := make([]obs.ObjectToDelete, 0)
+		for index, object := range listObjectsOutput.Contents {
+			Logger.WithContext(ctx).Debug(
+				"object content.",
+				" index: ", index,
+				" eTag: ", object.ETag,
+				" key: ", object.Key,
+				" size: ", object.Size)
+			objectToDelete := obs.ObjectToDelete{}
+			objectToDelete.Key = object.Key
+			objects = append(objects, objectToDelete)
+		}
+
+		deleteObjectsInput := new(obs.DeleteObjectsInput)
+		deleteObjectsInput.Objects = objects
+
+		_, err = o.obsClient.DeleteObjects(deleteObjectsInput)
+		if nil != err {
+			if obsError, ok := err.(obs.ObsError); ok {
+				Logger.WithContext(ctx).Error(
+					"obsClient.DeleteObjects failed.",
+					" obsCode: ", obsError.Code,
+					" obsMessage: ", obsError.Message)
+				return err
+			} else {
+				Logger.WithContext(ctx).Error(
+					"obsClient.DeleteObjects failed.",
+					" err: ", err)
+				return err
+			}
+		}
+
+		if listObjectsOutput.IsTruncated {
+			marker = listObjectsOutput.NextMarker
+		} else {
+			break
+		}
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"S3:Delete finish.")
+	return nil
+}

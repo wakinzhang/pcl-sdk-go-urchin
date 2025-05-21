@@ -1467,6 +1467,37 @@ func (o *ParaCloud) UpdateDownloadFile(
 	return nil
 }
 
+func (o *ParaCloud) Delete(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var path string
+	if paraCloudDeleteInput, ok := input.(ParaCloudDeleteInput); ok {
+		path = paraCloudDeleteInput.Path
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:Delete start.",
+		" path: ", path)
+
+	err = o.pcClient.Rm(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"pcClient.Delete failed.",
+			" path: ", path,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:Delete finish.")
+	return nil
+}
+
 type ParaCloudDownloadPartTask struct {
 	ObjectPath       string
 	DownloadFile     string

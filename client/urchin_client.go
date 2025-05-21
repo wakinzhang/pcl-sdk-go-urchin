@@ -995,6 +995,63 @@ func (u *UrchinClient) CreateJCSPreSignedObjectDownload(
 	return nil, resp
 }
 
+func (u *UrchinClient) CreateObject(
+	ctx context.Context,
+	req *CreateObjectReq) (
+	err error, resp *CreateObjectResp) {
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:CreateObject start.")
+
+	reqBody, err := json.Marshal(req)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Marshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+	Logger.WithContext(ctx).Debug(
+		"request: ", string(reqBody))
+
+	resp = new(CreateObjectResp)
+	err, respBody := Do(
+		ctx,
+		u.addr+UrchinClientCreateObjectInterface,
+		http.MethodPost,
+		u.header,
+		reqBody,
+		u.urchinClient)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.Do failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"response: ", string(respBody))
+
+	err = json.Unmarshal(respBody, resp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		Logger.WithContext(ctx).Error(
+			"response failed.",
+			" errCode: ", resp.Code,
+			" errMessage: ", resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:CreateObject finish.")
+	return nil, resp
+}
+
 func (u *UrchinClient) UploadObject(
 	ctx context.Context,
 	req *UploadObjectReq) (
@@ -1334,6 +1391,63 @@ func (u *UrchinClient) MigrateObject(
 
 	Logger.WithContext(ctx).Debug(
 		"UrchinClient:MigrateObject finish.")
+	return nil, resp
+}
+
+func (u *UrchinClient) CopyObject(
+	ctx context.Context,
+	req *CopyObjectReq) (
+	err error, resp *CopyObjectResp) {
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:CopyObject start.")
+
+	reqBody, err := json.Marshal(req)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Marshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+	Logger.WithContext(ctx).Debug(
+		"request: ", string(reqBody))
+
+	resp = new(CopyObjectResp)
+	err, respBody := Do(
+		ctx,
+		u.addr+UrchinClientCopyObjectInterface,
+		http.MethodPost,
+		u.header,
+		reqBody,
+		u.urchinClient)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.Do failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"response: ", string(respBody))
+
+	err = json.Unmarshal(respBody, resp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		Logger.WithContext(ctx).Error(
+			"response failed.",
+			" errCode: ", resp.Code,
+			" errMessage: ", resp.Message)
+		return errors.New(resp.Message), resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:CopyObject finish.")
 	return nil, resp
 }
 

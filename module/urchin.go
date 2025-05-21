@@ -29,9 +29,11 @@ const (
 	UrchinClientCreateJCSPreSignedObjectCompleteMultipartUploadInterface = "/v1/object/auth/create_jcs_pre_signed_complete_multi_part_upload"
 	UrchinClientCreateJCSPreSignedObjectDownloadInterface                = "/v1/object/auth/create_jcs_pre_signed_download"
 
+	UrchinClientCreateObjectInterface        = "/v1/object/create"
 	UrchinClientUploadObjectInterface        = "/v1/object/upload"
 	UrchinClientDownloadObjectInterface      = "/v1/object/download"
 	UrchinClientMigrateObjectInterface       = "/v1/object/migrate"
+	UrchinClientCopyObjectInterface          = "/v1/object/copy"
 	UrchinClientGetObjectInterface           = "/v1/object"
 	UrchinClientPutObjectDeploymentInterface = "/v1/object/deployment"
 
@@ -236,6 +238,32 @@ type CreateJCSPreSignedObjectDownloadReq struct {
 	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 }
 
+type CreateObjectReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"name"
+	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name"`
+	// @inject_tag: json:"type"
+	Type int32 `protobuf:"varint,3,opt,name=type,proto3" json:"type"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source"`
+	// @inject_tag: json:"size"
+	Size *int32 `protobuf:"varint,5,opt,name=size,proto3,oneof" json:"size"`
+	// @inject_tag: json:"desc"
+	Desc *string `protobuf:"bytes,6,opt,name=desc,proto3,oneof" json:"desc"`
+	// @inject_tag: json:"node_name"
+	NodeName *string `protobuf:"bytes,7,opt,name=node_name,proto3,oneof" json:"node_name"`
+}
+
+type CreateObjectResp struct {
+	// @inject_tag: json:"code"
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	// @inject_tag: json:"message"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,3,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+}
+
 type UploadObjectReq struct {
 	// @inject_tag: json:"user_id"
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
@@ -281,6 +309,8 @@ type UploadObjectResp struct {
 	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"node_name"
 	NodeName string `protobuf:"bytes,5,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,6,opt,name=obj_uuid,proto3" json:"obj_uuid"`
 }
 
 type UploadFileReq struct {
@@ -527,6 +557,32 @@ type MigrateObjectResp struct {
 	TargetLocation string `protobuf:"bytes,12,opt,name=target_location,proto3" json:"target_location"`
 	// @inject_tag: json:"data_object_type"
 	DataObjectType int32 `protobuf:"varint,13,opt,name=data_object_type,proto3" json:"data_object_type"`
+}
+
+type CopyObjectReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"source_obj_uuid"
+	SourceObjUuid string `protobuf:"bytes,2,opt,name=source_obj_uuid,proto3" json:"source_obj_uuid"`
+	// @inject_tag: json:"object_keys"
+	ObjectKeys []string `protobuf:"bytes,3,rep,name=object_keys,proto3" json:"object_keys"`
+	// @inject_tag: json:"node_name"
+	NodeName string `protobuf:"bytes,4,opt,name=node_name,proto3" json:"node_name"`
+	// @inject_tag: json:"name"
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name"`
+	// @inject_tag: json:"desc"
+	Desc *string `protobuf:"bytes,6,opt,name=desc,proto3,oneof" json:"desc"`
+}
+
+type CopyObjectResp struct {
+	// @inject_tag: json:"code"
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	// @inject_tag: json:"message"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"dest_obj_uuid"
+	DestObjUuid string `protobuf:"bytes,4,opt,name=dest_obj_uuid,proto3" json:"dest_obj_uuid"`
 }
 
 type PutObjectDeploymentReq struct {

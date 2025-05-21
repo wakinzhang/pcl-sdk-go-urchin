@@ -50,6 +50,10 @@ type StarLightDownloadInput struct {
 	TargetPath string
 }
 
+type StarLightDeleteInput struct {
+	Path string
+}
+
 type SLBaseResponse struct {
 	Uuid  string `json:"uuid"`
 	Code  int32  `json:"code"`

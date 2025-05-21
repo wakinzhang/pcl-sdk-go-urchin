@@ -1984,6 +1984,37 @@ func (o *StarLight) UpdateDownloadFile(
 	return nil
 }
 
+func (o *StarLight) Delete(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var path string
+	if starLightDeleteInput, ok := input.(StarLightDeleteInput); ok {
+		path = starLightDeleteInput.Path
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:Delete start.",
+		" path: ", path)
+
+	err = o.slClient.Rm(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"slClient.Rm failed.",
+			" path: ", path,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:Delete finish.")
+	return nil
+}
+
 type SLDownloadPartTask struct {
 	ObjectPath       string
 	DownloadFile     string

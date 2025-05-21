@@ -64,6 +64,10 @@ type ScowDownloadInput struct {
 	TargetPath string
 }
 
+type ScowDeleteInput struct {
+	Path string
+}
+
 type ScowBaseResponse struct {
 	RespCode    int32       `json:"respCode"`
 	RespError   string      `json:"respError"`

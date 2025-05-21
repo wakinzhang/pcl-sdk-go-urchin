@@ -2162,6 +2162,37 @@ func (o *Sugon) UpdateDownloadFile(
 	return nil
 }
 
+func (o *Sugon) Delete(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var path string
+	if sugonDeleteInput, ok := input.(SugonDeleteInput); ok {
+		path = sugonDeleteInput.Path
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:Delete start.",
+		" path: ", path)
+
+	err = o.sugonClient.Delete(ctx, path)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"sugonClient.Delete failed.",
+			" path: ", path,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:Delete finish.")
+	return nil
+}
+
 type SugonDownloadPartTask struct {
 	ObjectPath       string
 	DownloadFile     string

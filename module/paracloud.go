@@ -38,6 +38,10 @@ type ParaCloudDownloadInput struct {
 	TargetPath string
 }
 
+type ParaCloudDeleteInput struct {
+	Path string
+}
+
 type PCObject struct {
 	ObjectPath     string
 	ObjectFileInfo os.FileInfo

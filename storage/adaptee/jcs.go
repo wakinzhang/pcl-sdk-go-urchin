@@ -2044,6 +2044,38 @@ func (o *JCS) UpdateDownloadFile(
 	return nil
 }
 
+func (o *JCS) Delete(
+	ctx context.Context,
+	input interface{}) (err error) {
+
+	var packageId int32
+
+	if jcsDeleteInput, ok := input.(JCSDeleteInput); ok {
+		packageId = jcsDeleteInput.PackageId
+	} else {
+		Logger.WithContext(ctx).Error(
+			"input param invalid.")
+		return errors.New("input param invalid")
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:Delete start.",
+		" packageId: ", packageId)
+
+	err = o.jcsClient.DeletePackage(ctx, packageId)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"jcsClient.DeletePackage failed.",
+			" packageId: ", packageId,
+			" err: ", err)
+		return err
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:DeletePackage finish.")
+	return nil
+}
+
 type JCSDownloadPartTask struct {
 	ObjectId         int32
 	Offset           int64

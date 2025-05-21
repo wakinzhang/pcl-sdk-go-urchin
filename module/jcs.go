@@ -19,6 +19,7 @@ const (
 	JCSCreateBucketInterface                           = "/v1/bucket/create"
 	JCSCreatePackageInterface                          = "/v1/package/create"
 	JCSGetPackageInterface                             = "/v1/package/getByFullName"
+	JCSDeletePackageInterface                          = "/v1/package/delete"
 	JCSPreSignedObjectListInterface                    = "/v1/presigned/object/listByPath"
 	JCSPreSignedObjectUploadInterface                  = "/v1/presigned/object/upload"
 	JCSPreSignedObjectNewMultipartUploadInterface      = "/v1/presigned/object/newMultipartUpload"
@@ -63,6 +64,10 @@ type JCSDownloadInput struct {
 	SourcePath string
 	TargetPath string
 	PackageId  int32
+}
+
+type JCSDeleteInput struct {
+	PackageId int32
 }
 
 type JCSBaseResponse struct {
@@ -325,6 +330,11 @@ type JCSPackageInfo struct {
 	PackageID int32  `json:"packageID"`
 	BucketID  int32  `json:"bucketID"`
 	Name      string `json:"name"`
+}
+
+type JCSDeletePackageReq struct {
+	UserID    int32 `json:"userID"`
+	PackageID int32 `json:"packageID"`
 }
 
 type JCSListReq struct {

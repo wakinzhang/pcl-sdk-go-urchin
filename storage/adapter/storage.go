@@ -20,6 +20,10 @@ type Storage interface {
 	Download(
 		ctx context.Context,
 		input interface{}) error
+
+	Delete(
+		ctx context.Context,
+		input interface{}) error
 }
 
 func NewStorage(

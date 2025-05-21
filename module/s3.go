@@ -23,3 +23,7 @@ type S3DownloadInput struct {
 	SourcePath string
 	TargetPath string
 }
+
+type S3DeleteInput struct {
+	Path string
+}
