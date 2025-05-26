@@ -27,7 +27,7 @@ const (
 	SugonGetTokenInterface     = "/ac/openapi/v2/tokens/state"
 	SugonPostTokenInterface    = "/ac/openapi/v2/tokens"
 	SugonMkdirInterface        = "/efile/openapi/v2/file/mkdir"
-	SugonDeleteInterface       = "/efile/openapi/v2/file/remover"
+	SugonDeleteInterface       = "/efile/openapi/v2/file/remove"
 	SugonUploadInterface       = "/efile/openapi/v2/file/upload"
 	SugonUploadChunksInterface = "/efile/openapi/v2/file/burst"
 	SugonMergeChunksInterface  = "/efile/openapi/v2/file/merge"
