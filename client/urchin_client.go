@@ -1302,7 +1302,7 @@ func (u *UrchinClient) DownloadFile(
 	err, respBody := Do(
 		ctx,
 		u.addr+UrchinClientDownloadFileInterface,
-		http.MethodPost,
+		http.MethodPut,
 		u.header,
 		reqBody,
 		u.urchinClient)
