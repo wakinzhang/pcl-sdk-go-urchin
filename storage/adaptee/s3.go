@@ -789,6 +789,7 @@ func (o *S3) Delete(
 		}
 
 		deleteObjectsInput := new(obs.DeleteObjectsInput)
+		deleteObjectsInput.Bucket = o.bucket
 		deleteObjectsInput.Objects = objects
 
 		_, err = o.obsClient.DeleteObjects(deleteObjectsInput)
