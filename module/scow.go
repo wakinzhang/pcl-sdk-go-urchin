@@ -65,7 +65,8 @@ type ScowDownloadInput struct {
 }
 
 type ScowDeleteInput struct {
-	Path string
+	Path   string
+	Target string
 }
 
 type ScowBaseResponse struct {

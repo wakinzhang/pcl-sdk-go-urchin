@@ -2198,9 +2198,10 @@ func (o *Scow) Delete(
 	ctx context.Context,
 	input interface{}) (err error) {
 
-	var path string
+	var path, target string
 	if scowDeleteInput, ok := input.(ScowDeleteInput); ok {
 		path = scowDeleteInput.Path
+		target = scowDeleteInput.Target
 	} else {
 		Logger.WithContext(ctx).Error(
 			"input param invalid.")
@@ -2209,13 +2210,15 @@ func (o *Scow) Delete(
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:Delete start.",
-		" path: ", path)
+		" path: ", path,
+		" target: ", target)
 
-	err = o.sClient.Delete(ctx, path)
+	err = o.sClient.Delete(ctx, path, target)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"sClient.Delete failed.",
 			" path: ", path,
+			" target: ", target,
 			" err: ", err)
 		return err
 	}

@@ -15,7 +15,6 @@ import (
 	"mime/multipart"
 	"net"
 	"net/http"
-	"os"
 	"time"
 	// LTScow "github.com/urchinfs/LT-scow-sdk/scow"
 )
@@ -381,11 +380,13 @@ func (o *ScowClient) Mkdir(
 
 func (o *ScowClient) Delete(
 	ctx context.Context,
-	path string) (err error) {
+	path,
+	target string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Delete start.",
-		" path: ", path)
+		" path: ", path,
+		" target: ", target)
 
 	err, exist := o.CheckExist(ctx, path)
 	if nil != err {
@@ -412,20 +413,7 @@ func (o *ScowClient) Delete(
 	input := new(ScowDeleteReq)
 	input.ClusterId = o.clusterId
 	input.Path = path
-
-	stat, err := os.Stat(path)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Stat failed.",
-			" path: ", path,
-			" err: ", err)
-		return err
-	}
-	if stat.IsDir() {
-		input.Target = ScowObjectTypeFolder
-	} else {
-		input.Target = ScowObjectTypeFile
-	}
+	input.Target = target
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
