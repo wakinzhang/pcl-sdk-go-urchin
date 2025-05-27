@@ -29,16 +29,19 @@ const (
 	UrchinClientCreateJCSPreSignedObjectCompleteMultipartUploadInterface = "/v1/object/auth/create_jcs_pre_signed_complete_multi_part_upload"
 	UrchinClientCreateJCSPreSignedObjectDownloadInterface                = "/v1/object/auth/create_jcs_pre_signed_download"
 
-	UrchinClientCreateObjectInterface        = "/v1/object/create"
-	UrchinClientUploadObjectInterface        = "/v1/object/upload"
-	UrchinClientDownloadObjectInterface      = "/v1/object/download"
-	UrchinClientMigrateObjectInterface       = "/v1/object/migrate"
-	UrchinClientCopyObjectInterface          = "/v1/object/copy"
-	UrchinClientGetObjectInterface           = "/v1/object"
-	UrchinClientPutObjectDeploymentInterface = "/v1/object/deployment"
+	UrchinClientCreateObjectInterface           = "/v1/object/create"
+	UrchinClientUploadObjectInterface           = "/v1/object/upload"
+	UrchinClientDownloadObjectInterface         = "/v1/object/download"
+	UrchinClientMigrateObjectInterface          = "/v1/object/migrate"
+	UrchinClientCopyObjectInterface             = "/v1/object/copy"
+	UrchinClientGetObjectInterface              = "/v1/object"
+	UrchinClientDeleteObjectInterface           = "/v1/object"
+	UrchinClientPutObjectDeploymentInterface    = "/v1/object/deployment"
+	UrchinClientDeleteObjectDeploymentInterface = "/v1/object/deployment"
 
 	UrchinClientUploadFileInterface   = "/v1/object/file/upload"
 	UrchinClientDownloadFileInterface = "/v1/object/file/download"
+	UrchinClientDeleteFileInterface   = "/v1/object/file"
 
 	UrchinClientGetTaskInterface    = "/v1/task"
 	UrchinClientFinishTaskInterface = "/v1/task/finish"
@@ -73,6 +76,8 @@ type BaseResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 }
 
 type CreateInitiateMultipartUploadSignedUrlReq struct {
@@ -161,10 +166,12 @@ type CreateSignedUrlResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"signed_url"
-	SignedUrl string `protobuf:"bytes,3,opt,name=signed_url,proto3" json:"signed_url"`
+	SignedUrl string `protobuf:"bytes,4,opt,name=signed_url,proto3" json:"signed_url"`
 	// @inject_tag: json:"header"
-	Header map[string]*HeaderValues `protobuf:"bytes,4,rep,name=header,proto3" json:"header" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Header map[string]*HeaderValues `protobuf:"bytes,5,rep,name=header,proto3" json:"header" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 type HeaderValues struct {
@@ -182,10 +189,12 @@ type GetIpfsTokenResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"url"
-	Url string `protobuf:"bytes,3,opt,name=url,proto3" json:"url"`
+	Url string `protobuf:"bytes,4,opt,name=url,proto3" json:"url"`
 	// @inject_tag: json:"token"
-	Token string `protobuf:"bytes,4,opt,name=token,proto3" json:"token"`
+	Token string `protobuf:"bytes,5,opt,name=token,proto3" json:"token"`
 }
 
 type CreateJCSPreSignedObjectListReq struct {
@@ -260,8 +269,10 @@ type CreateObjectResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"obj_uuid"
-	ObjUuid string `protobuf:"bytes,3,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	ObjUuid string `protobuf:"bytes,4,opt,name=obj_uuid,proto3" json:"obj_uuid"`
 }
 
 type UploadObjectReq struct {
@@ -303,14 +314,16 @@ type UploadObjectResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"node_type"
-	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	NodeType int32 `protobuf:"varint,5,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"node_name"
-	NodeName string `protobuf:"bytes,5,opt,name=node_name,proto3" json:"node_name"`
+	NodeName string `protobuf:"bytes,6,opt,name=node_name,proto3" json:"node_name"`
 	// @inject_tag: json:"obj_uuid"
-	ObjUuid string `protobuf:"bytes,6,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	ObjUuid string `protobuf:"bytes,7,opt,name=obj_uuid,proto3" json:"obj_uuid"`
 }
 
 type UploadFileReq struct {
@@ -344,12 +357,14 @@ type UploadFileResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"node_type"
-	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	NodeType int32 `protobuf:"varint,5,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"node_name"
-	NodeName string `protobuf:"bytes,5,opt,name=node_name,proto3" json:"node_name"`
+	NodeName string `protobuf:"bytes,6,opt,name=node_name,proto3" json:"node_name"`
 }
 
 type DownloadFileReq struct {
@@ -385,12 +400,14 @@ type DownloadFileResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"node_type"
-	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	NodeType int32 `protobuf:"varint,5,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"bucket_name"
-	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
+	BucketName string `protobuf:"bytes,6,opt,name=bucket_name,proto3" json:"bucket_name"`
 }
 
 type GetObjectReq struct {
@@ -413,8 +430,10 @@ type GetObjectResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"data"
-	Data *GetObjectRespData `protobuf:"bytes,3,opt,name=data,proto3" json:"data"`
+	Data *GetObjectRespData `protobuf:"bytes,4,opt,name=data,proto3" json:"data"`
 }
 
 type GetObjectRespData struct {
@@ -484,12 +503,14 @@ type DownloadObjectResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"node_type"
-	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
+	NodeType int32 `protobuf:"varint,5,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"bucket_name"
-	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
+	BucketName string `protobuf:"bytes,6,opt,name=bucket_name,proto3" json:"bucket_name"`
 }
 
 type MigrateObjectReq struct {
@@ -535,28 +556,30 @@ type MigrateObjectResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"source_node_id"
-	SourceNodeId int32 `protobuf:"varint,4,opt,name=source_node_id,proto3" json:"source_node_id"`
+	SourceNodeId int32 `protobuf:"varint,5,opt,name=source_node_id,proto3" json:"source_node_id"`
 	// @inject_tag: json:"source_node_name"
-	SourceNodeName string `protobuf:"bytes,5,opt,name=source_node_name,proto3" json:"source_node_name"`
+	SourceNodeName string `protobuf:"bytes,6,opt,name=source_node_name,proto3" json:"source_node_name"`
 	// @inject_tag: json:"source_node_type"
-	SourceNodeType int32 `protobuf:"varint,6,opt,name=source_node_type,proto3" json:"source_node_type"`
+	SourceNodeType int32 `protobuf:"varint,7,opt,name=source_node_type,proto3" json:"source_node_type"`
 	// @inject_tag: json:"source_bucket_name"
-	SourceBucketName string `protobuf:"bytes,7,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
+	SourceBucketName string `protobuf:"bytes,8,opt,name=source_bucket_name,proto3" json:"source_bucket_name"`
 	// @inject_tag: json:"source_location"
-	SourceLocation string `protobuf:"bytes,8,opt,name=source_location,proto3" json:"source_location"`
+	SourceLocation string `protobuf:"bytes,9,opt,name=source_location,proto3" json:"source_location"`
 	// @inject_tag: json:"target_node_id"
-	TargetNodeId int32 `protobuf:"varint,9,opt,name=target_node_id,proto3" json:"target_node_id"`
+	TargetNodeId int32 `protobuf:"varint,10,opt,name=target_node_id,proto3" json:"target_node_id"`
 	// @inject_tag: json:"target_node_name"
-	TargetNodeName string `protobuf:"bytes,10,opt,name=target_node_name,proto3" json:"target_node_name"`
+	TargetNodeName string `protobuf:"bytes,11,opt,name=target_node_name,proto3" json:"target_node_name"`
 	// @inject_tag: json:"target_node_type"
-	TargetNodeType int32 `protobuf:"varint,11,opt,name=target_node_type,proto3" json:"target_node_type"`
+	TargetNodeType int32 `protobuf:"varint,12,opt,name=target_node_type,proto3" json:"target_node_type"`
 	// @inject_tag: json:"target_location"
-	TargetLocation string `protobuf:"bytes,12,opt,name=target_location,proto3" json:"target_location"`
+	TargetLocation string `protobuf:"bytes,13,opt,name=target_location,proto3" json:"target_location"`
 	// @inject_tag: json:"data_object_type"
-	DataObjectType int32 `protobuf:"varint,13,opt,name=data_object_type,proto3" json:"data_object_type"`
+	DataObjectType int32 `protobuf:"varint,14,opt,name=data_object_type,proto3" json:"data_object_type"`
 }
 
 type CopyObjectReq struct {
@@ -579,10 +602,12 @@ type CopyObjectResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,3,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"dest_obj_uuid"
-	DestObjUuid string `protobuf:"bytes,4,opt,name=dest_obj_uuid,proto3" json:"dest_obj_uuid"`
+	DestObjUuid string `protobuf:"bytes,5,opt,name=dest_obj_uuid,proto3" json:"dest_obj_uuid"`
 }
 
 type PutObjectDeploymentReq struct {
@@ -592,6 +617,33 @@ type PutObjectDeploymentReq struct {
 	NodeName string `protobuf:"bytes,2,opt,name=node_name,proto3" json:"node_name"`
 	// @inject_tag: json:"location"
 	Location *string `protobuf:"bytes,3,opt,name=location,proto3,oneof" json:"location"`
+}
+
+type DeleteObjectReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+}
+
+type DeleteFileReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"source"
+	Source string `protobuf:"bytes,3,opt,name=source,proto3" json:"source"`
+}
+
+type DeleteObjectDeploymentReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"node_name"
+	NodeName *string `protobuf:"bytes,3,opt,name=node_name,proto3,oneof" json:"node_name"`
+	// @inject_tag: json:"force"
+	Force *bool `protobuf:"varint,4,opt,name=force,proto3,oneof" json:"force"`
 }
 
 type GetTaskReq struct {
@@ -612,8 +664,10 @@ type GetTaskResp struct {
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"
 	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
 	// @inject_tag: json:"data"
-	Data *GetTaskRespData `protobuf:"bytes,3,opt,name=data,proto3" json:"data"`
+	Data *GetTaskRespData `protobuf:"bytes,4,opt,name=data,proto3" json:"data"`
 }
 
 type GetTaskRespData struct {
