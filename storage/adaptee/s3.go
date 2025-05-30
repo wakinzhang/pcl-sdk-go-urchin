@@ -788,6 +788,12 @@ func (o *S3) Delete(
 			objects = append(objects, objectToDelete)
 		}
 
+		if 0 == len(objects) {
+			Logger.WithContext(ctx).Info(
+				"has no objects, return")
+			return nil
+		}
+
 		deleteObjectsInput := new(obs.DeleteObjectsInput)
 		deleteObjectsInput.Bucket = o.bucket
 		deleteObjectsInput.Objects = objects
