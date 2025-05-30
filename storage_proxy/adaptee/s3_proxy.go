@@ -853,12 +853,14 @@ func (o *S3Proxy) updateCheckpointFile(
 
 func (o *S3Proxy) Upload(
 	ctx context.Context,
+	userId string,
 	sourcePath string,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Upload start.",
+		" userId: ", userId,
 		" sourcePath: ", sourcePath,
 		" taskId: ", taskId,
 		" needPure: ", needPure)
@@ -1941,12 +1943,14 @@ func (task *UploadPartTask) Run(
 
 func (o *S3Proxy) Download(
 	ctx context.Context,
+	userId string,
 	targetPath string,
 	taskId int32,
 	bucketName string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Download start.",
+		" userId: ", userId,
 		" targetPath: ", targetPath,
 		" taskId: ", taskId,
 		" bucketName: ", bucketName)
@@ -1966,6 +1970,7 @@ func (o *S3Proxy) Download(
 		}
 		err = o.downloadObjects(
 			ctx,
+			userId,
 			targetPath,
 			taskId,
 			bucketName,
@@ -1973,6 +1978,7 @@ func (o *S3Proxy) Download(
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"S3Proxy:downloadObjects failed.",
+				" userId: ", userId,
 				" targetPath: ", targetPath,
 				" taskId: ", taskId,
 				" bucketName: ", bucketName,
@@ -1992,6 +1998,7 @@ func (o *S3Proxy) Download(
 
 func (o *S3Proxy) downloadObjects(
 	ctx context.Context,
+	userId string,
 	targetPath string,
 	taskId int32,
 	bucketName string,
@@ -1999,11 +2006,13 @@ func (o *S3Proxy) downloadObjects(
 
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:downloadObjects start.",
+		" userId: ", userId,
 		" targetPath: ", targetPath,
 		" taskId: ", taskId,
 		" bucketName: ", bucketName)
 
 	getTaskReq := new(GetTaskReq)
+	getTaskReq.UserId = userId
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize

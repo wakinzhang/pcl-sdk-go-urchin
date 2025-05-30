@@ -56,6 +56,7 @@ func DownloadFileByProxy(
 
 	err = ProcessDownloadFileByProxy(
 		ctx,
+		userId,
 		targetPath,
 		downloadFileResp.BucketName,
 		downloadFileResp.TaskId,
@@ -73,6 +74,7 @@ func DownloadFileByProxy(
 
 func ProcessDownloadFileByProxy(
 	ctx context.Context,
+	userId,
 	targetPath,
 	bucketName string,
 	taskId,
@@ -80,6 +82,7 @@ func ProcessDownloadFileByProxy(
 
 	Logger.WithContext(ctx).Debug(
 		"ProcessDownloadFileByProxy start.",
+		" userId: ", userId,
 		" targetPath: ", targetPath,
 		" bucketName: ", bucketName,
 		" taskId: ", taskId,
@@ -87,6 +90,7 @@ func ProcessDownloadFileByProxy(
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
+		finishTaskReq.UserId = userId
 		finishTaskReq.TaskId = taskId
 		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
@@ -110,6 +114,7 @@ func ProcessDownloadFileByProxy(
 	}
 	err = storage.Download(
 		ctx,
+		userId,
 		targetPath,
 		taskId,
 		bucketName)

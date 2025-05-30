@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
-	"os"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"os"
 )
 
 func MigrateByProxy(
@@ -64,6 +64,7 @@ func MigrateByProxy(
 
 	err = ProcessMigrateByProxy(
 		ctx,
+		userId,
 		cachePath,
 		objUuid,
 		migrateObjectResp.SourceBucketName,
@@ -84,6 +85,7 @@ func MigrateByProxy(
 
 func ProcessMigrateByProxy(
 	ctx context.Context,
+	userId,
 	cachePath,
 	objUuid,
 	sourceBucketName string,
@@ -94,6 +96,7 @@ func ProcessMigrateByProxy(
 
 	Logger.WithContext(ctx).Debug(
 		"ProcessMigrateByProxy start.",
+		" userId: ", userId,
 		" cachePath: ", cachePath,
 		" objUuid: ", objUuid,
 		" sourceBucketName: ", sourceBucketName,
@@ -112,6 +115,7 @@ func ProcessMigrateByProxy(
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
+		finishTaskReq.UserId = userId
 		finishTaskReq.TaskId = taskId
 		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
@@ -191,6 +195,7 @@ func ProcessMigrateByProxy(
 			}
 			err = sourceStorage.Download(
 				ctx,
+				userId,
 				cachePath,
 				taskId,
 				sourceBucketName)
@@ -244,6 +249,7 @@ func ProcessMigrateByProxy(
 			}
 			err = targetStorage.Upload(
 				ctx,
+				userId,
 				migrateCachePath+"/"+entries[0].Name(),
 				taskId,
 				needPure)

@@ -12,15 +12,18 @@ import (
 
 func RetryTask(
 	ctx context.Context,
+	userId string,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"RetryTask start.",
+		" userId: ", userId,
 		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	getTaskReq := new(GetTaskReq)
+	getTaskReq.UserId = userId
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
@@ -40,6 +43,7 @@ func RetryTask(
 	task := getTaskResp.Data.List[0].Task
 
 	retryTaskReq := new(RetryTaskReq)
+	retryTaskReq.UserId = userId
 	retryTaskReq.TaskId = taskId
 
 	err, _ = UClient.RetryTask(ctx, retryTaskReq)
@@ -52,6 +56,7 @@ func RetryTask(
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
+		finishTaskReq.UserId = userId
 		finishTaskReq.TaskId = taskId
 		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
@@ -70,6 +75,7 @@ func RetryTask(
 	case TaskTypeUpload:
 		err = processRetryUploadTask(
 			ctx,
+			userId,
 			task,
 			taskId,
 			needPure)
@@ -82,6 +88,7 @@ func RetryTask(
 	case TaskTypeUploadFile:
 		err = processRetryUploadFileTask(
 			ctx,
+			userId,
 			task,
 			taskId,
 			needPure)
@@ -94,6 +101,7 @@ func RetryTask(
 	case TaskTypeDownload:
 		err = processRetryDownloadTask(
 			ctx,
+			userId,
 			task,
 			taskId)
 		if nil != err {
@@ -105,6 +113,7 @@ func RetryTask(
 	case TaskTypeDownloadFile:
 		err = processRetryDownloadFileTask(
 			ctx,
+			userId,
 			task,
 			taskId)
 		if nil != err {
@@ -116,6 +125,7 @@ func RetryTask(
 	case TaskTypeMigrate:
 		err = processRetryMigrateTask(
 			ctx,
+			userId,
 			task,
 			taskId,
 			needPure)
@@ -139,12 +149,14 @@ func RetryTask(
 
 func processRetryUploadTask(
 	ctx context.Context,
+	userId string,
 	task *Task,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"processRetryUploadTask start.",
+		" userId: ", userId,
 		" taskId: ", taskId,
 		" needPure: ", needPure,
 		" taskParams: ", task.Params)
@@ -160,6 +172,7 @@ func processRetryUploadTask(
 
 	err = ProcessUploadByProxy(
 		ctx,
+		userId,
 		uploadObjectTaskParams.Request.SourceLocalPath,
 		taskId,
 		uploadObjectTaskParams.NodeType,
@@ -178,12 +191,14 @@ func processRetryUploadTask(
 
 func processRetryUploadFileTask(
 	ctx context.Context,
+	userId string,
 	task *Task,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"processRetryUploadFileTask start.",
+		" userId: ", userId,
 		" taskId: ", taskId,
 		" needPure: ", needPure,
 		" taskParams: ", task.Params)
@@ -199,6 +214,7 @@ func processRetryUploadFileTask(
 
 	err = ProcessUploadFileByProxy(
 		ctx,
+		userId,
 		uploadFileTaskParams.Request.SourceLocalPath,
 		taskId,
 		uploadFileTaskParams.NodeType,
@@ -217,11 +233,13 @@ func processRetryUploadFileTask(
 
 func processRetryDownloadTask(
 	ctx context.Context,
+	userId string,
 	task *Task,
 	taskId int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"processRetryDownloadTask start.",
+		" userId: ", userId,
 		" taskId: ", taskId,
 		" taskParams: ", task.Params)
 
@@ -236,6 +254,7 @@ func processRetryDownloadTask(
 
 	err = ProcessDownloadByProxy(
 		ctx,
+		userId,
 		downloadObjectTaskParams.Request.TargetLocalPath,
 		downloadObjectTaskParams.BucketName,
 		taskId,
@@ -254,11 +273,13 @@ func processRetryDownloadTask(
 
 func processRetryDownloadFileTask(
 	ctx context.Context,
+	userId string,
 	task *Task,
 	taskId int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"processRetryDownloadFileTask start.",
+		" userId: ", userId,
 		" taskId: ", taskId,
 		" taskParams: ", task.Params)
 
@@ -273,6 +294,7 @@ func processRetryDownloadFileTask(
 
 	err = ProcessDownloadByProxy(
 		ctx,
+		userId,
 		downloadFileTaskParams.Request.TargetLocalPath,
 		downloadFileTaskParams.BucketName,
 		taskId,
@@ -291,12 +313,14 @@ func processRetryDownloadFileTask(
 
 func processRetryMigrateTask(
 	ctx context.Context,
+	userId string,
 	task *Task,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"processRetryMigrateTask start.",
+		" userId: ", userId,
 		" taskId: ", taskId,
 		" needPure: ", needPure,
 		" taskParams: ", task.Params)
@@ -312,6 +336,7 @@ func processRetryMigrateTask(
 
 	err = ProcessMigrateByProxy(
 		ctx,
+		userId,
 		migrateObjectTaskParams.Request.CacheLocalPath,
 		migrateObjectTaskParams.Request.ObjUuid,
 		migrateObjectTaskParams.SourceBucketName,

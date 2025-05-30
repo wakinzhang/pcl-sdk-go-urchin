@@ -38,6 +38,8 @@ const (
 	UrchinClientDeleteObjectInterface           = "/v1/object"
 	UrchinClientPutObjectDeploymentInterface    = "/v1/object/deployment"
 	UrchinClientDeleteObjectDeploymentInterface = "/v1/object/deployment"
+	UrchinClientListObjectsInterface            = "/v1/object/list"
+	UrchinClientListPartsInterface              = "/v1/object/part/list"
 
 	UrchinClientUploadFileInterface   = "/v1/object/file/upload"
 	UrchinClientDownloadFileInterface = "/v1/object/file/download"
@@ -611,12 +613,14 @@ type CopyObjectResp struct {
 }
 
 type PutObjectDeploymentReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"obj_uuid"
-	ObjUuid string `protobuf:"bytes,1,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
 	// @inject_tag: json:"node_name"
-	NodeName string `protobuf:"bytes,2,opt,name=node_name,proto3" json:"node_name"`
+	NodeName string `protobuf:"bytes,3,opt,name=node_name,proto3" json:"node_name"`
 	// @inject_tag: json:"location"
-	Location *string `protobuf:"bytes,3,opt,name=location,proto3,oneof" json:"location"`
+	Location *string `protobuf:"bytes,4,opt,name=location,proto3,oneof" json:"location"`
 }
 
 type DeleteObjectReq struct {
@@ -646,17 +650,107 @@ type DeleteObjectDeploymentReq struct {
 	Force *bool `protobuf:"varint,4,opt,name=force,proto3,oneof" json:"force"`
 }
 
+type ListObjectsReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"prefix"
+	Prefix *string `protobuf:"bytes,3,opt,name=prefix,proto3,oneof" json:"prefix"`
+	// @inject_tag: json:"marker"
+	Marker *string `protobuf:"bytes,4,opt,name=marker,proto3,oneof" json:"marker"`
+	// @inject_tag: json:"max_keys"
+	MaxKeys *int32 `protobuf:"varint,5,opt,name=max_keys,proto3,oneof" json:"max_keys"`
+}
+
+type ListObjectsResp struct {
+	// @inject_tag: json:"code"
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	// @inject_tag: json:"message"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
+	// @inject_tag: json:"data"
+	Data *ListObjectsRespData `protobuf:"bytes,4,opt,name=data,proto3" json:"data"`
+}
+
+type ListObjectsRespData struct {
+	// @inject_tag: json:"next_marker"
+	NextMarker string `protobuf:"bytes,1,opt,name=next_marker,proto3" json:"next_marker"`
+	// @inject_tag: json:"list"
+	List []*ObjectContent `protobuf:"bytes,2,rep,name=list,proto3" json:"list"`
+	// @inject_tag: json:"common_prefixes"
+	CommonPrefixes []string `protobuf:"bytes,3,rep,name=common_prefixes,proto3" json:"common_prefixes"`
+}
+
+type ObjectContent struct {
+	// @inject_tag: json:"key"
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key"`
+	// @inject_tag: json:"etag"
+	Etag string `protobuf:"bytes,2,opt,name=etag,proto3" json:"etag"`
+	// @inject_tag: json:"size"
+	Size int64 `protobuf:"varint,3,opt,name=size,proto3" json:"size"`
+	// @inject_tag: json:"last_modified"
+	LastModified string `protobuf:"bytes,4,opt,name=last_modified,proto3" json:"last_modified"`
+}
+
+type ListPartsReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"upload_id"
+	UploadId string `protobuf:"bytes,3,opt,name=upload_id,proto3" json:"upload_id"`
+	// @inject_tag: json:"max_parts"
+	MaxParts *int32 `protobuf:"varint,4,opt,name=max_parts,proto3,oneof" json:"max_parts"`
+	// @inject_tag: json:"part_number_marker"
+	PartNumberMarker *int32 `protobuf:"varint,5,opt,name=part_number_marker,proto3,oneof" json:"part_number_marker"`
+}
+
+type ListPartsResp struct {
+	// @inject_tag: json:"code"
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	// @inject_tag: json:"message"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
+	// @inject_tag: json:"data"
+	Data *ListPartsRespData `protobuf:"bytes,4,opt,name=data,proto3" json:"data"`
+}
+
+type ListPartsRespData struct {
+	// @inject_tag: json:"is_truncated"
+	IsTruncated bool `protobuf:"varint,1,opt,name=is_truncated,proto3" json:"is_truncated"`
+	// @inject_tag: json:"next_part_number_marker"
+	NextPartNumberMarker int32 `protobuf:"varint,2,opt,name=next_part_number_marker,proto3" json:"next_part_number_marker"`
+	// @inject_tag: json:"list"
+	List []*PartContent `protobuf:"bytes,3,rep,name=list,proto3" json:"list"`
+}
+
+type PartContent struct {
+	// @inject_tag: json:"part_number"
+	PartNumber int32 `protobuf:"varint,1,opt,name=part_number,proto3" json:"part_number"`
+	// @inject_tag: json:"etag"
+	Etag string `protobuf:"bytes,2,opt,name=etag,proto3" json:"etag"`
+	// @inject_tag: json:"size"
+	Size int64 `protobuf:"varint,3,opt,name=size,proto3" json:"size"`
+	// @inject_tag: json:"last_modified"
+	LastModified string `protobuf:"bytes,4,opt,name=last_modified,proto3" json:"last_modified"`
+}
+
 type GetTaskReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"page_index"
-	PageIndex int32 `protobuf:"varint,1,opt,name=page_index,proto3" json:"page_index" url:"page_index"`
+	PageIndex int32 `protobuf:"varint,2,opt,name=page_index,proto3" json:"page_index"`
 	// @inject_tag: json:"page_size"
-	PageSize int32 `protobuf:"varint,2,opt,name=page_size,proto3" json:"page_size" url:"page_size"`
+	PageSize int32 `protobuf:"varint,3,opt,name=page_size,proto3" json:"page_size"`
 	// @inject_tag: json:"sort_by"
-	SortBy *string `protobuf:"bytes,3,opt,name=sort_by,proto3,oneof" json:"sort_by" url:"sort_by,omitempty"`
+	SortBy *string `protobuf:"bytes,4,opt,name=sort_by,proto3,oneof" json:"sort_by"`
 	// @inject_tag: json:"order_by"
-	OrderBy *string `protobuf:"bytes,4,opt,name=order_by,proto3,oneof" json:"order_by" url:"order_by,omitempty"`
+	OrderBy *string `protobuf:"bytes,5,opt,name=order_by,proto3,oneof" json:"order_by"`
 	// @inject_tag: json:"task_id"
-	TaskId *int32 `protobuf:"varint,5,opt,name=task_id,proto3,oneof" json:"task_id" url:"task_id,omitempty"`
+	TaskId *int32 `protobuf:"varint,6,opt,name=task_id,proto3,oneof" json:"task_id"`
 }
 
 type GetTaskResp struct {
@@ -739,17 +833,21 @@ type TaskExec struct {
 }
 
 type FinishTaskReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,2,opt,name=task_id,proto3" json:"task_id"`
 	// @inject_tag: json:"result"
-	Result int32 `protobuf:"varint,2,opt,name=result,proto3" json:"result"`
+	Result int32 `protobuf:"varint,3,opt,name=result,proto3" json:"result"`
 	// @inject_tag: json:"return"
-	Return *string `protobuf:"bytes,3,opt,name=return,proto3,oneof" json:"return"`
+	Return *string `protobuf:"bytes,4,opt,name=return,proto3,oneof" json:"return"`
 }
 
 type RetryTaskReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"task_id"
-	TaskId int32 `protobuf:"varint,1,opt,name=task_id,proto3" json:"task_id"`
+	TaskId int32 `protobuf:"varint,2,opt,name=task_id,proto3" json:"task_id"`
 }
 
 type XIpfsUpload struct {

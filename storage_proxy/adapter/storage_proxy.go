@@ -11,12 +11,14 @@ import (
 type StorageProxy interface {
 	Upload(
 		ctx context.Context,
+		userId string,
 		sourcePath string,
 		taskId int32,
 		needPure bool) error
 
 	Download(
 		ctx context.Context,
+		userId string,
 		targetPath string,
 		taskId int32,
 		bucketName string) error

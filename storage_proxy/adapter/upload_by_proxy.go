@@ -70,6 +70,7 @@ func UploadByProxy(
 
 	err = ProcessUploadByProxy(
 		ctx,
+		userId,
 		sourcePath,
 		uploadObjectResp.TaskId,
 		uploadObjectResp.NodeType,
@@ -87,6 +88,7 @@ func UploadByProxy(
 
 func ProcessUploadByProxy(
 	ctx context.Context,
+	userId string,
 	sourcePath string,
 	taskId,
 	nodeType int32,
@@ -94,6 +96,7 @@ func ProcessUploadByProxy(
 
 	Logger.WithContext(ctx).Debug(
 		"ProcessUploadByProxy start.",
+		" userId: ", userId,
 		" sourcePath: ", sourcePath,
 		" taskId: ", taskId,
 		" nodeType: ", nodeType,
@@ -101,6 +104,7 @@ func ProcessUploadByProxy(
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
+		finishTaskReq.UserId = userId
 		finishTaskReq.TaskId = taskId
 		if nil != err {
 			finishTaskReq.Result = TaskFResultEFailed
@@ -124,6 +128,7 @@ func ProcessUploadByProxy(
 	}
 	err = storage.Upload(
 		ctx,
+		userId,
 		sourcePath,
 		taskId,
 		needPure)

@@ -8,6 +8,16 @@
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/urchin_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/urchin_client.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/module/urchin.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/urchin.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/operation/retry_task.go" beforeDir="false" afterPath="$PROJECT_DIR$/operation/retry_task.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adaptee/ipfs_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adaptee/ipfs_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adaptee/jcs_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adaptee/jcs_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adaptee/s3_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adaptee/s3_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/download_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/download_by_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/download_file_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/download_file_by_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/migrate_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/migrate_by_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/storage_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/storage_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/upload_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/upload_by_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/upload_file_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/upload_file_by_proxy.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -22,6 +32,7 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="2o37ecAfroYmCF1xj9TIvyxbEkf" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />

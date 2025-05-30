@@ -1707,6 +1707,122 @@ func (u *UrchinClient) PutObjectDeployment(
 	return nil, resp
 }
 
+func (u *UrchinClient) ListObjects(
+	ctx context.Context,
+	req *ListObjectsReq) (
+	err error, resp *ListObjectsResp) {
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:ListObjects start.")
+
+	values, err := query.Values(req)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"query.Values failed.",
+			" err: ", err)
+		return err, resp
+	}
+	Logger.WithContext(ctx).Debug(
+		"request: ", values.Encode())
+
+	resp = new(ListObjectsResp)
+	err, respBody := Do(
+		ctx,
+		u.addr+UrchinClientListObjectsInterface+"?"+values.Encode(),
+		http.MethodGet,
+		u.header,
+		nil,
+		u.urchinClient)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.Do failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"response: ", string(respBody))
+
+	err = json.Unmarshal(respBody, resp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		Logger.WithContext(ctx).Error(
+			"response failed.",
+			" errCode: ", resp.Code,
+			" errMessage: ", resp.Message,
+			" requestId: ", resp.RequestId)
+		return errors.New(resp.Message), resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:ListObjects finish.")
+	return nil, resp
+}
+
+func (u *UrchinClient) ListParts(
+	ctx context.Context,
+	req *ListPartsReq) (
+	err error, resp *ListPartsResp) {
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:ListParts start.")
+
+	values, err := query.Values(req)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"query.Values failed.",
+			" err: ", err)
+		return err, resp
+	}
+	Logger.WithContext(ctx).Debug(
+		"request: ", values.Encode())
+
+	resp = new(ListPartsResp)
+	err, respBody := Do(
+		ctx,
+		u.addr+UrchinClientListPartsInterface+"?"+values.Encode(),
+		http.MethodGet,
+		u.header,
+		nil,
+		u.urchinClient)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.Do failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"response: ", string(respBody))
+
+	err = json.Unmarshal(respBody, resp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		Logger.WithContext(ctx).Error(
+			"response failed.",
+			" errCode: ", resp.Code,
+			" errMessage: ", resp.Message,
+			" requestId: ", resp.RequestId)
+		return errors.New(resp.Message), resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:ListParts finish.")
+	return nil, resp
+}
+
 func (u *UrchinClient) GetTask(
 	ctx context.Context,
 	req *GetTaskReq) (

@@ -18,17 +18,20 @@ type IPFSProxy struct {
 
 func (o *IPFSProxy) Upload(
 	ctx context.Context,
+	userId string,
 	sourcePath string,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"IPFSProxy:Upload start.",
+		" userId: ", userId,
 		" sourcePath: ", sourcePath,
 		" taskId: ", taskId,
 		" needPure: ", needPure)
 
 	getTaskReq := new(GetTaskReq)
+	getTaskReq.UserId = userId
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
@@ -50,6 +53,7 @@ func (o *IPFSProxy) Upload(
 		TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
 		err = o.uploadObject(
 			ctx,
+			userId,
 			sourcePath,
 			getTaskResp.Data.List[0].Task)
 		if nil != err {
@@ -83,11 +87,13 @@ func (o *IPFSProxy) Upload(
 
 func (o *IPFSProxy) uploadObject(
 	ctx context.Context,
+	userId string,
 	sourcePath string,
 	task *Task) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"IPFSProxy:uploadObject start.",
+		" userId: ", userId,
 		" sourcePath: ", sourcePath)
 
 	var objUuid, nodeName string
@@ -210,6 +216,7 @@ func (o *IPFSProxy) uploadObject(
 		location = cid + "/" + filepath.Base(sourcePath)
 	}
 	putObjectDeploymentReq := new(PutObjectDeploymentReq)
+	putObjectDeploymentReq.UserId = userId
 	putObjectDeploymentReq.ObjUuid = objUuid
 	putObjectDeploymentReq.NodeName = nodeName
 	putObjectDeploymentReq.Location = &location
@@ -252,12 +259,14 @@ func (o *IPFSProxy) uploadFile(
 
 func (o *IPFSProxy) Download(
 	ctx context.Context,
+	userId string,
 	targetPath string,
 	taskId int32,
 	bucketName string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"IPFSProxy:Download start.",
+		" userId: ", userId,
 		" targetPath: ", targetPath,
 		" taskId: ", taskId,
 		" bucketName: ", bucketName)
@@ -271,6 +280,7 @@ func (o *IPFSProxy) Download(
 	}
 
 	getTaskReq := new(GetTaskReq)
+	getTaskReq.UserId = userId
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize

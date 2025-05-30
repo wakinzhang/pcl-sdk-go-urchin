@@ -392,12 +392,14 @@ func (o *JCSProxy) updateCheckpointFile(
 
 func (o *JCSProxy) Upload(
 	ctx context.Context,
+	userId string,
 	sourcePath string,
 	taskId int32,
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:Upload start.",
+		" userId: ", userId,
 		" sourcePath: ", sourcePath,
 		" taskId: ", taskId,
 		" needPure: ", needPure)
@@ -1324,12 +1326,14 @@ func (task *JCSProxyUploadPartTask) Run(
 
 func (o *JCSProxy) Download(
 	ctx context.Context,
+	userId string,
 	targetPath string,
 	taskId int32,
 	bucketName string) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:Download start.",
+		" userId: ", userId,
 		" targetPath: ", targetPath,
 		" taskId: ", taskId,
 		" bucketName: ", bucketName)
@@ -1349,12 +1353,14 @@ func (o *JCSProxy) Download(
 		}
 		err = o.downloadObjects(
 			ctx,
+			userId,
 			targetPath,
 			taskId,
 			listObjectsData)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"JCSProxy:downloadObjects failed.",
+				" userId: ", userId,
 				" targetPath: ", targetPath,
 				" taskId: ", taskId,
 				" bucketName: ", bucketName,
@@ -1374,16 +1380,19 @@ func (o *JCSProxy) Download(
 
 func (o *JCSProxy) downloadObjects(
 	ctx context.Context,
+	userId string,
 	targetPath string,
 	taskId int32,
 	listObjectsData *JCSListData) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:downloadObjects start.",
+		" userId: ", userId,
 		" targetPath: ", targetPath,
 		" taskId: ", taskId)
 
 	getTaskReq := new(GetTaskReq)
+	getTaskReq.UserId = userId
 	getTaskReq.TaskId = &taskId
 	getTaskReq.PageIndex = DefaultPageIndex
 	getTaskReq.PageSize = DefaultPageSize
