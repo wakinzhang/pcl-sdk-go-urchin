@@ -652,15 +652,15 @@ type DeleteObjectDeploymentReq struct {
 
 type ListObjectsReq struct {
 	// @inject_tag: json:"user_id"
-	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id" url:"user_id"`
 	// @inject_tag: json:"obj_uuid"
-	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid" url:"obj_uuid"`
 	// @inject_tag: json:"prefix"
-	Prefix *string `protobuf:"bytes,3,opt,name=prefix,proto3,oneof" json:"prefix"`
+	Prefix *string `protobuf:"bytes,3,opt,name=prefix,proto3,oneof" json:"prefix" url:"prefix"`
 	// @inject_tag: json:"marker"
-	Marker *string `protobuf:"bytes,4,opt,name=marker,proto3,oneof" json:"marker"`
+	Marker *string `protobuf:"bytes,4,opt,name=marker,proto3,oneof" json:"marker" url:"marker"`
 	// @inject_tag: json:"max_keys"
-	MaxKeys *int32 `protobuf:"varint,5,opt,name=max_keys,proto3,oneof" json:"max_keys"`
+	MaxKeys *int32 `protobuf:"varint,5,opt,name=max_keys,proto3,oneof" json:"max_keys" url:"max_keys"`
 }
 
 type ListObjectsResp struct {
@@ -696,15 +696,15 @@ type ObjectContent struct {
 
 type ListPartsReq struct {
 	// @inject_tag: json:"user_id"
-	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id" url:"user_id"`
 	// @inject_tag: json:"obj_uuid"
-	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid" url:"obj_uuid"`
 	// @inject_tag: json:"upload_id"
-	UploadId string `protobuf:"bytes,3,opt,name=upload_id,proto3" json:"upload_id"`
+	UploadId string `protobuf:"bytes,3,opt,name=upload_id,proto3" json:"upload_id" url:"upload_id"`
 	// @inject_tag: json:"max_parts"
-	MaxParts *int32 `protobuf:"varint,4,opt,name=max_parts,proto3,oneof" json:"max_parts"`
+	MaxParts *int32 `protobuf:"varint,4,opt,name=max_parts,proto3,oneof" json:"max_parts" url:"max_parts"`
 	// @inject_tag: json:"part_number_marker"
-	PartNumberMarker *int32 `protobuf:"varint,5,opt,name=part_number_marker,proto3,oneof" json:"part_number_marker"`
+	PartNumberMarker *int32 `protobuf:"varint,5,opt,name=part_number_marker,proto3,oneof" json:"part_number_marker" url:"part_number_marker"`
 }
 
 type ListPartsResp struct {
@@ -740,17 +740,17 @@ type PartContent struct {
 
 type GetTaskReq struct {
 	// @inject_tag: json:"user_id"
-	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id" url:"user_id"`
 	// @inject_tag: json:"page_index"
-	PageIndex int32 `protobuf:"varint,2,opt,name=page_index,proto3" json:"page_index"`
+	PageIndex int32 `protobuf:"varint,2,opt,name=page_index,proto3" json:"page_index" url:"page_index"`
 	// @inject_tag: json:"page_size"
-	PageSize int32 `protobuf:"varint,3,opt,name=page_size,proto3" json:"page_size"`
+	PageSize int32 `protobuf:"varint,3,opt,name=page_size,proto3" json:"page_size" url:"page_size"`
 	// @inject_tag: json:"sort_by"
-	SortBy *string `protobuf:"bytes,4,opt,name=sort_by,proto3,oneof" json:"sort_by"`
+	SortBy *string `protobuf:"bytes,4,opt,name=sort_by,proto3,oneof" json:"sort_by" url:"sort_by"`
 	// @inject_tag: json:"order_by"
-	OrderBy *string `protobuf:"bytes,5,opt,name=order_by,proto3,oneof" json:"order_by"`
+	OrderBy *string `protobuf:"bytes,5,opt,name=order_by,proto3,oneof" json:"order_by" url:"order_by"`
 	// @inject_tag: json:"task_id"
-	TaskId *int32 `protobuf:"varint,6,opt,name=task_id,proto3,oneof" json:"task_id"`
+	TaskId *int32 `protobuf:"varint,6,opt,name=task_id,proto3,oneof" json:"task_id" url:"task_id"`
 }
 
 type GetTaskResp struct {
