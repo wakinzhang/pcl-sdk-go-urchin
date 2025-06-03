@@ -656,11 +656,11 @@ type ListObjectsReq struct {
 	// @inject_tag: json:"obj_uuid"
 	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid" url:"obj_uuid"`
 	// @inject_tag: json:"prefix"
-	Prefix *string `protobuf:"bytes,3,opt,name=prefix,proto3,oneof" json:"prefix" url:"prefix"`
+	Prefix *string `protobuf:"bytes,3,opt,name=prefix,proto3,oneof" json:"prefix" url:"prefix,omitempty"`
 	// @inject_tag: json:"marker"
-	Marker *string `protobuf:"bytes,4,opt,name=marker,proto3,oneof" json:"marker" url:"marker"`
+	Marker *string `protobuf:"bytes,4,opt,name=marker,proto3,oneof" json:"marker" url:"marker,omitempty"`
 	// @inject_tag: json:"max_keys"
-	MaxKeys *int32 `protobuf:"varint,5,opt,name=max_keys,proto3,oneof" json:"max_keys" url:"max_keys"`
+	MaxKeys *int32 `protobuf:"varint,5,opt,name=max_keys,proto3,oneof" json:"max_keys" url:"max_keys,omitempty"`
 }
 
 type ListObjectsResp struct {
@@ -702,9 +702,9 @@ type ListPartsReq struct {
 	// @inject_tag: json:"upload_id"
 	UploadId string `protobuf:"bytes,3,opt,name=upload_id,proto3" json:"upload_id" url:"upload_id"`
 	// @inject_tag: json:"max_parts"
-	MaxParts *int32 `protobuf:"varint,4,opt,name=max_parts,proto3,oneof" json:"max_parts" url:"max_parts"`
+	MaxParts *int32 `protobuf:"varint,4,opt,name=max_parts,proto3,oneof" json:"max_parts" url:"max_parts,omitempty"`
 	// @inject_tag: json:"part_number_marker"
-	PartNumberMarker *int32 `protobuf:"varint,5,opt,name=part_number_marker,proto3,oneof" json:"part_number_marker" url:"part_number_marker"`
+	PartNumberMarker *int32 `protobuf:"varint,5,opt,name=part_number_marker,proto3,oneof" json:"part_number_marker" url:"part_number_marker,omitempty"`
 }
 
 type ListPartsResp struct {
@@ -746,11 +746,11 @@ type GetTaskReq struct {
 	// @inject_tag: json:"page_size"
 	PageSize int32 `protobuf:"varint,3,opt,name=page_size,proto3" json:"page_size" url:"page_size"`
 	// @inject_tag: json:"sort_by"
-	SortBy *string `protobuf:"bytes,4,opt,name=sort_by,proto3,oneof" json:"sort_by" url:"sort_by"`
+	SortBy *string `protobuf:"bytes,4,opt,name=sort_by,proto3,oneof" json:"sort_by" url:"sort_by,omitempty"`
 	// @inject_tag: json:"order_by"
-	OrderBy *string `protobuf:"bytes,5,opt,name=order_by,proto3,oneof" json:"order_by" url:"order_by"`
+	OrderBy *string `protobuf:"bytes,5,opt,name=order_by,proto3,oneof" json:"order_by" url:"order_by,omitempty"`
 	// @inject_tag: json:"task_id"
-	TaskId *int32 `protobuf:"varint,6,opt,name=task_id,proto3,oneof" json:"task_id" url:"task_id"`
+	TaskId *int32 `protobuf:"varint,6,opt,name=task_id,proto3,oneof" json:"task_id" url:"task_id,omitempty"`
 }
 
 type GetTaskResp struct {
