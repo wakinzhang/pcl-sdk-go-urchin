@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	uuid "github.com/satori/go.uuid"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
@@ -11,10 +12,14 @@ import (
 )
 
 func RetryTask(
-	ctx context.Context,
 	userId string,
 	taskId int32,
 	needPure bool) (err error) {
+
+	requestId := uuid.NewV4().String()
+	var ctx context.Context
+	ctx = context.Background()
+	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
 	Logger.WithContext(ctx).Debug(
 		"RetryTask start.",
