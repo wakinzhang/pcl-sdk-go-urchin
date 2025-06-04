@@ -956,14 +956,6 @@ func (o *S3Proxy) uploadFolder(
 		}
 	}
 
-	err = o.NewFolderWithSignedUrl(ctx, "", taskId)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"S3Proxy:NewFolderWithSignedUrl failed.",
-			" err: ", err)
-		return err
-	}
-
 	pool, err := ants.NewPool(DefaultS3UploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(

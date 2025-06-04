@@ -283,21 +283,6 @@ func (o *ParaCloud) uploadFolder(
 		}
 	}
 
-	path := targetPath + filepath.Base(sourcePath)
-
-	paraCloudMkdirInput := ParaCloudMkdirInput{}
-	paraCloudMkdirInput.SourceFolder = sourcePath
-	paraCloudMkdirInput.TargetFolder = path
-	err = o.Mkdir(ctx, paraCloudMkdirInput)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"ParaCloud.Mkdir failed.",
-			" sourcePath: ", sourcePath,
-			" path: ", path,
-			" err: ", err)
-		return err
-	}
-
 	pool, err := ants.NewPool(DefaultParaCloudUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(

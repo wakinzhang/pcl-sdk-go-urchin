@@ -7,8 +7,6 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
-	"os"
-	"path/filepath"
 )
 
 func UploadByProxy(
@@ -41,21 +39,6 @@ func UploadByProxy(
 	uploadObjectReq := new(UploadObjectReq)
 	uploadObjectReq.UserId = userId
 	uploadObjectReq.Name = objectName
-
-	stat, err := os.Stat(sourcePath)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
-		return err
-	}
-	if stat.IsDir() {
-		uploadObjectReq.Type = DataObjectTypeEFolder
-	} else {
-		uploadObjectReq.Type = DataObjectTypeEFile
-	}
-	uploadObjectReq.Source = filepath.Base(sourcePath)
 	uploadObjectReq.SourceLocalPath = sourcePath
 
 	err, uploadObjectResp := UClient.UploadObject(ctx, uploadObjectReq)

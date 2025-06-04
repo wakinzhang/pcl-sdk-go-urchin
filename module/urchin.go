@@ -59,9 +59,6 @@ const (
 	StorageCategoryEScow      = 8
 	StorageCategoryESugon     = 9
 
-	DataObjectTypeEFile   = 1
-	DataObjectTypeEFolder = 2
-
 	TaskTypeUpload       = 1
 	TaskTypeDownload     = 2
 	TaskTypeMigrate      = 3
@@ -254,16 +251,10 @@ type CreateObjectReq struct {
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"name"
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name"`
-	// @inject_tag: json:"type"
-	Type int32 `protobuf:"varint,3,opt,name=type,proto3" json:"type"`
-	// @inject_tag: json:"source"
-	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source"`
-	// @inject_tag: json:"size"
-	Size *int32 `protobuf:"varint,5,opt,name=size,proto3,oneof" json:"size"`
 	// @inject_tag: json:"desc"
-	Desc *string `protobuf:"bytes,6,opt,name=desc,proto3,oneof" json:"desc"`
+	Desc *string `protobuf:"bytes,3,opt,name=desc,proto3,oneof" json:"desc"`
 	// @inject_tag: json:"node_name"
-	NodeName *string `protobuf:"bytes,7,opt,name=node_name,proto3,oneof" json:"node_name"`
+	NodeName *string `protobuf:"bytes,4,opt,name=node_name,proto3,oneof" json:"node_name"`
 }
 
 type CreateObjectResp struct {
@@ -282,18 +273,12 @@ type UploadObjectReq struct {
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"name"
 	Name string `protobuf:"bytes,2,opt,name=name,proto3" json:"name"`
-	// @inject_tag: json:"type"
-	Type int32 `protobuf:"varint,3,opt,name=type,proto3" json:"type"`
-	// @inject_tag: json:"source"
-	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source"`
 	// @inject_tag: json:"source_local_path"
-	SourceLocalPath string `protobuf:"bytes,5,opt,name=source_local_path,proto3" json:"source_local_path"`
-	// @inject_tag: json:"size"
-	Size *int32 `protobuf:"varint,6,opt,name=size,proto3,oneof" json:"size"`
+	SourceLocalPath string `protobuf:"bytes,3,opt,name=source_local_path,proto3" json:"source_local_path"`
 	// @inject_tag: json:"desc"
-	Desc *string `protobuf:"bytes,7,opt,name=desc,proto3,oneof" json:"desc"`
+	Desc *string `protobuf:"bytes,4,opt,name=desc,proto3,oneof" json:"desc"`
 	// @inject_tag: json:"node_name"
-	NodeName *string `protobuf:"bytes,8,opt,name=node_name,proto3,oneof" json:"node_name"`
+	NodeName *string `protobuf:"bytes,5,opt,name=node_name,proto3,oneof" json:"node_name"`
 }
 
 type UploadObjectTaskParams struct {
@@ -448,30 +433,24 @@ type GetObjectRespData struct {
 type DataObj struct {
 	// @inject_tag: json:"id" xorm:"pk autoincr"
 	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id" xorm:"pk autoincr"`
-	// @inject_tag: json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象唯一标识')"
+	// @inject_tag: json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"
 	Uuid string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"`
-	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象名称')"
+	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"
 	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"`
-	// @inject_tag: json:"source" xorm:"VARCHAR(1024) NOT NULL DEFAULT ” comment('数据对象资源')"
-	Source string `protobuf:"bytes,4,opt,name=source,proto3" json:"source" xorm:"VARCHAR(1024) NOT NULL DEFAULT ” comment('数据对象资源')"`
-	// @inject_tag: json:"type" xorm:"INT notnull default(0) comment('数据对象类型，1：文件；2：文件夹')"
-	Type int32 `protobuf:"varint,5,opt,name=type,proto3" json:"type" xorm:"INT notnull default(0) comment('数据对象类型，1：文件；2：文件夹')"`
 	// @inject_tag: json:"desc" xorm:"TEXT comment('数据对象描述信息')"
-	Desc string `protobuf:"bytes,6,opt,name=desc,proto3" json:"desc" xorm:"TEXT comment('数据对象描述信息')"`
-	// @inject_tag: json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"
-	Size int32 `protobuf:"varint,7,opt,name=size,proto3" json:"size" xorm:"INT notnull default(0) comment('数据对象大小，单位字节')"`
+	Desc string `protobuf:"bytes,4,opt,name=desc,proto3" json:"desc" xorm:"TEXT comment('数据对象描述信息')"`
 	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"
-	Status int32 `protobuf:"varint,8,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"`
-	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('数据对象关联用户id')"
-	UserId string `protobuf:"bytes,9,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"`
+	Status int32 `protobuf:"varint,5,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"`
+	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"
+	UserId string `protobuf:"bytes,6,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"`
 	// @inject_tag: json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"
-	Version int32 `protobuf:"varint,10,opt,name=version,proto3" json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"`
+	Version int32 `protobuf:"varint,7,opt,name=version,proto3" json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"`
 	// @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
-	CreateTime string `protobuf:"bytes,11,opt,name=create_time,proto3" json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"`
+	CreateTime string `protobuf:"bytes,8,opt,name=create_time,proto3" json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"`
 	// @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
-	UpdateTime string `protobuf:"bytes,12,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
+	UpdateTime string `protobuf:"bytes,9,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
 	// @inject_tag: json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"
-	DeleteTime string `protobuf:"bytes,13,opt,name=delete_time,proto3" json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"`
+	DeleteTime string `protobuf:"bytes,10,opt,name=delete_time,proto3" json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"`
 }
 
 type DownloadObjectReq struct {
@@ -549,8 +528,6 @@ type MigrateObjectTaskParams struct {
 	TargetNodeType int32 `protobuf:"varint,9,opt,name=target_node_type,proto3" json:"target_node_type"`
 	// @inject_tag: json:"target_location"
 	TargetLocation string `protobuf:"bytes,10,opt,name=target_location,proto3" json:"target_location"`
-	// @inject_tag: json:"data_object_type"
-	DataObjectType int32 `protobuf:"varint,11,opt,name=data_object_type,proto3" json:"data_object_type"`
 }
 
 type MigrateObjectResp struct {
@@ -580,8 +557,6 @@ type MigrateObjectResp struct {
 	TargetNodeType int32 `protobuf:"varint,12,opt,name=target_node_type,proto3" json:"target_node_type"`
 	// @inject_tag: json:"target_location"
 	TargetLocation string `protobuf:"bytes,13,opt,name=target_location,proto3" json:"target_location"`
-	// @inject_tag: json:"data_object_type"
-	DataObjectType int32 `protobuf:"varint,14,opt,name=data_object_type,proto3" json:"data_object_type"`
 }
 
 type CopyObjectReq struct {

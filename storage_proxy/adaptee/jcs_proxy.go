@@ -494,15 +494,6 @@ func (o *JCSProxy) uploadFolder(
 		}
 	}
 
-	objectPath := filepath.Base(sourcePath) + "/"
-	err = o.NewFolderWithSignedUrl(ctx, objectPath, taskId)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"S3:NewFolderWithSignedUrl failed.",
-			" err: ", err)
-		return err
-	}
-
 	pool, err := ants.NewPool(DefaultJCSUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -543,20 +534,17 @@ func (o *JCSProxy) uploadFolder(
 						isAllSuccess = false
 					}
 				}()
-				relFilePath, _err := filepath.Rel(
-					filepath.Dir(sourcePath),
-					filePath)
+				objectKey, _err := filepath.Rel(sourcePath, filePath)
 				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
 						" sourcePath: ", sourcePath,
 						" filePath: ", filePath,
-						" relFilePath: ", relFilePath,
+						" objectKey: ", objectKey,
 						" err: ", _err)
 					return
 				}
-				objectKey := objectPath + relFilePath
 
 				if _, exists := fileMap[objectKey]; exists {
 					Logger.WithContext(ctx).Info(

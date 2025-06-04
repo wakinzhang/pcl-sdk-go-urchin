@@ -307,19 +307,6 @@ func (o *Scow) uploadFolder(
 		}
 	}
 
-	path := targetPath + filepath.Base(sourcePath)
-
-	scowMkdirInput := ScowMkdirInput{}
-	scowMkdirInput.Path = path
-	err = o.Mkdir(ctx, scowMkdirInput)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"Scow.Mkdir failed.",
-			" path: ", path,
-			" err: ", err)
-		return err
-	}
-
 	pool, err := ants.NewPool(DefaultScowUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -390,7 +377,7 @@ func (o *Scow) uploadFolder(
 
 					input := ScowMkdirInput{}
 					input.Path = objectPath
-					_err = o.Mkdir(ctx, scowMkdirInput)
+					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
