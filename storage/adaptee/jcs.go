@@ -327,19 +327,6 @@ func (o *JCS) uploadFolder(
 		}
 	}
 
-	jcsMkdirInput := JCSMkdirInput{}
-	jcsMkdirInput.PackageId = packageId
-	jcsMkdirInput.Path = targetPath
-	err = o.Mkdir(ctx, jcsMkdirInput)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"JCS.Mkdir failed.",
-			" packageId: ", packageId,
-			" targetPath: ", targetPath,
-			" err: ", err)
-		return err
-	}
-
 	pool, err := ants.NewPool(DefaultJCSUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
