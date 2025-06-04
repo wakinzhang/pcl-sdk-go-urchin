@@ -307,6 +307,17 @@ func (o *Scow) uploadFolder(
 		}
 	}
 
+	scowMkdirInput := ScowMkdirInput{}
+	scowMkdirInput.Path = targetPath
+	err = o.Mkdir(ctx, scowMkdirInput)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Scow.Mkdir failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultScowUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(

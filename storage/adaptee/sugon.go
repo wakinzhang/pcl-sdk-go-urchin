@@ -299,6 +299,17 @@ func (o *Sugon) uploadFolder(
 		}
 	}
 
+	sugonMkdirInput := SugonMkdirInput{}
+	sugonMkdirInput.Path = targetPath
+	err = o.Mkdir(ctx, sugonMkdirInput)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"Sugon.Mkdir failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultSugonUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(

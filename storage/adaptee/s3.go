@@ -203,6 +203,17 @@ func (o *S3) uploadFolder(
 		}
 	}
 
+	s3MkdirInput := S3MkdirInput{}
+	s3MkdirInput.ObjectKey = targetPath
+	err = o.Mkdir(ctx, s3MkdirInput)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"S3:Mkdir failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultS3UploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(

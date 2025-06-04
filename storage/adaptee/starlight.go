@@ -290,6 +290,17 @@ func (o *StarLight) uploadFolder(
 		}
 	}
 
+	starLightMkdirInput := StarLightMkdirInput{}
+	starLightMkdirInput.Target = targetPath
+	err = o.Mkdir(ctx, starLightMkdirInput)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"StarLight.Mkdir failed.",
+			" targetPath: ", targetPath,
+			" err: ", err)
+		return err
+	}
+
 	pool, err := ants.NewPool(DefaultSLUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
