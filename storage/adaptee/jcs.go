@@ -78,6 +78,7 @@ func (o *JCS) Mkdir(
 
 	if jcsMkdirInput, ok := input.(JCSMkdirInput); ok {
 		packageId = jcsMkdirInput.PackageId
+		path = jcsMkdirInput.Path
 	} else {
 		Logger.WithContext(ctx).Error(
 			"input param invalid.")
