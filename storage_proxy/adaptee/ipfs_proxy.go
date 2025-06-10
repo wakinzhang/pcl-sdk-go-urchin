@@ -110,17 +110,17 @@ func (o *IPFSProxy) uploadObject(
 		objUuid = uploadObjectTaskParams.Uuid
 		nodeName = uploadObjectTaskParams.NodeName
 	} else if TaskTypeMigrate == task.Type {
-		migrateObjectTaskParams := new(MigrateObjectTaskParams)
-		err = json.Unmarshal([]byte(task.Params), migrateObjectTaskParams)
+		loadObjectTaskParams := new(LoadObjectTaskParams)
+		err = json.Unmarshal([]byte(task.Params), loadObjectTaskParams)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"MigrateObjectTaskParams Unmarshal failed.",
+				"LoadObjectTaskParams Unmarshal failed.",
 				" params: ", task.Params,
 				" err: ", err)
 			return err
 		}
-		objUuid = migrateObjectTaskParams.Request.ObjUuid
-		nodeName = migrateObjectTaskParams.Request.TargetNodeName
+		objUuid = loadObjectTaskParams.Request.ObjUuid
+		nodeName = loadObjectTaskParams.Request.TargetNodeName
 	} else {
 		Logger.WithContext(ctx).Error(
 			"task type invalid.",
@@ -332,13 +332,13 @@ func (o *IPFSProxy) Download(
 		prePath = targetPath + "/" + hash
 		postPath = targetPath + "/" + taskParams.Request.ObjUuid
 	} else if TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
-		taskParams := new(MigrateObjectTaskParams)
+		taskParams := new(LoadObjectTaskParams)
 		err = json.Unmarshal(
 			[]byte(getTaskResp.Data.List[0].Task.Params),
 			taskParams)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"MigrateObjectTaskParams Unmarshal failed.",
+				"LoadObjectTaskParams Unmarshal failed.",
 				" params: ", getTaskResp.Data.List[0].Task.Params,
 				" err: ", err)
 			return err

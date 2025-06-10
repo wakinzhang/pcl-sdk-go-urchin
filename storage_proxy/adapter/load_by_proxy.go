@@ -10,7 +10,7 @@ import (
 	"os"
 )
 
-func MigrateByProxy(
+func LoadByProxy(
 	userId string,
 	token string,
 	urchinServiceAddr string,
@@ -26,7 +26,7 @@ func MigrateByProxy(
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
 	Logger.WithContext(ctx).Debug(
-		"MigrateByProxy start.",
+		"LoadByProxy start.",
 		" userId: ", userId,
 		" token: ", "***",
 		" objUuid: ", objUuid,
@@ -43,47 +43,47 @@ func MigrateByProxy(
 		DefaultUClientReqTimeout,
 		DefaultUClientMaxConnection)
 
-	migrateObjectReq := new(MigrateObjectReq)
-	migrateObjectReq.UserId = userId
-	migrateObjectReq.ObjUuid = objUuid
+	loadObjectReq := new(LoadObjectReq)
+	loadObjectReq.UserId = userId
+	loadObjectReq.ObjUuid = objUuid
 	if nil != sourceNodeName {
-		migrateObjectReq.SourceNodeName = sourceNodeName
+		loadObjectReq.SourceNodeName = sourceNodeName
 	}
-	migrateObjectReq.TargetNodeName = targetNodeName
-	migrateObjectReq.CacheLocalPath = cachePath
+	loadObjectReq.TargetNodeName = targetNodeName
+	loadObjectReq.CacheLocalPath = cachePath
 
-	err, migrateObjectResp := UClient.MigrateObject(ctx, migrateObjectReq)
+	err, loadObjectResp := UClient.LoadObject(ctx, loadObjectReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"UrchinClient.MigrateObject  failed.",
+			"UrchinClient.LoadObject  failed.",
 			" err: ", err)
 		return err
 	}
 
-	fmt.Printf("Migrate TaskId: %d\n", migrateObjectResp.TaskId)
+	fmt.Printf("Load TaskId: %d\n", loadObjectResp.TaskId)
 
-	err = ProcessMigrateByProxy(
+	err = ProcessLoadByProxy(
 		ctx,
 		userId,
 		cachePath,
 		objUuid,
-		migrateObjectResp.SourceBucketName,
-		migrateObjectResp.TaskId,
-		migrateObjectResp.SourceNodeType,
-		migrateObjectResp.TargetNodeType,
+		loadObjectResp.SourceBucketName,
+		loadObjectResp.TaskId,
+		loadObjectResp.SourceNodeType,
+		loadObjectResp.TargetNodeType,
 		needPure)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessMigrateByProxy failed.",
+			"ProcessLoadByProxy failed.",
 			" err: ", err)
 		return err
 	}
 	Logger.WithContext(ctx).Debug(
-		"MigrateByProxy finish.")
+		"LoadByProxy finish.")
 	return err
 }
 
-func ProcessMigrateByProxy(
+func ProcessLoadByProxy(
 	ctx context.Context,
 	userId,
 	cachePath,
@@ -95,7 +95,7 @@ func ProcessMigrateByProxy(
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ProcessMigrateByProxy start.",
+		"ProcessLoadByProxy start.",
 		" userId: ", userId,
 		" cachePath: ", cachePath,
 		" objUuid: ", objUuid,
@@ -105,13 +105,13 @@ func ProcessMigrateByProxy(
 		" targetNodeType: ", targetNodeType,
 		" needPure: ", needPure)
 
-	migrateDownloadFinishFile :=
-		cachePath + objUuid + ".migrate_download_finish"
+	loadDownloadFinishFile :=
+		cachePath + objUuid + ".load_download_finish"
 
-	migrateUploadFinishFile :=
-		cachePath + objUuid + ".migrate_upload_finish"
+	loadUploadFinishFile :=
+		cachePath + objUuid + ".load_upload_finish"
 
-	migrateCachePath := cachePath + "/" + objUuid
+	loadCachePath := cachePath + "/" + objUuid
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
@@ -129,61 +129,61 @@ func ProcessMigrateByProxy(
 				" err: ", err)
 			return
 		}
-		_err := os.RemoveAll(migrateCachePath)
+		_err := os.RemoveAll(loadCachePath)
 		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" migrateCachePath: ", migrateCachePath,
+				" loadCachePath: ", loadCachePath,
 				" err: ", _err)
 		}
-		_err = os.Remove(migrateDownloadFinishFile)
+		_err = os.Remove(loadDownloadFinishFile)
 		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+				" loadDownloadFinishFile: ", loadDownloadFinishFile,
 				" err: ", _err)
 		}
-		_err = os.Remove(migrateUploadFinishFile)
+		_err = os.Remove(loadUploadFinishFile)
 		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" migrateUploadFinishFile: ", migrateUploadFinishFile,
+				" loadUploadFinishFile: ", loadUploadFinishFile,
 				" err: ", _err)
 		}
 	}()
 
 	if needPure {
-		err = os.RemoveAll(migrateCachePath)
+		err = os.RemoveAll(loadCachePath)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" migrateCachePath: ", migrateCachePath,
+				" loadCachePath: ", loadCachePath,
 				" err: ", err)
 			return err
 		}
-		err = os.Remove(migrateDownloadFinishFile)
+		err = os.Remove(loadDownloadFinishFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
 				Logger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+					" loadDownloadFinishFile: ", loadDownloadFinishFile,
 					" err: ", err)
 				return err
 			}
 		}
-		err = os.Remove(migrateUploadFinishFile)
+		err = os.Remove(loadUploadFinishFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
 				Logger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" migrateUploadFinishFile: ", migrateUploadFinishFile,
+					" loadUploadFinishFile: ", loadUploadFinishFile,
 					" err: ", err)
 				return err
 			}
 		}
 	}
 
-	_, err = os.Stat(migrateDownloadFinishFile)
+	_, err = os.Stat(loadDownloadFinishFile)
 	if nil != err {
 		if os.IsNotExist(err) {
 			err, sourceStorage := NewStorageProxy(ctx, sourceNodeType)
@@ -206,24 +206,24 @@ func ProcessMigrateByProxy(
 					" err: ", err)
 				return err
 			}
-			_, err = os.Create(migrateDownloadFinishFile)
+			_, err = os.Create(loadDownloadFinishFile)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"os.Create failed.",
-					" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+					" loadDownloadFinishFile: ", loadDownloadFinishFile,
 					" err: ", err)
 				return err
 			}
 		} else {
 			Logger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" migrateDownloadFinishFile: ", migrateDownloadFinishFile,
+				" loadDownloadFinishFile: ", loadDownloadFinishFile,
 				" err: ", err)
 			return err
 		}
 	}
 
-	_, err = os.Stat(migrateUploadFinishFile)
+	_, err = os.Stat(loadUploadFinishFile)
 	if nil != err {
 		if os.IsNotExist(err) {
 			err, targetStorage := NewStorageProxy(ctx, targetNodeType)
@@ -233,24 +233,24 @@ func ProcessMigrateByProxy(
 					" err: ", err)
 				return err
 			}
-			entries, err := os.ReadDir(migrateCachePath)
+			entries, err := os.ReadDir(loadCachePath)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"os.ReadDir failed.",
-					" migrateCachePath: ", migrateCachePath,
+					" loadCachePath: ", loadCachePath,
 					" err: ", err)
 				return err
 			}
 			if 0 == len(entries) {
 				Logger.WithContext(ctx).Error(
 					"object cache empty.",
-					" migrateCachePath: ", migrateCachePath)
+					" loadCachePath: ", loadCachePath)
 				return err
 			}
 			err = targetStorage.Upload(
 				ctx,
 				userId,
-				migrateCachePath+"/"+entries[0].Name(),
+				loadCachePath+"/"+entries[0].Name(),
 				taskId,
 				needPure)
 			if nil != err {
@@ -259,23 +259,23 @@ func ProcessMigrateByProxy(
 					" err: ", err)
 				return err
 			}
-			_, err = os.Create(migrateUploadFinishFile)
+			_, err = os.Create(loadUploadFinishFile)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"os.Create failed.",
-					" migrateUploadFinishFile: ", migrateUploadFinishFile,
+					" loadUploadFinishFile: ", loadUploadFinishFile,
 					" err: ", err)
 				return err
 			}
 		} else {
 			Logger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" migrateUploadFinishFile: ", migrateUploadFinishFile,
+				" loadUploadFinishFile: ", loadUploadFinishFile,
 				" err: ", err)
 			return err
 		}
 	}
 	Logger.WithContext(ctx).Debug(
-		"ProcessMigrateByProxy finish.")
+		"ProcessLoadByProxy finish.")
 	return nil
 }

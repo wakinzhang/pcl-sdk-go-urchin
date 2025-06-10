@@ -1243,13 +1243,13 @@ func (u *UrchinClient) DownloadFile(
 	return nil, resp
 }
 
-func (u *UrchinClient) MigrateObject(
+func (u *UrchinClient) LoadObject(
 	ctx context.Context,
-	req *MigrateObjectReq) (
-	err error, resp *MigrateObjectResp) {
+	req *LoadObjectReq) (
+	err error, resp *LoadObjectResp) {
 
 	Logger.WithContext(ctx).Debug(
-		"UrchinClient:MigrateObject start.")
+		"UrchinClient:LoadObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
@@ -1261,10 +1261,10 @@ func (u *UrchinClient) MigrateObject(
 	Logger.WithContext(ctx).Debug(
 		"request: ", string(reqBody))
 
-	resp = new(MigrateObjectResp)
+	resp = new(LoadObjectResp)
 	err, respBody := Do(
 		ctx,
-		u.addr+UrchinClientMigrateObjectInterface,
+		u.addr+UrchinClientLoadObjectInterface,
 		http.MethodPut,
 		u.header,
 		reqBody,
@@ -1297,7 +1297,7 @@ func (u *UrchinClient) MigrateObject(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"UrchinClient:MigrateObject finish.")
+		"UrchinClient:LoadObject finish.")
 	return nil, resp
 }
 

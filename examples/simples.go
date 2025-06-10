@@ -3,7 +3,7 @@ package main
 import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adapter"
-	//. "github.com/wakinzhang/pcl-sdk-go-urchin/operation"
+	//. "pcl-sdk-go-urchin/operation"
 )
 
 var (
@@ -16,40 +16,43 @@ func main() {
 	InitLog(logPath, logFile, 6)
 
 	/*上传数据对象*/
-	/**/
-	var objectName = "wakinzhang-test-obj-20250519-3"
-	//var sourcePath = "/Users/zhangjiayuan/Downloads/source/"
-	var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
-	//var sourcePath = "/Users/zhangjiayuan/Downloads/source/diversicus.mp4"
-
-	_ = UploadByProxy(
-		DefaultUrchinClientUserId,
-		DefaultUrchinClientToken,
-		urchinServiceAddr,
-		sourcePath,
-		objectName)
-
-	/*下载数据对象*/
 	/*
-		var objUuid = "3c4661a1-c3d5-41fd-990b-f70badbf0fa2"
-		var targetPath = "/Users/zhangjiayuan/Downloads/target/"
+		var objectName = "wakinzhang-test-obj-20250604-4"
+		//var sourcePath = "/Users/zhangjiayuan/Downloads/source/"
+		var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
+		//var sourcePath = "/Users/zhangjiayuan/Downloads/empty"
+		//var sourcePath = "/Users/zhangjiayuan/Downloads/source/diversicus.mp4"
 
-		_ = DownloadByProxy(
+		_ = UploadByProxy(
 			DefaultUrchinClientUserId,
 			DefaultUrchinClientToken,
 			urchinServiceAddr,
-			objUuid,
-			targetPath)
+			sourcePath,
+			objectName)
 	*/
 
-	/*迁移数据对象，可不清理断点续传信息，可重试迁移，needPure默认置false*/
+	/*下载数据对象*/
+	/**/
+	//var objUuid = "3c4661a1-c3d5-41fd-990b-f70badbf0fa2"
+	//var objUuid = "d5db75c9-2220-4d8c-933f-55160a566a01"
+	var objUuid = "2e9bc8bb-bdf2-4092-9aa3-789184c892d0"
+	var targetPath = "/Users/zhangjiayuan/Downloads/target/"
+
+	_ = DownloadByProxy(
+		DefaultUrchinClientUserId,
+		DefaultUrchinClientToken,
+		urchinServiceAddr,
+		objUuid,
+		targetPath)
+
+	/*导入数据对象，可不清理断点续传信息，可重试导入，needPure默认置false*/
 	/*
 		var objUuid = ""
 		var sourceNodeName = "test-ipfs"
 		var targetNodeName = "chengdu-obs"
 		var cachePath = "/Users/zhangjiayuan/Downloads/cache/"
 
-		_ = MigrateByProxy(
+		_ = LoadByProxy(
 			DefaultUrchinClientUserId,
 			DefaultUrchinClientToken,
 			urchinServiceAddr,

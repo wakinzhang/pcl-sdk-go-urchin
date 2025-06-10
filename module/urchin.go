@@ -32,7 +32,7 @@ const (
 	UrchinClientCreateObjectInterface           = "/v1/object/create"
 	UrchinClientUploadObjectInterface           = "/v1/object/upload"
 	UrchinClientDownloadObjectInterface         = "/v1/object/download"
-	UrchinClientMigrateObjectInterface          = "/v1/object/migrate"
+	UrchinClientLoadObjectInterface             = "/v1/object/load"
 	UrchinClientCopyObjectInterface             = "/v1/object/copy"
 	UrchinClientGetObjectInterface              = "/v1/object"
 	UrchinClientDeleteObjectInterface           = "/v1/object"
@@ -494,7 +494,7 @@ type DownloadObjectResp struct {
 	BucketName string `protobuf:"bytes,6,opt,name=bucket_name,proto3" json:"bucket_name"`
 }
 
-type MigrateObjectReq struct {
+type LoadObjectReq struct {
 	// @inject_tag: json:"user_id"
 	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
 	// @inject_tag: json:"obj_uuid"
@@ -507,9 +507,9 @@ type MigrateObjectReq struct {
 	CacheLocalPath string `protobuf:"bytes,5,opt,name=cache_local_path,proto3" json:"cache_local_path"`
 }
 
-type MigrateObjectTaskParams struct {
+type LoadObjectTaskParams struct {
 	// @inject_tag: json:"request"
-	Request *MigrateObjectReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
+	Request *LoadObjectReq `protobuf:"bytes,1,opt,name=request,proto3" json:"request"`
 	// @inject_tag: json:"source_node_id"
 	SourceNodeId int32 `protobuf:"varint,2,opt,name=source_node_id,proto3" json:"source_node_id"`
 	// @inject_tag: json:"source_node_name"
@@ -530,7 +530,7 @@ type MigrateObjectTaskParams struct {
 	TargetLocation string `protobuf:"bytes,10,opt,name=target_location,proto3" json:"target_location"`
 }
 
-type MigrateObjectResp struct {
+type LoadObjectResp struct {
 	// @inject_tag: json:"code"
 	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
 	// @inject_tag: json:"message"

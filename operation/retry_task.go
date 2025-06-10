@@ -128,7 +128,7 @@ func RetryTask(
 			return err
 		}
 	case TaskTypeMigrate:
-		err = processRetryMigrateTask(
+		err = processRetryLoadTask(
 			ctx,
 			userId,
 			task,
@@ -136,7 +136,7 @@ func RetryTask(
 			needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"processRetryMigrateTask failed.",
+				"processRetryLoadTask failed.",
 				" err: ", err)
 			return err
 		}
@@ -316,7 +316,7 @@ func processRetryDownloadFileTask(
 	return err
 }
 
-func processRetryMigrateTask(
+func processRetryLoadTask(
 	ctx context.Context,
 	userId string,
 	task *Task,
@@ -324,39 +324,39 @@ func processRetryMigrateTask(
 	needPure bool) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"processRetryMigrateTask start.",
+		"processRetryLoadTask start.",
 		" userId: ", userId,
 		" taskId: ", taskId,
 		" needPure: ", needPure,
 		" taskParams: ", task.Params)
 
-	migrateObjectTaskParams := new(MigrateObjectTaskParams)
-	err = json.Unmarshal([]byte(task.Params), migrateObjectTaskParams)
+	loadObjectTaskParams := new(LoadObjectTaskParams)
+	err = json.Unmarshal([]byte(task.Params), loadObjectTaskParams)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"MigrateObjectTaskParams Unmarshal failed.",
+			"LoadObjectTaskParams Unmarshal failed.",
 			" err: ", err)
 		return err
 	}
 
-	err = ProcessMigrateByProxy(
+	err = ProcessLoadByProxy(
 		ctx,
 		userId,
-		migrateObjectTaskParams.Request.CacheLocalPath,
-		migrateObjectTaskParams.Request.ObjUuid,
-		migrateObjectTaskParams.SourceBucketName,
+		loadObjectTaskParams.Request.CacheLocalPath,
+		loadObjectTaskParams.Request.ObjUuid,
+		loadObjectTaskParams.SourceBucketName,
 		taskId,
-		migrateObjectTaskParams.SourceNodeType,
-		migrateObjectTaskParams.TargetNodeType,
+		loadObjectTaskParams.SourceNodeType,
+		loadObjectTaskParams.TargetNodeType,
 		needPure)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ProcessMigrateByProxy failed.",
+			"ProcessLoadByProxy failed.",
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"processRetryMigrateTask finish.")
+		"processRetryLoadTask finish.")
 	return err
 }
