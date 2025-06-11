@@ -89,7 +89,7 @@ func (o *IPFSProxy) uploadObject(
 	ctx context.Context,
 	userId string,
 	sourcePath string,
-	task *Task) (err error) {
+	task *TaskData) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"IPFSProxy:uploadObject start.",
@@ -236,7 +236,7 @@ func (o *IPFSProxy) uploadObject(
 func (o *IPFSProxy) uploadFile(
 	ctx context.Context,
 	sourcePath string,
-	task *Task) (err error) {
+	task *TaskData) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"IPFSProxy:uploadFile start.",

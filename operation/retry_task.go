@@ -155,7 +155,7 @@ func RetryTask(
 func processRetryUploadTask(
 	ctx context.Context,
 	userId string,
-	task *Task,
+	task *TaskData,
 	taskId int32,
 	needPure bool) (err error) {
 
@@ -197,7 +197,7 @@ func processRetryUploadTask(
 func processRetryUploadFileTask(
 	ctx context.Context,
 	userId string,
-	task *Task,
+	task *TaskData,
 	taskId int32,
 	needPure bool) (err error) {
 
@@ -239,7 +239,7 @@ func processRetryUploadFileTask(
 func processRetryDownloadTask(
 	ctx context.Context,
 	userId string,
-	task *Task,
+	task *TaskData,
 	taskId int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
@@ -279,7 +279,7 @@ func processRetryDownloadTask(
 func processRetryDownloadFileTask(
 	ctx context.Context,
 	userId string,
-	task *Task,
+	task *TaskData,
 	taskId int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
@@ -319,7 +319,7 @@ func processRetryDownloadFileTask(
 func processRetryLoadTask(
 	ctx context.Context,
 	userId string,
-	task *Task,
+	task *TaskData,
 	taskId int32,
 	needPure bool) (err error) {
 

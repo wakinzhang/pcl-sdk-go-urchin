@@ -427,30 +427,30 @@ type GetObjectRespData struct {
 	// @inject_tag: json:"total"
 	Total int32 `protobuf:"varint,1,opt,name=total,proto3" json:"total"`
 	// @inject_tag: json:"list"
-	List []*DataObj `protobuf:"bytes,2,rep,name=list,proto3" json:"list"`
+	List []*DataObjData `protobuf:"bytes,2,rep,name=list,proto3" json:"list"`
 }
 
-type DataObj struct {
-	// @inject_tag: json:"id" xorm:"pk autoincr"
-	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id" xorm:"pk autoincr"`
-	// @inject_tag: json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"
-	Uuid string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"`
-	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象名称')"`
-	// @inject_tag: json:"desc" xorm:"TEXT comment('数据对象描述信息')"
-	Desc string `protobuf:"bytes,4,opt,name=desc,proto3" json:"desc" xorm:"TEXT comment('数据对象描述信息')"`
-	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"
-	Status int32 `protobuf:"varint,5,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('数据对象状态，0：初始状态；1：上传中；2：复制中；3：正常状态；4：操作中；5：已删除；6：上传失败；7：复制失败')"`
-	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"
-	UserId string `protobuf:"bytes,6,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象关联用户id')"`
-	// @inject_tag: json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"
-	Version int32 `protobuf:"varint,7,opt,name=version,proto3" json:"version" xorm:"version BIGINT notnull default(0) comment('版本控制')"`
-	// @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
-	CreateTime string `protobuf:"bytes,8,opt,name=create_time,proto3" json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"`
-	// @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
-	UpdateTime string `protobuf:"bytes,9,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
-	// @inject_tag: json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"
-	DeleteTime string `protobuf:"bytes,10,opt,name=delete_time,proto3" json:"delete_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('记录删除时间')"`
+type DataObjData struct {
+	// @inject_tag: json:"id"
+	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id"`
+	// @inject_tag: json:"uuid"
+	Uuid string `protobuf:"bytes,2,opt,name=uuid,proto3" json:"uuid"`
+	// @inject_tag: json:"name"
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name"`
+	// @inject_tag: json:"desc"
+	Desc string `protobuf:"bytes,4,opt,name=desc,proto3" json:"desc"`
+	// @inject_tag: json:"status"
+	Status int32 `protobuf:"varint,5,opt,name=status,proto3" json:"status"`
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,6,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"version"
+	Version int32 `protobuf:"varint,7,opt,name=version,proto3" json:"version"`
+	// @inject_tag: json:"create_time"
+	CreateTime string `protobuf:"bytes,8,opt,name=create_time,proto3" json:"create_time"`
+	// @inject_tag: json:"update_time"
+	UpdateTime string `protobuf:"bytes,9,opt,name=update_time,proto3" json:"update_time"`
+	// @inject_tag: json:"delete_time"
+	DeleteTime string `protobuf:"bytes,10,opt,name=delete_time,proto3" json:"delete_time"`
 }
 
 type DownloadObjectReq struct {
@@ -748,63 +748,63 @@ type GetTaskRespData struct {
 
 type TaskDetail struct {
 	// @inject_tag: json:"task"
-	Task *Task `protobuf:"bytes,1,opt,name=task,proto3" json:"task"`
+	Task *TaskData `protobuf:"bytes,1,opt,name=task,proto3" json:"task"`
 	// @inject_tag: json:"execs"
-	Execs []*TaskExec `protobuf:"bytes,2,rep,name=execs,proto3" json:"execs"`
+	Execs []*TaskExecData `protobuf:"bytes,2,rep,name=execs,proto3" json:"execs"`
 }
 
-type Task struct {
-	// @inject_tag: json:"id" xorm:"pk autoincr"
-	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id" xorm:"pk autoincr"`
-	// @inject_tag: json:"type" xorm:"INT notnull default(0) comment('任务类型，1：上传；2：下载；3：迁移；4：删除')"
-	Type int32 `protobuf:"varint,2,opt,name=type,proto3" json:"type" xorm:"INT notnull default(0) comment('任务类型，1：上传；2：下载；3：迁移；4：删除')"`
-	// @inject_tag: json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('任务名称')"
-	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('任务名称')"`
-	// @inject_tag: json:"params" xorm:"TEXT comment('任务参数')"
-	Params string `protobuf:"bytes,4,opt,name=params,proto3" json:"params" xorm:"TEXT comment('任务参数')"`
-	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('任务状态，0：初始状态；1：执行中；2：执行完成；3：取消')"
-	Status int32 `protobuf:"varint,5,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('任务状态，0：初始状态；1：执行中；2：执行完成；3：取消')"`
-	// @inject_tag: json:"task_exec_id" xorm:"INT notnull default(0) comment('任务执行记录id')"
-	TaskExecId int32 `protobuf:"varint,6,opt,name=task_exec_id,proto3" json:"task_exec_id" xorm:"INT notnull default(0) comment('任务执行记录id')"`
-	// @inject_tag: json:"result" xorm:"INT notnull default(0) comment('任务执行结果，0：初始状态；1：成功；2：失败')"
-	Result int32 `protobuf:"varint,7,opt,name=result,proto3" json:"result" xorm:"INT notnull default(0) comment('任务执行结果，0：初始状态；1：成功；2：失败')"`
-	// @inject_tag: json:"return" xorm:"TEXT comment('任务返回信息')"
-	Return string `protobuf:"bytes,8,opt,name=return,proto3" json:"return" xorm:"TEXT comment('任务返回信息')"`
-	// @inject_tag: json:"obj_uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"
-	ObjUuid string `protobuf:"bytes,9,opt,name=obj_uuid,proto3" json:"obj_uuid" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('数据对象唯一标识')"`
-	// @inject_tag: json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT '' comment('任务关联用户id')"
-	UserId string `protobuf:"bytes,10,opt,name=user_id,proto3" json:"user_id" xorm:"VARCHAR(64) NOT NULL DEFAULT ” comment('任务关联用户id')"`
-	// @inject_tag: json:"start_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务开始时间')"
-	StartTime string `protobuf:"bytes,11,opt,name=start_time,proto3" json:"start_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务开始时间')"`
-	// @inject_tag: json:"finish_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务结束时间')"
-	FinishTime string `protobuf:"bytes,12,opt,name=finish_time,proto3" json:"finish_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务结束时间')"`
-	// @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
-	CreateTime string `protobuf:"bytes,13,opt,name=create_time,proto3" json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"`
-	// @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
-	UpdateTime string `protobuf:"bytes,14,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
+type TaskData struct {
+	// @inject_tag: json:"id"
+	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id"`
+	// @inject_tag: json:"type"
+	Type int32 `protobuf:"varint,2,opt,name=type,proto3" json:"type"`
+	// @inject_tag: json:"name"
+	Name string `protobuf:"bytes,3,opt,name=name,proto3" json:"name"`
+	// @inject_tag: json:"params"
+	Params string `protobuf:"bytes,4,opt,name=params,proto3" json:"params"`
+	// @inject_tag: json:"status"
+	Status int32 `protobuf:"varint,5,opt,name=status,proto3" json:"status"`
+	// @inject_tag: json:"task_exec_id"
+	TaskExecId int32 `protobuf:"varint,6,opt,name=task_exec_id,proto3" json:"task_exec_id"`
+	// @inject_tag: json:"result"
+	Result int32 `protobuf:"varint,7,opt,name=result,proto3" json:"result"`
+	// @inject_tag: json:"return"
+	Return string `protobuf:"bytes,8,opt,name=return,proto3" json:"return"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,9,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,10,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"start_time"
+	StartTime string `protobuf:"bytes,11,opt,name=start_time,proto3" json:"start_time"`
+	// @inject_tag: json:"finish_time"
+	FinishTime string `protobuf:"bytes,12,opt,name=finish_time,proto3" json:"finish_time"`
+	// @inject_tag: json:"create_time"
+	CreateTime string `protobuf:"bytes,13,opt,name=create_time,proto3" json:"create_time"`
+	// @inject_tag: json:"update_time"
+	UpdateTime string `protobuf:"bytes,14,opt,name=update_time,proto3" json:"update_time"`
 }
 
-type TaskExec struct {
-	// @inject_tag: json:"id" xorm:"pk autoincr"
-	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id" xorm:"pk autoincr"`
-	// @inject_tag: json:"task_id" xorm:"INT notnull default(0) comment('任务id')"
-	TaskId int32 `protobuf:"varint,2,opt,name=task_id,proto3" json:"task_id" xorm:"INT notnull default(0) comment('任务id')"`
-	// @inject_tag: json:"context" xorm:"TEXT comment('执行上下文')"
-	Context string `protobuf:"bytes,3,opt,name=context,proto3" json:"context" xorm:"TEXT comment('执行上下文')"`
-	// @inject_tag: json:"status" xorm:"INT notnull default(0) comment('执行状态，0：初始状态；1：执行中；2：执行完成；3：取消')"
-	Status int32 `protobuf:"varint,4,opt,name=status,proto3" json:"status" xorm:"INT notnull default(0) comment('执行状态，0：初始状态；1：执行中；2：执行完成；3：取消')"`
-	// @inject_tag: json:"result" xorm:"INT notnull default(0) comment('执行结果，0：初始状态；1：成功；2：失败')"
-	Result int32 `protobuf:"varint,5,opt,name=result,proto3" json:"result" xorm:"INT notnull default(0) comment('执行结果，0：初始状态；1：成功；2：失败')"`
-	// @inject_tag: json:"return" xorm:"TEXT comment('执行返回信息')"
-	Return string `protobuf:"bytes,6,opt,name=return,proto3" json:"return" xorm:"TEXT comment('执行返回信息')"`
-	// @inject_tag: json:"start_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务开始时间')"
-	StartTime string `protobuf:"bytes,7,opt,name=start_time,proto3" json:"start_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务开始时间')"`
-	// @inject_tag: json:"finish_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务结束时间')"
-	FinishTime string `protobuf:"bytes,8,opt,name=finish_time,proto3" json:"finish_time" xorm:"TIMESTAMP NOT NULL DEFAULT '1970-01-01 08:00:01' comment('任务结束时间')"`
-	// @inject_tag: json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"
-	CreateTime string `protobuf:"bytes,9,opt,name=create_time,proto3" json:"create_time" xorm:"TIMESTAMP notnull created comment('记录创建时间')"`
-	// @inject_tag: json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"
-	UpdateTime string `protobuf:"bytes,10,opt,name=update_time,proto3" json:"update_time" xorm:"TIMESTAMP notnull updated comment('记录变更时间')"`
+type TaskExecData struct {
+	// @inject_tag: json:"id"
+	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,2,opt,name=task_id,proto3" json:"task_id"`
+	// @inject_tag: json:"context"
+	Context string `protobuf:"bytes,3,opt,name=context,proto3" json:"context"`
+	// @inject_tag: json:"status"
+	Status int32 `protobuf:"varint,4,opt,name=status,proto3" json:"status"`
+	// @inject_tag: json:"result"
+	Result int32 `protobuf:"varint,5,opt,name=result,proto3" json:"result"`
+	// @inject_tag: json:"return"
+	Return string `protobuf:"bytes,6,opt,name=return,proto3" json:"return"`
+	// @inject_tag: json:"start_time"
+	StartTime string `protobuf:"bytes,7,opt,name=start_time,proto3" json:"start_time"`
+	// @inject_tag: json:"finish_time"
+	FinishTime string `protobuf:"bytes,8,opt,name=finish_time,proto3" json:"finish_time"`
+	// @inject_tag: json:"create_time"
+	CreateTime string `protobuf:"bytes,9,opt,name=create_time,proto3" json:"create_time"`
+	// @inject_tag: json:"update_time"
+	UpdateTime string `protobuf:"bytes,10,opt,name=update_time,proto3" json:"update_time"`
 }
 
 type FinishTaskReq struct {
