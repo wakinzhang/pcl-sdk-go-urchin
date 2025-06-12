@@ -264,6 +264,10 @@ func (o *IPFSProxy) Download(
 	taskId int32,
 	bucketName string) (err error) {
 
+	if '/' != targetPath[len(targetPath)-1] {
+		targetPath = targetPath + "/"
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"IPFSProxy:Download start.",
 		" userId: ", userId,
@@ -312,8 +316,8 @@ func (o *IPFSProxy) Download(
 		}
 		nodeName = taskParams.NodeName
 		hash = (strings.Split(taskParams.Location, "/"))[0]
-		prePath = targetPath + "/" + hash
-		postPath = targetPath + "/" + taskParams.Request.ObjUuid
+		prePath = targetPath + hash
+		postPath = targetPath + taskParams.Request.ObjUuid
 	} else if TaskTypeDownloadFile == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(DownloadFileTaskParams)
 		err = json.Unmarshal(
@@ -329,8 +333,8 @@ func (o *IPFSProxy) Download(
 		nodeName = taskParams.NodeName
 		hash = (strings.Split(taskParams.Location, "/"))[0] + "/" +
 			taskParams.Request.Source
-		prePath = targetPath + "/" + hash
-		postPath = targetPath + "/" + taskParams.Request.ObjUuid
+		prePath = targetPath + hash
+		postPath = targetPath + taskParams.Request.ObjUuid
 	} else if TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(LoadObjectTaskParams)
 		err = json.Unmarshal(
@@ -345,8 +349,8 @@ func (o *IPFSProxy) Download(
 		}
 		nodeName = taskParams.SourceNodeName
 		hash = (strings.Split(taskParams.SourceLocation, "/"))[0]
-		prePath = targetPath + "/" + hash
-		postPath = targetPath + "/" + taskParams.Request.ObjUuid
+		prePath = targetPath + hash
+		postPath = targetPath + taskParams.Request.ObjUuid
 	} else {
 		Logger.WithContext(ctx).Error(
 			"task type invalid. taskId: ", taskId)

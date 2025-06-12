@@ -1940,6 +1940,10 @@ func (o *S3Proxy) Download(
 	taskId int32,
 	bucketName string) (err error) {
 
+	if '/' != targetPath[len(targetPath)-1] {
+		targetPath = targetPath + "/"
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Download start.",
 		" userId: ", userId,

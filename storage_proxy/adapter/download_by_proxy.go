@@ -21,6 +21,10 @@ func DownloadByProxy(
 	ctx = context.Background()
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
+	if '/' != targetPath[len(targetPath)-1] {
+		targetPath = targetPath + "/"
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"DownloadByProxy start.",
 		" userId: ", userId,

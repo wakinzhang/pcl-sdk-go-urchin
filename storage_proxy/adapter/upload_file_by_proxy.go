@@ -23,6 +23,14 @@ func UploadFileByProxy(
 	ctx = context.Background()
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
+	if '/' != objPath[len(objPath)-1] {
+		objPath = objPath + "/"
+	}
+
+	if '/' != objPath[0] {
+		objPath = "/" + objPath
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"UploadFileByProxy start.",
 		" userId: ", userId,

@@ -1319,6 +1319,10 @@ func (o *JCSProxy) Download(
 	taskId int32,
 	bucketName string) (err error) {
 
+	if '/' != targetPath[len(targetPath)-1] {
+		targetPath = targetPath + "/"
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:Download start.",
 		" userId: ", userId,

@@ -66,7 +66,7 @@ func main() {
 	/*数据对象新增文件、文件夹*/
 	/*
 		var objUuid = "60d605ea-b474-492f-a269-e98a6fdec188"
-		var objPath = "empty/"
+		var objPath = "/empty/"
 		var uploadFileSourcePath = "/Users/zhangjiayuan/Downloads/upload_file"
 
 		_ = UploadFileByProxy(
@@ -82,7 +82,7 @@ func main() {
 	/*下载数据对象指定文件、文件夹*/
 	/*
 		var objUuid = "60d605ea-b474-492f-a269-e98a6fdec188"
-		var source = "small/"
+		var source = "/small/"
 		var targetPath = "/Users/zhangjiayuan/Downloads/download_file/"
 
 		_ = DownloadFileByProxy(

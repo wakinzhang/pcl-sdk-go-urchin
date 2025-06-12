@@ -25,6 +25,10 @@ func LoadByProxy(
 	ctx = context.Background()
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
+	if '/' != cachePath[len(cachePath)-1] {
+		cachePath = cachePath + "/"
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"LoadByProxy start.",
 		" userId: ", userId,
@@ -111,7 +115,7 @@ func ProcessLoadByProxy(
 	loadUploadFinishFile :=
 		cachePath + objUuid + ".load_upload_finish"
 
-	loadCachePath := cachePath + "/" + objUuid
+	loadCachePath := cachePath + objUuid
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
@@ -250,7 +254,7 @@ func ProcessLoadByProxy(
 			err = targetStorage.Upload(
 				ctx,
 				userId,
-				loadCachePath+"/"+entries[0].Name(),
+				loadCachePath,
 				taskId,
 				needPure)
 			if nil != err {

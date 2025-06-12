@@ -22,6 +22,10 @@ func DownloadFileByProxy(
 	ctx = context.Background()
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
+	if '/' != targetPath[len(targetPath)-1] {
+		targetPath = targetPath + "/"
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"DownloadFileByProxy start.",
 		" userId: ", userId,
@@ -87,6 +91,10 @@ func ProcessDownloadFileByProxy(
 		" bucketName: ", bucketName,
 		" taskId: ", taskId,
 		" nodeType: ", nodeType)
+
+	if '/' != targetPath[len(targetPath)-1] {
+		targetPath = targetPath + "/"
+	}
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
