@@ -48,6 +48,12 @@ func (o *JCSProxy) NewFolderWithSignedUrl(
 	objectPath string,
 	taskId int32) (err error) {
 
+	if 0 < len(objectPath) &&
+		'/' != objectPath[len(objectPath)-1] {
+
+		objectPath = objectPath + "/"
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:NewFolderWithSignedUrl start.",
 		" objectPath: ", objectPath,
@@ -1330,59 +1336,6 @@ func (o *JCSProxy) Download(
 		" taskId: ", taskId,
 		" bucketName: ", bucketName)
 
-	continuationToken := ""
-	for {
-		listObjectsData, err := o.ListObjectsWithSignedUrl(
-			ctx,
-			taskId,
-			continuationToken)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"JCSProxy:ListObjectsWithSignedUrl start.",
-				" taskId: ", taskId,
-				" err: ", err)
-			return err
-		}
-		err = o.downloadObjects(
-			ctx,
-			userId,
-			targetPath,
-			taskId,
-			listObjectsData)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"JCSProxy:downloadObjects failed.",
-				" userId: ", userId,
-				" targetPath: ", targetPath,
-				" taskId: ", taskId,
-				" bucketName: ", bucketName,
-				" err: ", err)
-			return err
-		}
-		if listObjectsData.IsTruncated {
-			continuationToken = listObjectsData.NextContinuationToken
-		} else {
-			break
-		}
-	}
-	Logger.WithContext(ctx).Debug(
-		"JCSProxy:Download finish.")
-	return nil
-}
-
-func (o *JCSProxy) downloadObjects(
-	ctx context.Context,
-	userId string,
-	targetPath string,
-	taskId int32,
-	listObjectsData *JCSListData) (err error) {
-
-	Logger.WithContext(ctx).Debug(
-		"JCSProxy:downloadObjects start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" taskId: ", taskId)
-
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.UserId = userId
 	getTaskReq.TaskId = &taskId
@@ -1413,12 +1366,71 @@ func (o *JCSProxy) downloadObjects(
 			" err: ", err)
 		return err
 	}
+
 	uuid := downloadObjectTaskParams.Request.ObjUuid
+	downloadFolderRecord := targetPath + uuid + ".download_folder_record"
+	targetPath = targetPath + uuid + "/"
+
+	continuationToken := ""
+	for {
+		listObjectsData, err := o.ListObjectsWithSignedUrl(
+			ctx,
+			taskId,
+			continuationToken)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"JCSProxy:ListObjectsWithSignedUrl start.",
+				" taskId: ", taskId,
+				" err: ", err)
+			return err
+		}
+		err = o.downloadObjects(
+			ctx,
+			userId,
+			targetPath,
+			taskId,
+			listObjectsData,
+			downloadFolderRecord)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"JCSProxy:downloadObjects failed.",
+				" userId: ", userId,
+				" targetPath: ", targetPath,
+				" taskId: ", taskId,
+				" bucketName: ", bucketName,
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
+			return err
+		}
+		if listObjectsData.IsTruncated {
+			continuationToken = listObjectsData.NextContinuationToken
+		} else {
+			break
+		}
+	}
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:Download finish.")
+	return nil
+}
+
+func (o *JCSProxy) downloadObjects(
+	ctx context.Context,
+	userId string,
+	targetPath string,
+	taskId int32,
+	listObjectsData *JCSListData,
+	downloadFolderRecord string) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:downloadObjects start.",
+		" userId: ", userId,
+		" targetPath: ", targetPath,
+		" taskId: ", taskId,
+		" downloadFolderRecord: ", downloadFolderRecord)
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
-	downloadFolderRecord := targetPath + uuid + ".download_folder_record"
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
 		lines := strings.Split(string(fileData), "\n")
@@ -1544,8 +1556,7 @@ func (o *JCSProxy) downloadObjects(
 	wg.Wait()
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"JCSProxy:downloadObjects not all success.",
-			" uuid: ", downloadObjectTaskParams.Request.ObjUuid)
+			"JCSProxy:downloadObjects not all success.")
 		return errors.New("downloadObjects not all success")
 	} else {
 		_err := os.Remove(downloadFolderRecord)

@@ -9,48 +9,46 @@ import (
 var (
 	logPath           = "./logs"
 	logFile           = "urchin-sdk-access.log"
-	urchinServiceAddr = "https://127.0.0.1:39256"
+	urchinServiceAddr = "http://127.0.0.1:39256"
 )
 
 func main() {
 	InitLog(logPath, logFile, 6)
 
 	/*上传数据对象*/
-	/*
-		var objectName = "wakinzhang-test-obj-20250604-4"
-		//var sourcePath = "/Users/zhangjiayuan/Downloads/source/"
-		var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
-		//var sourcePath = "/Users/zhangjiayuan/Downloads/empty"
-		//var sourcePath = "/Users/zhangjiayuan/Downloads/source/diversicus.mp4"
-
-		_ = UploadByProxy(
-			DefaultUrchinClientUserId,
-			DefaultUrchinClientToken,
-			urchinServiceAddr,
-			sourcePath,
-			objectName)
-	*/
-
-	/*下载数据对象*/
 	/**/
-	//var objUuid = "3c4661a1-c3d5-41fd-990b-f70badbf0fa2"
-	//var objUuid = "d5db75c9-2220-4d8c-933f-55160a566a01"
-	var objUuid = "2e9bc8bb-bdf2-4092-9aa3-789184c892d0"
-	var targetPath = "/Users/zhangjiayuan/Downloads/target/"
+	var objectName = "wakinzhang-test-obj-20250613-3"
+	var sourcePath = "/Users/zhangjiayuan/Downloads/source"
+	//var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
+	//var sourcePath = "/Users/zhangjiayuan/Downloads/empty"
+	//var sourcePath = "/Users/zhangjiayuan/Downloads/source/diversicus.mp4"
 
-	_ = DownloadByProxy(
+	_ = UploadByProxy(
 		DefaultUrchinClientUserId,
 		DefaultUrchinClientToken,
 		urchinServiceAddr,
-		objUuid,
-		targetPath)
+		sourcePath,
+		objectName)
+
+	/*下载数据对象*/
+	/*
+		var objUuid = "e12074ba-e907-41b0-a6b7-9105159b9ff5"
+		var targetPath = "/Users/zhangjiayuan/Downloads/target"
+
+		_ = DownloadByProxy(
+			DefaultUrchinClientUserId,
+			DefaultUrchinClientToken,
+			urchinServiceAddr,
+			objUuid,
+			targetPath)
+	*/
 
 	/*导入数据对象，可不清理断点续传信息，可重试导入，needPure默认置false*/
 	/*
-		var objUuid = ""
-		var sourceNodeName = "test-ipfs"
-		var targetNodeName = "chengdu-obs"
-		var cachePath = "/Users/zhangjiayuan/Downloads/cache/"
+		var objUuid = "e12074ba-e907-41b0-a6b7-9105159b9ff5"
+		var sourceNodeName = "test-chengdu-obs"
+		var targetNodeName = "test-jcs"
+		var cachePath = "/Users/zhangjiayuan/Downloads/cache"
 
 		_ = LoadByProxy(
 			DefaultUrchinClientUserId,
@@ -65,8 +63,8 @@ func main() {
 
 	/*数据对象新增文件、文件夹*/
 	/*
-		var objUuid = "60d605ea-b474-492f-a269-e98a6fdec188"
-		var objPath = "/empty/"
+		var objUuid = "bb618a96-a1d2-4759-9df0-9c4268321314"
+		var objPath = "/"
 		var uploadFileSourcePath = "/Users/zhangjiayuan/Downloads/upload_file"
 
 		_ = UploadFileByProxy(

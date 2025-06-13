@@ -1951,62 +1951,6 @@ func (o *S3Proxy) Download(
 		" taskId: ", taskId,
 		" bucketName: ", bucketName)
 
-	marker := ""
-	for {
-		listObjectsOutput, err := o.ListObjectsWithSignedUrl(
-			ctx,
-			taskId,
-			marker)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"S3Proxy:ListObjectsWithSignedUrl start.",
-				" taskId: ", taskId,
-				" err: ", err)
-			return err
-		}
-		err = o.downloadObjects(
-			ctx,
-			userId,
-			targetPath,
-			taskId,
-			bucketName,
-			listObjectsOutput)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"S3Proxy:downloadObjects failed.",
-				" userId: ", userId,
-				" targetPath: ", targetPath,
-				" taskId: ", taskId,
-				" bucketName: ", bucketName,
-				" err: ", err)
-			return err
-		}
-		if listObjectsOutput.IsTruncated {
-			marker = listObjectsOutput.NextMarker
-		} else {
-			break
-		}
-	}
-	Logger.WithContext(ctx).Debug(
-		"S3Proxy:Download finish.")
-	return nil
-}
-
-func (o *S3Proxy) downloadObjects(
-	ctx context.Context,
-	userId string,
-	targetPath string,
-	taskId int32,
-	bucketName string,
-	listObjectsOutput *obs.ListObjectsOutput) (err error) {
-
-	Logger.WithContext(ctx).Debug(
-		"S3Proxy:downloadObjects start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" taskId: ", taskId,
-		" bucketName: ", bucketName)
-
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.UserId = userId
 	getTaskReq.TaskId = &taskId
@@ -2038,13 +1982,74 @@ func (o *S3Proxy) downloadObjects(
 		return err
 	}
 
-	var fileMutex sync.Mutex
-	fileMap := make(map[string]int)
-
 	downloadFolderRecord :=
 		targetPath +
 			downloadObjectTaskParams.Request.ObjUuid +
 			".download_folder_record"
+
+	marker := ""
+	for {
+		listObjectsOutput, err := o.ListObjectsWithSignedUrl(
+			ctx,
+			taskId,
+			marker)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"S3Proxy:ListObjectsWithSignedUrl start.",
+				" taskId: ", taskId,
+				" err: ", err)
+			return err
+		}
+		err = o.downloadObjects(
+			ctx,
+			userId,
+			targetPath,
+			taskId,
+			bucketName,
+			listObjectsOutput,
+			downloadFolderRecord)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"S3Proxy:downloadObjects failed.",
+				" userId: ", userId,
+				" targetPath: ", targetPath,
+				" taskId: ", taskId,
+				" bucketName: ", bucketName,
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
+			return err
+		}
+		if listObjectsOutput.IsTruncated {
+			marker = listObjectsOutput.NextMarker
+		} else {
+			break
+		}
+	}
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:Download finish.")
+	return nil
+}
+
+func (o *S3Proxy) downloadObjects(
+	ctx context.Context,
+	userId string,
+	targetPath string,
+	taskId int32,
+	bucketName string,
+	listObjectsOutput *obs.ListObjectsOutput,
+	downloadFolderRecord string) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:downloadObjects start.",
+		" userId: ", userId,
+		" targetPath: ", targetPath,
+		" taskId: ", taskId,
+		" bucketName: ", bucketName,
+		" downloadFolderRecord: ", downloadFolderRecord)
+
+	var fileMutex sync.Mutex
+	fileMap := make(map[string]int)
+
 	fileData, err := os.ReadFile(downloadFolderRecord)
 	if nil == err {
 		lines := strings.Split(string(fileData), "\n")
@@ -2169,9 +2174,7 @@ func (o *S3Proxy) downloadObjects(
 	wg.Wait()
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
-			"S3Proxy:downloadObjects not all success.",
-			" uuid: ", downloadObjectTaskParams.Request.ObjUuid)
-
+			"S3Proxy:downloadObjects not all success.")
 		return errors.New("downloadObjects not all success")
 	} else {
 		_err := os.Remove(downloadFolderRecord)
