@@ -2025,6 +2025,16 @@ func (o *S3Proxy) Download(
 			break
 		}
 	}
+	err = os.Remove(downloadFolderRecord)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			Logger.WithContext(ctx).Error(
+				"os.Remove failed.",
+				" downloadFolderRecord: ", downloadFolderRecord,
+				" err: ", err)
+		}
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Download finish.")
 	return nil
@@ -2176,16 +2186,6 @@ func (o *S3Proxy) downloadObjects(
 		Logger.WithContext(ctx).Error(
 			"S3Proxy:downloadObjects not all success.")
 		return errors.New("downloadObjects not all success")
-	} else {
-		_err := os.Remove(downloadFolderRecord)
-		if nil != _err {
-			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
-					"os.Remove failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
-			}
-		}
 	}
 
 	Logger.WithContext(ctx).Debug(
