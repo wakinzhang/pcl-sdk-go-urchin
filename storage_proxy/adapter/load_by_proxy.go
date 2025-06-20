@@ -59,7 +59,7 @@ func LoadByProxy(
 	err, loadObjectResp := UClient.LoadObject(ctx, loadObjectReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"UrchinClient.LoadObject  failed.",
+			"UrchinClient.LoadObject failed.",
 			" err: ", err)
 		return err
 	}

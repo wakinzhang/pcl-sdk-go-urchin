@@ -608,7 +608,7 @@ func (o *S3) downloadObjects(
 	pool, err := ants.NewPool(DefaultS3DownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ants.NewPool for download Object  failed.",
+			"ants.NewPool for download Object failed.",
 			" err: ", err)
 		return err
 	}

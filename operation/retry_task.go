@@ -12,7 +12,9 @@ import (
 )
 
 func RetryTask(
-	userId string,
+	userId,
+	token,
+	urchinServiceAddr string,
 	taskId int32,
 	needPure bool) (err error) {
 
@@ -24,8 +26,17 @@ func RetryTask(
 	Logger.WithContext(ctx).Debug(
 		"RetryTask start.",
 		" userId: ", userId,
+		" token: ", "***",
 		" taskId: ", taskId,
 		" needPure: ", needPure)
+
+	UClient.Init(
+		ctx,
+		userId,
+		token,
+		urchinServiceAddr,
+		DefaultUClientReqTimeout,
+		DefaultUClientMaxConnection)
 
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.UserId = userId

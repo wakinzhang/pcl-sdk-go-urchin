@@ -54,7 +54,7 @@ func DownloadByProxy(
 		ctx, downloadObjectReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"UrchinClient.DownloadObject  failed.",
+			"UrchinClient.DownloadObject failed.",
 			" err: ", err)
 		return err
 	}

@@ -1277,7 +1277,7 @@ func (o *StarLight) downloadObjects(
 	pool, err := ants.NewPool(DefaultSLDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ants.NewPool for download Object  failed.",
+			"ants.NewPool for download Object failed.",
 			" err: ", err)
 		return err
 	}

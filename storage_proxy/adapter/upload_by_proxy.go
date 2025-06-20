@@ -7,6 +7,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"os"
 )
 
 func UploadByProxy(
@@ -30,6 +31,15 @@ func UploadByProxy(
 		" objectName: ", objectName,
 		" nodeName: ", nodeName)
 
+	_, err = os.Stat(sourcePath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Stat failed.",
+			" sourcePath: ", sourcePath,
+			" err: ", err)
+		return err
+	}
+
 	UClient.Init(
 		ctx,
 		userId,
@@ -49,7 +59,7 @@ func UploadByProxy(
 	err, uploadObjectResp := UClient.UploadObject(ctx, uploadObjectReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"UrchinClient.UploadObject  failed.",
+			"UrchinClient.UploadObject failed.",
 			" err: ", err)
 		return err
 	}

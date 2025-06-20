@@ -2,8 +2,8 @@ package main
 
 import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
-	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adapter"
 	//. "github.com/wakinzhang/pcl-sdk-go-urchin/operation"
+	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adapter"
 )
 
 var (
@@ -98,7 +98,11 @@ func main() {
 	/*
 		var taskId int32 = 54
 
-		_ = RetryTask(urchinServiceAddr, taskId, false)
+		_ = RetryTask(
+			DefaultUrchinClientUserId,
+			DefaultUrchinClientToken,
+			urchinServiceAddr,
+			taskId,
+			false)
 	*/
-
 }

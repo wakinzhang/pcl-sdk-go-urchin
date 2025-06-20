@@ -1461,7 +1461,7 @@ func (o *JCSProxy) downloadObjects(
 	pool, err := ants.NewPool(DefaultJCSDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ants.NewPool for download Object  failed.",
+			"ants.NewPool for download Object failed.",
 			" err: ", err)
 		return err
 	}
