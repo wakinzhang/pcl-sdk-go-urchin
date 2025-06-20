@@ -3,7 +3,7 @@ package main
 import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adapter"
-	//. "pcl-sdk-go-urchin/operation"
+	//. "github.com/wakinzhang/pcl-sdk-go-urchin/operation"
 )
 
 var (
@@ -22,13 +22,15 @@ func main() {
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/empty"
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/source/diversicus.mp4"
+	var nodeName = ""
 
 	_ = UploadByProxy(
 		DefaultUrchinClientUserId,
 		DefaultUrchinClientToken,
 		urchinServiceAddr,
 		sourcePath,
-		objectName)
+		objectName,
+		nodeName)
 
 	/*下载数据对象*/
 	/*

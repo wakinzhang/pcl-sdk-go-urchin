@@ -10,11 +10,12 @@ import (
 )
 
 func UploadByProxy(
-	userId string,
-	token string,
+	userId,
+	token,
 	urchinServiceAddr,
 	sourcePath,
-	objectName string) (err error) {
+	objectName,
+	nodeName string) (err error) {
 
 	requestId := uuid.NewV4().String()
 	var ctx context.Context
@@ -26,7 +27,8 @@ func UploadByProxy(
 		" userId: ", userId,
 		" token: ", "***",
 		" sourcePath: ", sourcePath,
-		" objectName: ", objectName)
+		" objectName: ", objectName,
+		" nodeName: ", nodeName)
 
 	UClient.Init(
 		ctx,
@@ -40,6 +42,9 @@ func UploadByProxy(
 	uploadObjectReq.UserId = userId
 	uploadObjectReq.Name = objectName
 	uploadObjectReq.SourceLocalPath = sourcePath
+	if 0 != len(nodeName) {
+		uploadObjectReq.NodeName = &nodeName
+	}
 
 	err, uploadObjectResp := UClient.UploadObject(ctx, uploadObjectReq)
 	if nil != err {

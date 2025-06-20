@@ -10,11 +10,12 @@ import (
 )
 
 func DownloadByProxy(
-	userId string,
-	token string,
+	userId,
+	token,
 	urchinServiceAddr,
 	objUuid,
-	targetPath string) (err error) {
+	targetPath,
+	nodeName string) (err error) {
 
 	requestId := uuid.NewV4().String()
 	var ctx context.Context
@@ -29,8 +30,9 @@ func DownloadByProxy(
 		"DownloadByProxy start.",
 		" userId: ", userId,
 		" token: ", "***",
+		" objUuid: ", objUuid,
 		" targetPath: ", targetPath,
-		" objUuid: ", objUuid)
+		" nodeName: ", nodeName)
 
 	UClient.Init(
 		ctx,
@@ -44,6 +46,9 @@ func DownloadByProxy(
 	downloadObjectReq.UserId = userId
 	downloadObjectReq.ObjUuid = objUuid
 	downloadObjectReq.TargetLocalPath = targetPath
+	if 0 != len(nodeName) {
+		downloadObjectReq.NodeName = &nodeName
+	}
 
 	err, downloadObjectResp := UClient.DownloadObject(
 		ctx, downloadObjectReq)
