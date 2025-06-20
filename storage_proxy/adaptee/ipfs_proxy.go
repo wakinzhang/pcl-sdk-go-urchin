@@ -50,7 +50,7 @@ func (o *IPFSProxy) Upload(
 		return errors.New("task not exist")
 	}
 	if TaskTypeUpload == getTaskResp.Data.List[0].Task.Type ||
-		TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
+		TaskTypeLoad == getTaskResp.Data.List[0].Task.Type {
 		err = o.uploadObject(
 			ctx,
 			userId,
@@ -109,7 +109,7 @@ func (o *IPFSProxy) uploadObject(
 		}
 		objUuid = uploadObjectTaskParams.Uuid
 		nodeName = uploadObjectTaskParams.NodeName
-	} else if TaskTypeMigrate == task.Type {
+	} else if TaskTypeLoad == task.Type {
 		loadObjectTaskParams := new(LoadObjectTaskParams)
 		err = json.Unmarshal([]byte(task.Params), loadObjectTaskParams)
 		if nil != err {
@@ -335,7 +335,7 @@ func (o *IPFSProxy) Download(
 			taskParams.Request.Source
 		prePath = targetPath + hash
 		postPath = targetPath + taskParams.Request.ObjUuid
-	} else if TaskTypeMigrate == getTaskResp.Data.List[0].Task.Type {
+	} else if TaskTypeLoad == getTaskResp.Data.List[0].Task.Type {
 		taskParams := new(LoadObjectTaskParams)
 		err = json.Unmarshal(
 			[]byte(getTaskResp.Data.List[0].Task.Params),

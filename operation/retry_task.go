@@ -70,93 +70,104 @@ func RetryTask(
 		return err
 	}
 
-	defer func() {
-		finishTaskReq := new(FinishTaskReq)
-		finishTaskReq.UserId = userId
-		finishTaskReq.TaskId = taskId
-		if nil != err {
-			finishTaskReq.Result = TaskFResultEFailed
-		} else {
-			finishTaskReq.Result = TaskFResultESuccess
-		}
-		err, _ = UClient.FinishTask(ctx, finishTaskReq)
-		if nil != err {
+	if _, exists := TaskTypeOnlyServiceRetry[task.Type]; exists {
+		Logger.WithContext(ctx).Debug(
+			"RetryTask finish, Only service retry.",
+			" taskId: ", task.Id,
+			" taskType: ", task.Type)
+		return err
+	}
+
+	go func() {
+		var _err error
+		defer func() {
+			finishTaskReq := new(FinishTaskReq)
+			finishTaskReq.UserId = userId
+			finishTaskReq.TaskId = taskId
+			if nil != _err {
+				finishTaskReq.Result = TaskFResultEFailed
+			} else {
+				finishTaskReq.Result = TaskFResultESuccess
+			}
+			_err, _ = UClient.FinishTask(ctx, finishTaskReq)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"UrchinClient.FinishTask failed.",
+					" err: ", _err)
+			}
+		}()
+
+		switch task.Type {
+		case TaskTypeUpload:
+			_err = processRetryUploadTask(
+				ctx,
+				userId,
+				task,
+				taskId,
+				needPure)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"processRetryUploadTask failed.",
+					" err: ", _err)
+				return
+			}
+		case TaskTypeUploadFile:
+			_err = processRetryUploadFileTask(
+				ctx,
+				userId,
+				task,
+				taskId,
+				needPure)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"processRetryUploadFileTask failed.",
+					" err: ", _err)
+				return
+			}
+		case TaskTypeDownload:
+			_err = processRetryDownloadTask(
+				ctx,
+				userId,
+				task,
+				taskId)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"processRetryDownloadTask failed.",
+					" err: ", _err)
+				return
+			}
+		case TaskTypeDownloadFile:
+			_err = processRetryDownloadFileTask(
+				ctx,
+				userId,
+				task,
+				taskId)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"processRetryDownloadFileTask failed.",
+					" err: ", _err)
+				return
+			}
+		case TaskTypeLoad:
+			_err = processRetryLoadTask(
+				ctx,
+				userId,
+				task,
+				taskId,
+				needPure)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"processRetryLoadTask failed.",
+					" err: ", _err)
+				return
+			}
+		default:
 			Logger.WithContext(ctx).Error(
-				"UrchinClient.FinishTask failed.",
-				" err: ", err)
+				"task type invalid.",
+				" taskId: ", task.Id,
+				" taskType: ", task.Type)
 		}
 	}()
-
-	switch task.Type {
-	case TaskTypeUpload:
-		err = processRetryUploadTask(
-			ctx,
-			userId,
-			task,
-			taskId,
-			needPure)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"processRetryUploadTask failed.",
-				" err: ", err)
-			return err
-		}
-	case TaskTypeUploadFile:
-		err = processRetryUploadFileTask(
-			ctx,
-			userId,
-			task,
-			taskId,
-			needPure)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"processRetryUploadFileTask failed.",
-				" err: ", err)
-			return err
-		}
-	case TaskTypeDownload:
-		err = processRetryDownloadTask(
-			ctx,
-			userId,
-			task,
-			taskId)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"processRetryDownloadTask failed.",
-				" err: ", err)
-			return err
-		}
-	case TaskTypeDownloadFile:
-		err = processRetryDownloadFileTask(
-			ctx,
-			userId,
-			task,
-			taskId)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"processRetryDownloadFileTask failed.",
-				" err: ", err)
-			return err
-		}
-	case TaskTypeMigrate:
-		err = processRetryLoadTask(
-			ctx,
-			userId,
-			task,
-			taskId,
-			needPure)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"processRetryLoadTask failed.",
-				" err: ", err)
-			return err
-		}
-	default:
-		Logger.WithContext(ctx).Error(
-			"task type invalid.",
-			" taskId: ", task.Id, " taskType: ", task.Type)
-		return errors.New("task type invalid")
-	}
 
 	Logger.WithContext(ctx).Debug(
 		"RetryTask finish.")

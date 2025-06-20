@@ -65,10 +65,15 @@ const (
 	TaskTypeCopy         = 4
 	TaskTypeUploadFile   = 5
 	TaskTypeDownloadFile = 6
+	TaskTypeLoad         = 7
 
 	TaskFResultESuccess = 1
 	TaskFResultEFailed  = 2
 )
+
+var TaskTypeOnlyServiceRetry = map[int32]bool{
+	TaskTypeMigrate: true,
+	TaskTypeCopy:    true}
 
 type BaseResp struct {
 	// @inject_tag: json:"code"
