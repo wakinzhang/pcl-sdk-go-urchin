@@ -6,9 +6,7 @@
   <component name="ChangeListManager">
     <list default="true" id="9f917e8e-4140-4485-89fc-7c2a6f9a585f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/module/urchin.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/urchin.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/operation/retry_task.go" beforeDir="false" afterPath="$PROJECT_DIR$/operation/retry_task.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/storage_proxy/adaptee/ipfs_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adaptee/ipfs_proxy.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
