@@ -78,23 +78,6 @@ func RetryTask(
 		return err
 	}
 
-	defer func() {
-		finishTaskReq := new(FinishTaskReq)
-		finishTaskReq.UserId = userId
-		finishTaskReq.TaskId = taskId
-		if nil != err {
-			finishTaskReq.Result = TaskFResultEFailed
-		} else {
-			finishTaskReq.Result = TaskFResultESuccess
-		}
-		err, _ = UClient.FinishTask(ctx, finishTaskReq)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"UrchinClient.FinishTask failed.",
-				" err: ", err)
-		}
-	}()
-
 	switch task.Type {
 	case TaskTypeUpload:
 		err = processRetryUploadTask(

@@ -105,11 +105,11 @@ func ProcessDownloadFileByProxy(
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = UClient.FinishTask(ctx, finishTaskReq)
-		if nil != err {
+		_err, _ := UClient.FinishTask(ctx, finishTaskReq)
+		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"UrchinClient.FinishTask failed.",
-				" err: ", err)
+				" err: ", _err)
 		}
 	}()
 

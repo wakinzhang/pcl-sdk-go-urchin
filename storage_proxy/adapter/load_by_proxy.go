@@ -126,14 +126,14 @@ func ProcessLoadByProxy(
 		} else {
 			finishTaskReq.Result = TaskFResultESuccess
 		}
-		err, _ = UClient.FinishTask(ctx, finishTaskReq)
-		if nil != err {
+		_err, _ := UClient.FinishTask(ctx, finishTaskReq)
+		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"UrchinClient.FinishTask failed.",
-				" err: ", err)
+				" err: ", _err)
 			return
 		}
-		_err := os.RemoveAll(loadCachePath)
+		_err = os.RemoveAll(loadCachePath)
 		if nil != _err {
 			Logger.WithContext(ctx).Error(
 				"os.Remove failed.",
