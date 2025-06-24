@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
+	"io"
 )
 
 type RequestIDHook struct{}
@@ -66,6 +67,8 @@ func InitLog(accessLog, errorLog string, LogLevel int64) {
 	setLevelOutput(logrus.ErrorLevel, errorLog, 128)
 	// 设置日志记录级别
 	Logger.SetLevel(LogLevelMap[LogLevel])
+	// 禁用默认终端输出
+	Logger.SetOutput(io.Discard)
 }
 
 func setLevelOutput(level logrus.Level, filename string, filesize int) {
