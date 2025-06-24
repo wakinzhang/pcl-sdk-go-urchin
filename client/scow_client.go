@@ -106,6 +106,7 @@ func (o *ScowClient) Init(
 	o.scowClient.RetryWaitMax = 5 * time.Second
 	o.scowClient.HTTPClient.Timeout = timeout
 	o.scowClient.HTTPClient.Transport = transport
+	o.scowClient.Logger = Logger
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:Init finish.")

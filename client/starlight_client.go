@@ -70,6 +70,7 @@ func (o *SLClient) Init(
 	o.slClient.RetryWaitMax = 5 * time.Second
 	o.slClient.HTTPClient.Timeout = timeout
 	o.slClient.HTTPClient.Transport = transport
+	o.slClient.Logger = Logger
 
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Init finish.")

@@ -63,6 +63,7 @@ func (o *JCSProxyClient) Init(
 	o.jcsClient.RetryWaitMax = 5 * time.Second
 	o.jcsClient.HTTPClient.Timeout = timeout
 	o.jcsClient.HTTPClient.Transport = transport
+	o.jcsClient.Logger = Logger
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxyClient:Init finish.")
@@ -595,6 +596,7 @@ func (o *JCSClient) Init(
 	o.jcsClient.RetryWaitMax = 5 * time.Second
 	o.jcsClient.HTTPClient.Timeout = timeout
 	o.jcsClient.HTTPClient.Transport = transport
+	o.jcsClient.Logger = Logger
 
 	Logger.WithContext(ctx).Debug(
 		"Function JCS:Init finish.")

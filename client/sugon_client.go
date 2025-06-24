@@ -85,6 +85,7 @@ func (o *SugonClient) Init(
 	o.sugonClient.RetryWaitMax = 5 * time.Second
 	o.sugonClient.HTTPClient.Timeout = timeout
 	o.sugonClient.HTTPClient.Transport = transport
+	o.sugonClient.Logger = Logger
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:Init finish.")

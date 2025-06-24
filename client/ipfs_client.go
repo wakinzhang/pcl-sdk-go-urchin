@@ -76,6 +76,7 @@ func (o *IPFSClient) Init(
 	o.ipfsClient.RetryWaitMax = 5 * time.Second
 	o.ipfsClient.HTTPClient.Timeout = timeout
 	o.ipfsClient.HTTPClient.Transport = transport
+	o.ipfsClient.Logger = Logger
 
 	Logger.WithContext(ctx).Debug(
 		"Function IPFSClient:Init finish.")

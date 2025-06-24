@@ -6,6 +6,11 @@
   <component name="ChangeListManager">
     <list default="true" id="9f917e8e-4140-4485-89fc-7c2a6f9a585f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/ipfs_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/ipfs_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/jcs_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/jcs_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/scow_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/scow_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/starlight_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/starlight_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/sugon_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/sugon_client.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/urchin_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/urchin_client.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
