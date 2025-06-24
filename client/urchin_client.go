@@ -66,6 +66,7 @@ func (u *UrchinClient) Init(
 	u.urchinClient.RetryWaitMax = 5 * time.Second
 	u.urchinClient.HTTPClient.Transport = transport
 	u.urchinClient.HTTPClient.Timeout = timeout
+	u.urchinClient.Logger = Logger
 
 	requestId := ctx.Value("X-Request-Id").(string)
 	u.header = make(http.Header)
