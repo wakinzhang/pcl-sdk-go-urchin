@@ -683,7 +683,7 @@ func (o *Scow) uploadFileStream(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -747,7 +747,7 @@ func (o *Scow) uploadFileResume(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -1241,7 +1241,7 @@ func (task *ScowUploadPartTask) Run(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -1966,7 +1966,7 @@ func (o *Scow) prepareTempFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" tempFileURL: ", tempFileURL,
@@ -2125,7 +2125,7 @@ func (o *Scow) UpdateDownloadFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" filePath: ", filePath,

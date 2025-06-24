@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"github.com/studio-b12/gowebdav"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
@@ -126,7 +127,7 @@ func (o *ParaCloudClient) Upload(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,

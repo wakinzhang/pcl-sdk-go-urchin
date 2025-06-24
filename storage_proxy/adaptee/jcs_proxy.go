@@ -132,7 +132,7 @@ func (o *JCSProxy) UploadFileWithSignedUrl(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -1256,7 +1256,7 @@ func (task *JCSProxyUploadPartTask) Run(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -1973,7 +1973,7 @@ func (o *JCSProxy) prepareTempFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" tempFileURL: ", tempFileURL,
@@ -2132,7 +2132,7 @@ func (o *JCSProxy) UpdateDownloadFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" filePath: ", filePath,

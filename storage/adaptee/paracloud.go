@@ -1245,7 +1245,7 @@ func (o *ParaCloud) prepareTempFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" tempFileURL: ", tempFileURL, " err: ", errMsg)
@@ -1401,7 +1401,7 @@ func (o *ParaCloud) UpdateDownloadFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" filePath: ", filePath, " err: ", errMsg)

@@ -447,7 +447,7 @@ func (o *S3) uploadFile(
 		}
 		defer func() {
 			errMsg := fd.Close()
-			if errMsg != nil {
+			if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 				Logger.WithContext(ctx).Warn(
 					"close file failed.",
 					" sourceFile: ", sourceFile,

@@ -655,7 +655,7 @@ func (o *Sugon) uploadFileStream(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -1192,7 +1192,7 @@ func (task *SugonUploadPartTask) Run(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -1935,7 +1935,7 @@ func (o *Sugon) prepareTempFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" tempFileURL: ", tempFileURL,
@@ -2094,7 +2094,7 @@ func (o *Sugon) UpdateDownloadFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" filePath: ", filePath,

@@ -146,7 +146,7 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -263,7 +263,7 @@ func (o *S3Proxy) UploadPartWithSignedUrl(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
@@ -2659,7 +2659,7 @@ func (o *S3Proxy) prepareTempFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" tempFileURL: ", tempFileURL,
@@ -2818,7 +2818,7 @@ func (o *S3Proxy) updateDownloadFile(
 	}
 	defer func() {
 		errMsg := fd.Close()
-		if errMsg != nil {
+		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" filePath: ", filePath,

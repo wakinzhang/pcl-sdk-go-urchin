@@ -62,7 +62,7 @@ func InitLog(accessLog, errorLog string, LogLevel int64) {
 	// 启用调用者信息记录
 	Logger.SetReportCaller(true)
 	// 设置日志级别输出
-	setLevelOutput(logrus.DebugLevel, accessLog, 512)
+	setLevelOutput(logrus.TraceLevel, accessLog, 512)
 	setLevelOutput(logrus.ErrorLevel, errorLog, 128)
 	// 设置日志记录级别
 	Logger.SetLevel(LogLevelMap[LogLevel])
