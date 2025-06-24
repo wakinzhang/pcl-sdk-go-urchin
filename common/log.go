@@ -79,7 +79,7 @@ func setLevelOutput(level logrus.Level, filename string, filesize int) {
 
 	var levels []logrus.Level
 	for _, l := range logrus.AllLevels {
-		if l >= level { // 包含level及更高级别
+		if l <= level { // 包含level及更高级别
 			levels = append(levels, l)
 		}
 	}
