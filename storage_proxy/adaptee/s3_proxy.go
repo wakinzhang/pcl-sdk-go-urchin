@@ -924,7 +924,10 @@ func (o *S3Proxy) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
+		strings.TrimSuffix(sourcePath, "/") +
+			"_" +
+			strconv.FormatInt(int64(taskId), 10) +
+			UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -1200,7 +1203,10 @@ func (o *S3Proxy) uploadFileResume(
 	uploadFileInput.UploadFile = sourceFile
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
-		uploadFileInput.UploadFile + UploadFileRecordSuffix
+		uploadFileInput.UploadFile +
+			"_" +
+			strconv.FormatInt(int64(taskId), 10) +
+			UploadFileRecordSuffix
 	uploadFileInput.TaskNum = DefaultS3UploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	uploadFileInput.Key = objectKey
@@ -1988,10 +1994,12 @@ func (o *S3Proxy) Download(
 		return err
 	}
 
-	downloadFolderRecord :=
-		targetPath +
-			downloadObjectTaskParams.Request.ObjUuid +
-			DownloadFolderRecordSuffix
+	uuid := downloadObjectTaskParams.Request.ObjUuid
+	downloadFolderRecord := targetPath +
+		uuid +
+		fmt.Sprintf("_%d_tmp", taskId) +
+		DownloadFolderRecordSuffix
+	tmpTargetPath := targetPath + uuid + fmt.Sprintf("_%d_tmp/", taskId)
 
 	marker := ""
 	for {
@@ -2009,7 +2017,7 @@ func (o *S3Proxy) Download(
 		err = o.downloadObjects(
 			ctx,
 			userId,
-			targetPath,
+			tmpTargetPath,
 			taskId,
 			bucketName,
 			listObjectsOutput,
@@ -2018,7 +2026,7 @@ func (o *S3Proxy) Download(
 			Logger.WithContext(ctx).Error(
 				"S3Proxy:downloadObjects failed.",
 				" userId: ", userId,
-				" targetPath: ", targetPath,
+				" tmpTargetPath: ", tmpTargetPath,
 				" taskId: ", taskId,
 				" bucketName: ", bucketName,
 				" downloadFolderRecord: ", downloadFolderRecord,
@@ -2030,6 +2038,26 @@ func (o *S3Proxy) Download(
 		} else {
 			break
 		}
+	}
+	fromPath := tmpTargetPath
+	toPath := targetPath + uuid + fmt.Sprintf("_%d", taskId)
+	err = os.Rename(fromPath, toPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Rename failed.",
+			" fromPath: ", fromPath,
+			" postPath: ", toPath,
+			" err: ", err)
+		return err
+	}
+	tmpPath := targetPath + uuid + fmt.Sprintf("_%d_tmp", taskId)
+	err = os.RemoveAll(tmpPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.RemoveAll failed.",
+			" tmpPath: ", tmpPath,
+			" err: ", err)
+		return err
 	}
 	err = os.Remove(downloadFolderRecord)
 	if nil != err {

@@ -468,7 +468,10 @@ func (o *JCSProxy) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
+		strings.TrimSuffix(sourcePath, "/") +
+			"_" +
+			strconv.FormatInt(int64(taskId), 10) +
+			UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -745,7 +748,10 @@ func (o *JCSProxy) uploadFileResume(
 	uploadFileInput.UploadFile = sourceFile
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
-		uploadFileInput.UploadFile + UploadFileRecordSuffix
+		uploadFileInput.UploadFile +
+			"_" +
+			strconv.FormatInt(int64(taskId), 10) +
+			UploadFileRecordSuffix
 	uploadFileInput.TaskNum = DefaultJCSUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultJCSMinPartSize {
@@ -1372,8 +1378,11 @@ func (o *JCSProxy) Download(
 	}
 
 	uuid := downloadObjectTaskParams.Request.ObjUuid
-	downloadFolderRecord := targetPath + uuid + DownloadFolderRecordSuffix
-	targetPath = targetPath + uuid + "/"
+	downloadFolderRecord := targetPath +
+		uuid +
+		fmt.Sprintf("_%d_tmp", taskId) +
+		DownloadFolderRecordSuffix
+	tmpTargetPath := targetPath + uuid + fmt.Sprintf("_%d_tmp/", taskId)
 
 	continuationToken := ""
 	for {
@@ -1391,7 +1400,7 @@ func (o *JCSProxy) Download(
 		err = o.downloadObjects(
 			ctx,
 			userId,
-			targetPath,
+			tmpTargetPath,
 			taskId,
 			listObjectsData,
 			downloadFolderRecord)
@@ -1399,7 +1408,7 @@ func (o *JCSProxy) Download(
 			Logger.WithContext(ctx).Error(
 				"JCSProxy:downloadObjects failed.",
 				" userId: ", userId,
-				" targetPath: ", targetPath,
+				" tmpTargetPath: ", tmpTargetPath,
 				" taskId: ", taskId,
 				" bucketName: ", bucketName,
 				" downloadFolderRecord: ", downloadFolderRecord,
@@ -1411,6 +1420,18 @@ func (o *JCSProxy) Download(
 		} else {
 			break
 		}
+	}
+
+	fromPath := tmpTargetPath
+	toPath := targetPath + uuid + fmt.Sprintf("_%d", taskId)
+	err = os.Rename(fromPath, toPath)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Rename failed.",
+			" fromPath: ", fromPath,
+			" postPath: ", toPath,
+			" err: ", err)
+		return err
 	}
 
 	err = os.Remove(downloadFolderRecord)
