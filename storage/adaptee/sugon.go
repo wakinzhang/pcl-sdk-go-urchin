@@ -114,7 +114,7 @@ func (o *Sugon) loadCheckpointFile(
 		Logger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
 			" checkpointFile: ", checkpointFile)
-		return nil
+		return errors.New("checkpointFile empty")
 	}
 	Logger.WithContext(ctx).Debug(
 		"Sugon:loadCheckpointFile finish.")
@@ -267,7 +267,7 @@ func (o *Sugon) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -487,6 +487,12 @@ func (o *Sugon) uploadFolder(
 						return
 					}
 					objectPath := targetPath + relPath
+					if strings.HasSuffix(objectPath, UploadFileRecordSuffix) {
+						Logger.WithContext(ctx).Info(
+							"upload record file.",
+							" objectPath: ", objectPath)
+						return
+					}
 					if _, exists := fileMap[objectPath]; exists {
 						Logger.WithContext(ctx).Info(
 							"already finish. objectPath: ", objectPath)
@@ -703,7 +709,7 @@ func (o *Sugon) uploadFileResume(
 	uploadFileInput.RelativePath = filepath.Base(sourceFile)
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
-		uploadFileInput.UploadFile + ".upload_file_record"
+		uploadFileInput.UploadFile + UploadFileRecordSuffix
 	uploadFileInput.TaskNum = DefaultSugonUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultSugonMinPartSize {
@@ -1276,7 +1282,7 @@ func (o *Sugon) Download(
 	}
 
 	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
 		" downloadFolderRecord: ", downloadFolderRecord)
@@ -1556,7 +1562,7 @@ func (o *Sugon) downloadPart(
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
-		downloadFileInput.DownloadFile + ".download_file_record"
+		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
 	downloadFileInput.TaskNum = DefaultSugonDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 

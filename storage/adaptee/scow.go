@@ -113,7 +113,7 @@ func (o *Scow) loadCheckpointFile(
 		Logger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
 			" checkpointFile: ", checkpointFile)
-		return nil
+		return errors.New("checkpointFile empty")
 	}
 	Logger.WithContext(ctx).Debug(
 		"Scow:loadCheckpointFile finish.")
@@ -275,7 +275,7 @@ func (o *Scow) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -502,6 +502,12 @@ func (o *Scow) uploadFolder(
 						return
 					}
 					objectPath := targetPath + relPath
+					if strings.HasSuffix(objectPath, UploadFileRecordSuffix) {
+						Logger.WithContext(ctx).Info(
+							"upload record file.",
+							" objectPath: ", objectPath)
+						return
+					}
 					if _, exists := fileMap[objectPath]; exists {
 						Logger.WithContext(ctx).Info(
 							"already finish. objectPath: ", objectPath)
@@ -728,7 +734,7 @@ func (o *Scow) uploadFileResume(
 	uploadFileInput.FileName = filepath.Base(sourceFile)
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
-		uploadFileInput.UploadFile + ".upload_file_record"
+		uploadFileInput.UploadFile + UploadFileRecordSuffix
 	uploadFileInput.TaskNum = DefaultScowUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultScowMinPartSize {
@@ -1315,7 +1321,7 @@ func (o *Scow) Download(
 	}
 
 	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
 		" downloadFolderRecord: ", downloadFolderRecord)
@@ -1588,7 +1594,7 @@ func (o *Scow) downloadPart(
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
-		downloadFileInput.DownloadFile + ".download_file_record"
+		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
 	downloadFileInput.TaskNum = DefaultScowDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 

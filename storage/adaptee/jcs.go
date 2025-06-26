@@ -130,7 +130,7 @@ func (o *JCS) loadCheckpointFile(
 		Logger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
 			" checkpointFile: ", checkpointFile)
-		return nil
+		return errors.New("checkpointFile empty")
 	}
 	Logger.WithContext(ctx).Debug(
 		"JCS:loadCheckpointFile finish.")
@@ -296,7 +296,7 @@ func (o *JCS) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -382,6 +382,12 @@ func (o *JCS) uploadFolder(
 					return
 				}
 				objectPath := targetPath + relPath
+				if strings.HasSuffix(objectPath, UploadFileRecordSuffix) {
+					Logger.WithContext(ctx).Info(
+						"upload record file.",
+						" objectPath: ", objectPath)
+					return
+				}
 				if _, exists := fileMap[objectPath]; exists {
 					Logger.WithContext(ctx).Info(
 						"already finish. objectPath: ", objectPath)
@@ -627,7 +633,7 @@ func (o *JCS) uploadFileResume(
 	uploadFileInput.UploadFile = sourceFile
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
-		uploadFileInput.UploadFile + ".upload_file_record"
+		uploadFileInput.UploadFile + UploadFileRecordSuffix
 	uploadFileInput.TaskNum = DefaultJCSUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultJCSMinPartSize {
@@ -1202,7 +1208,7 @@ func (o *JCS) Download(
 	}
 
 	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
 		" downloadFolderRecord: ", downloadFolderRecord)
@@ -1429,7 +1435,7 @@ func (o *JCS) downloadPart(
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
-		downloadFileInput.DownloadFile + ".download_file_record"
+		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
 	downloadFileInput.TaskNum = DefaultJCSDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 

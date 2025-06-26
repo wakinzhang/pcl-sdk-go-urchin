@@ -775,7 +775,7 @@ func (o *S3Proxy) loadCheckpointFile(
 		Logger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
 			" checkpointFile: ", checkpointFile)
-		return nil
+		return errors.New("checkpointFile empty")
 	}
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:loadCheckpointFile finish.")
@@ -924,7 +924,7 @@ func (o *S3Proxy) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -1002,6 +1002,12 @@ func (o *S3Proxy) uploadFolder(
 						" filePath: ", filePath,
 						" objectKey: ", objectKey,
 						" err: ", _err)
+					return
+				}
+				if strings.HasSuffix(objectKey, UploadFileRecordSuffix) {
+					Logger.WithContext(ctx).Info(
+						"upload record file.",
+						" objectKey: ", objectKey)
 					return
 				}
 				if _, exists := fileMap[objectKey]; exists {
@@ -1194,7 +1200,7 @@ func (o *S3Proxy) uploadFileResume(
 	uploadFileInput.UploadFile = sourceFile
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
-		uploadFileInput.UploadFile + ".upload_file_record"
+		uploadFileInput.UploadFile + UploadFileRecordSuffix
 	uploadFileInput.TaskNum = DefaultS3UploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	uploadFileInput.Key = objectKey
@@ -1985,7 +1991,7 @@ func (o *S3Proxy) Download(
 	downloadFolderRecord :=
 		targetPath +
 			downloadObjectTaskParams.Request.ObjUuid +
-			".download_folder_record"
+			DownloadFolderRecordSuffix
 
 	marker := ""
 	for {
@@ -2247,7 +2253,7 @@ func (o *S3Proxy) downloadPartWithSignedUrl(
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
-		downloadFileInput.DownloadFile + ".download_file_record"
+		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
 	downloadFileInput.TaskNum = DefaultS3DownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 	downloadFileInput.Bucket = bucketName

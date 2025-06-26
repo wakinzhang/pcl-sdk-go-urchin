@@ -29,4 +29,9 @@ const (
 
 	HttpHeaderRange        = "Range"
 	HttpHeaderContentRange = "Content-Range"
+
+	UploadFileRecordSuffix     = ".upload_file_record"
+	UploadFolderRecordSuffix   = ".upload_folder_record"
+	DownloadFileRecordSuffix   = ".download_file_record"
+	DownloadFolderRecordSuffix = ".download_folder_record"
 )

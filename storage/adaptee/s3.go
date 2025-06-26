@@ -171,7 +171,7 @@ func (o *S3) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -266,10 +266,15 @@ func (o *S3) uploadFolder(
 					return
 				}
 				objectKey := targetPath + relPath
+				if strings.HasSuffix(objectKey, UploadFileRecordSuffix) {
+					Logger.WithContext(ctx).Info(
+						"upload record file.",
+						" objectKey: ", objectKey)
+					return
+				}
 				if _, exists := fileMap[objectKey]; exists {
 					Logger.WithContext(ctx).Info(
-						"already finish.",
-						" objectKey: ", objectKey)
+						"already finish. objectKey: ", objectKey)
 					return
 				}
 				if fileInfo.IsDir() {
@@ -398,7 +403,7 @@ func (o *S3) uploadFile(
 		input := new(obs.UploadFileInput)
 		input.UploadFile = sourceFile
 		input.EnableCheckpoint = true
-		input.CheckpointFile = input.UploadFile + ".upload_file_record"
+		input.CheckpointFile = input.UploadFile + UploadFileRecordSuffix
 		input.TaskNum = DefaultS3UploadMultiTaskNum
 		input.PartSize = DefaultPartSize
 		input.Key = objectKey
@@ -510,7 +515,7 @@ func (o *S3) Download(
 	}
 
 	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
 		" downloadFolderRecord: ", downloadFolderRecord)
@@ -657,7 +662,7 @@ func (o *S3) downloadObjects(
 				input.DownloadFile = targetPath + itemObject.Key
 				input.EnableCheckpoint = true
 				input.CheckpointFile =
-					input.DownloadFile + ".download_file_record"
+					input.DownloadFile + DownloadFileRecordSuffix
 				input.TaskNum = DefaultS3DownloadMultiTaskNum
 				input.PartSize = DefaultPartSize
 				input.Bucket = o.bucket

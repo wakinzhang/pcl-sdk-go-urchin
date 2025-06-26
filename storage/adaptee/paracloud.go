@@ -102,7 +102,7 @@ func (o *ParaCloud) loadCheckpointFile(
 		Logger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
 			" checkpointFile: ", checkpointFile)
-		return nil
+		return errors.New("checkpointFile empty")
 	}
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:loadCheckpointFile finish.")
@@ -251,7 +251,7 @@ func (o *ParaCloud) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -597,7 +597,7 @@ func (o *ParaCloud) Download(
 	}
 
 	downloadFolderRecord :=
-		strings.TrimSuffix(targetPath, "/") + ".download_folder_record"
+		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
 		" downloadFolderRecord: ", downloadFolderRecord)
@@ -869,7 +869,7 @@ func (o *ParaCloud) downloadPart(
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
-		downloadFileInput.DownloadFile + ".download_file_record"
+		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
 	downloadFileInput.TaskNum = DefaultParaCloudDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 

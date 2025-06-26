@@ -320,7 +320,7 @@ func (o *JCSProxy) loadCheckpointFile(
 		Logger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
 			" checkpointFile: ", checkpointFile)
-		return nil
+		return errors.New("checkpointFile empty")
 	}
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:loadCheckpointFile finish.")
@@ -430,7 +430,7 @@ func (o *JCSProxy) Upload(
 		}
 	} else {
 		objectPath := filepath.Base(sourcePath)
-		err = o.uploadFileResume(
+		err = o.uploadFile(
 			ctx,
 			sourcePath,
 			objectPath,
@@ -438,7 +438,7 @@ func (o *JCSProxy) Upload(
 			needPure)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"JCSProxy.uploadFileResume failed.",
+				"JCSProxy.uploadFile failed.",
 				" sourcePath: ", sourcePath,
 				" objectPath: ", objectPath,
 				" taskId: ", taskId,
@@ -468,7 +468,7 @@ func (o *JCSProxy) uploadFolder(
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
-		strings.TrimSuffix(sourcePath, "/") + ".upload_folder_record"
+		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
 	Logger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
 		" uploadFolderRecord: ", uploadFolderRecord)
@@ -551,11 +551,15 @@ func (o *JCSProxy) uploadFolder(
 						" err: ", _err)
 					return
 				}
-
+				if strings.HasSuffix(objectKey, UploadFileRecordSuffix) {
+					Logger.WithContext(ctx).Info(
+						"upload record file.",
+						" objectKey: ", objectKey)
+					return
+				}
 				if _, exists := fileMap[objectKey]; exists {
 					Logger.WithContext(ctx).Info(
-						"already finish.",
-						" objectKey: ", objectKey)
+						"already finish. objectKey: ", objectKey)
 					return
 				}
 				if fileInfo.IsDir() {
@@ -572,7 +576,7 @@ func (o *JCSProxy) uploadFolder(
 						return
 					}
 				} else {
-					_err = o.uploadFileResume(
+					_err = o.uploadFile(
 						ctx,
 						filePath,
 						objectKey,
@@ -581,7 +585,7 @@ func (o *JCSProxy) uploadFolder(
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"JCSProxy:uploadFileResume failed.",
+							"JCSProxy:uploadFile failed.",
 							" filePath: ", filePath,
 							" objectKey: ", objectKey,
 							" err: ", _err)
@@ -741,7 +745,7 @@ func (o *JCSProxy) uploadFileResume(
 	uploadFileInput.UploadFile = sourceFile
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
-		uploadFileInput.UploadFile + ".upload_file_record"
+		uploadFileInput.UploadFile + UploadFileRecordSuffix
 	uploadFileInput.TaskNum = DefaultJCSUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultJCSMinPartSize {
@@ -1368,7 +1372,7 @@ func (o *JCSProxy) Download(
 	}
 
 	uuid := downloadObjectTaskParams.Request.ObjUuid
-	downloadFolderRecord := targetPath + uuid + ".download_folder_record"
+	downloadFolderRecord := targetPath + uuid + DownloadFolderRecordSuffix
 	targetPath = targetPath + uuid + "/"
 
 	continuationToken := ""
@@ -1595,7 +1599,7 @@ func (o *JCSProxy) downloadPartWithSignedUrl(
 	downloadFileInput.DownloadFile = targetFile
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
-		downloadFileInput.DownloadFile + ".download_file_record"
+		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
 	downloadFileInput.TaskNum = DefaultJCSDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
