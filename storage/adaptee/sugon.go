@@ -184,6 +184,17 @@ func (o *Sugon) updateCheckpointFile(
 			" err: ", err)
 		return err
 	}
+	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
+	defer func() {
+		errMsg := file.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", errMsg)
+		}
+	}()
+	_ = file.Sync()
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:updateCheckpointFile finish.")
@@ -1186,13 +1197,17 @@ func (task *SugonUploadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"SugonUploadPartTask:Run start.",
-		" sourceFile: ", sourceFile)
+		" sourceFile: ", sourceFile,
+		" path: ", task.Path,
+		" chunkNumber: ", task.ChunkNumber)
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"os.Open failed.",
 			" sourceFile: ", sourceFile,
+			" path: ", task.Path,
+			" chunkNumber: ", task.ChunkNumber,
 			" err: ", err)
 		return err
 	}
@@ -1202,6 +1217,8 @@ func (task *SugonUploadPartTask) Run(
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
+				" path: ", task.Path,
+				" chunkNumber: ", task.ChunkNumber,
 				" err: ", errMsg)
 		}
 	}()
@@ -1215,6 +1232,8 @@ func (task *SugonUploadPartTask) Run(
 		Logger.WithContext(ctx).Error(
 			"fd.Seek failed.",
 			" sourceFile: ", sourceFile,
+			" path: ", task.Path,
+			" chunkNumber: ", task.ChunkNumber,
 			" err: ", err)
 		return err
 	}
@@ -1249,7 +1268,9 @@ func (task *SugonUploadPartTask) Run(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"SugonUploadPartTask:Run finish.")
+		"SugonUploadPartTask:Run finish.",
+		" path: ", task.Path,
+		" chunkNumber: ", task.ChunkNumber)
 	return err
 }
 
@@ -2215,6 +2236,7 @@ func (task *SugonDownloadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"SugonDownloadPartTask:Run start.",
+		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
 	err, downloadPartOutput :=
@@ -2225,12 +2247,16 @@ func (task *SugonDownloadPartTask) Run(
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"SClient.DownloadChunks finish.")
+			"SClient.DownloadChunks finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
 				Logger.WithContext(ctx).Warn(
-					"close response body failed.")
+					"close response body failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber)
 			}
 		}()
 		_err := task.S.UpdateDownloadFile(
@@ -2242,20 +2268,27 @@ func (task *SugonDownloadPartTask) Run(
 			if !task.EnableCheckpoint {
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
+					" objectPath: ", task.ObjectPath,
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
 				"Sugon.updateDownloadFile failed.",
+				" objectPath: ", task.ObjectPath,
+				" partNumber: ", task.PartNumber,
 				" err: ", _err)
 			return _err
 		}
 		Logger.WithContext(ctx).Debug(
-			"DownloadPartTask.Run finish.")
+			"DownloadPartTask.Run finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
 
 	Logger.WithContext(ctx).Error(
 		"SugonDownloadPartTask:Run failed.",
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber,
 		" err: ", err)
 	return err
 }

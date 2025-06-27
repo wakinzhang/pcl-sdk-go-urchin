@@ -200,6 +200,17 @@ func (o *JCS) updateCheckpointFile(
 			" err: ", err)
 		return err
 	}
+	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
+	defer func() {
+		errMsg := file.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", errMsg)
+		}
+	}()
+	_ = file.Sync()
 
 	Logger.WithContext(ctx).Debug(
 		"JCS:updateCheckpointFile finish.")
@@ -1124,7 +1135,8 @@ func (task *JCSUploadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"JCSUploadPartTask:Run start.",
-		" sourceFile: ", sourceFile)
+		" sourceFile: ", sourceFile,
+		" partNumber: ", task.PartNumber)
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
@@ -1153,6 +1165,7 @@ func (task *JCSUploadPartTask) Run(
 		Logger.WithContext(ctx).Error(
 			"fd.Seek failed.",
 			" sourceFile: ", sourceFile,
+			" partNumber: ", task.PartNumber,
 			" err: ", err)
 		return err
 	}
@@ -1167,12 +1180,16 @@ func (task *JCSUploadPartTask) Run(
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"JcsClient.UploadPart failed.",
+			" sourceFile: ", sourceFile,
+			" partNumber: ", task.PartNumber,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCSUploadPartTask:Run finish.")
+		"JCSUploadPartTask:Run finish.",
+		" sourceFile: ", sourceFile,
+		" partNumber: ", task.PartNumber)
 	return err
 }
 
@@ -2079,6 +2096,7 @@ func (task *JCSDownloadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"JCSDownloadPartTask:Run start.",
+		" objectId: ", task.ObjectId,
 		" partNumber: ", task.PartNumber)
 
 	err, downloadPartOutput :=
@@ -2090,7 +2108,9 @@ func (task *JCSDownloadPartTask) Run(
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"JcsClient.DownloadPart finish.")
+			"JcsClient.DownloadPart finish.",
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber)
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
@@ -2107,20 +2127,27 @@ func (task *JCSDownloadPartTask) Run(
 			if !task.EnableCheckpoint {
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
+					" objectId: ", task.ObjectId,
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
 				"JCS.updateDownloadFile failed.",
+				" objectId: ", task.ObjectId,
+				" partNumber: ", task.PartNumber,
 				" err: ", _err)
 			return _err
 		}
 		Logger.WithContext(ctx).Debug(
-			"DownloadPartTask.Run finish.")
+			"DownloadPartTask.Run finish.",
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
 
 	Logger.WithContext(ctx).Error(
 		"JCSDownloadPartTask:Run failed.",
+		" objectId: ", task.ObjectId,
+		" partNumber: ", task.PartNumber,
 		" err: ", err)
 	return err
 }

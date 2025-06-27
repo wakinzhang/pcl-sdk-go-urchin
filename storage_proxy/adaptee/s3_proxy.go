@@ -845,6 +845,17 @@ func (o *S3Proxy) updateCheckpointFile(
 			" err: ", err)
 		return err
 	}
+	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
+	defer func() {
+		errMsg := file.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", errMsg)
+		}
+	}()
+	_ = file.Sync()
 
 	Logger.WithContext(ctx).Debug(
 		"updateCheckpointFile finish.")
@@ -1878,7 +1889,9 @@ func (task *UploadPartTask) Run(
 		"UploadPartTask:Run start.",
 		" sourceFile: ", sourceFile,
 		" uploadId: ", uploadId,
-		" taskId: ", taskId)
+		" taskId: ", taskId,
+		" partNumber: ", int32(task.PartNumber),
+		" source: ", task.Key)
 
 	if atomic.LoadInt32(task.abort) == 1 {
 		Logger.WithContext(ctx).Error(
@@ -1919,7 +1932,11 @@ func (task *UploadPartTask) Run(
 			return errors.New("invalid etag value")
 		}
 		Logger.WithContext(ctx).Debug(
-			"UploadPartTask:Run finish.")
+			"UploadPartTask:Run finish.",
+			" uploadId: ", uploadId,
+			" partNumber: ", int32(task.PartNumber),
+			" taskId: ", taskId,
+			" source: ", task.Key)
 		return uploadPartOutput
 	} else if obsError, ok := err.(obs.ObsError); ok &&
 		obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
@@ -3033,7 +3050,10 @@ func (task *DownloadPartTask) Run(
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"obsClient.GetObjectWithSignedUrl finish.")
+			"obsClient.GetObjectWithSignedUrl finish.",
+			" objectKey: ", objectKey,
+			" taskId: ", taskId,
+			" partNumber: ", task.partNumber)
 		defer func() {
 			errMsg := getObjectWithSignedUrlOutput.Body.Close()
 			if errMsg != nil {
@@ -3051,15 +3071,23 @@ func (task *DownloadPartTask) Run(
 				atomic.CompareAndSwapInt32(task.abort, 0, 1)
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
+					" objectKey: ", objectKey,
+					" taskId: ", taskId,
 					" partNumber: ", task.partNumber)
 			}
 			Logger.WithContext(ctx).Error(
 				"S3Proxy.updateDownloadFile failed.",
+				" objectKey: ", objectKey,
+				" taskId: ", taskId,
+				" partNumber: ", task.partNumber,
 				" err: ", _err)
 			return _err
 		}
 		Logger.WithContext(ctx).Debug(
-			"DownloadPartTask.Run finish.")
+			"DownloadPartTask.Run finish.",
+			" objectKey: ", objectKey,
+			" taskId: ", taskId,
+			" partNumber: ", task.partNumber)
 		return getObjectWithSignedUrlOutput
 	} else if obsError, ok := err.(obs.ObsError); ok &&
 		obsError.StatusCode >= 400 &&
@@ -3068,11 +3096,16 @@ func (task *DownloadPartTask) Run(
 		atomic.CompareAndSwapInt32(task.abort, 0, 1)
 		Logger.WithContext(ctx).Warn(
 			"4** error abort task.",
+			" objectKey: ", objectKey,
+			" taskId: ", taskId,
 			" partNumber: ", task.partNumber)
 	}
 
 	Logger.WithContext(ctx).Error(
 		"DownloadPartTask:Run failed.",
+		" objectKey: ", objectKey,
+		" taskId: ", taskId,
+		" partNumber: ", task.partNumber,
 		" err: ", err)
 	return err
 }

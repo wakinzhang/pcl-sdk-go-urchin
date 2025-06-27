@@ -175,6 +175,17 @@ func (o *StarLight) updateCheckpointFile(
 			" err: ", err)
 		return err
 	}
+	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
+	defer func() {
+		errMsg := file.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", errMsg)
+		}
+	}()
+	_ = file.Sync()
 
 	Logger.WithContext(ctx).Debug(
 		"StarLight:updateCheckpointFile finish.")
@@ -1044,13 +1055,16 @@ func (task *SLUploadPartTask) Run(
 	Logger.WithContext(ctx).Debug(
 		"SLUploadPartTask:Run start.",
 		" sourceFile: ", sourceFile,
-		" objectPath: ", task.ObjectPath)
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber)
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"os.Open failed.",
 			" sourceFile: ", sourceFile,
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
 			" err: ", err)
 		return err
 	}
@@ -1060,6 +1074,8 @@ func (task *SLUploadPartTask) Run(
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
+				" objectPath: ", task.ObjectPath,
+				" partNumber: ", task.PartNumber,
 				" err: ", errMsg)
 		}
 	}()
@@ -1072,7 +1088,10 @@ func (task *SLUploadPartTask) Run(
 	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
 		Logger.WithContext(ctx).Error(
 			"fd.Seek failed.",
-			" sourceFile: ", sourceFile, " err: ", err)
+			" sourceFile: ", sourceFile,
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
+			" err: ", err)
 		return err
 	}
 
@@ -1090,13 +1109,16 @@ func (task *SLUploadPartTask) Run(
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"SlClient.UploadChunks failed.",
+			" objectPath: ", task.ObjectPath,
 			" partNumber: ", task.PartNumber,
 			" err: ", err)
 		return err
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"SLUploadPartTask:Run finish.")
+		"SLUploadPartTask:Run finish.",
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber)
 	return err
 }
 
@@ -2037,6 +2059,7 @@ func (task *SLDownloadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"SLDownloadPartTask:Run start.",
+		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
 	err, downloadPartOutput :=
@@ -2047,12 +2070,16 @@ func (task *SLDownloadPartTask) Run(
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"SlClient.DownloadChunks finish.")
+			"SlClient.DownloadChunks finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
 				Logger.WithContext(ctx).Warn(
-					"close response body failed.")
+					"close response body failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber)
 			}
 		}()
 		_err := task.Sl.UpdateDownloadFile(
@@ -2064,20 +2091,27 @@ func (task *SLDownloadPartTask) Run(
 			if !task.EnableCheckpoint {
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
+					" objectPath: ", task.ObjectPath,
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
 				"SL.updateDownloadFile failed.",
+				" objectPath: ", task.ObjectPath,
+				" partNumber: ", task.PartNumber,
 				" err: ", _err)
 			return _err
 		}
 		Logger.WithContext(ctx).Debug(
-			"DownloadPartTask.Run finish.")
+			"DownloadPartTask.Run finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
 
 	Logger.WithContext(ctx).Error(
 		"SLDownloadPartTask:Run failed.",
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber,
 		" err: ", err)
 	return err
 }

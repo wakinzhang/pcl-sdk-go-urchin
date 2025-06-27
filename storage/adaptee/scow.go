@@ -183,6 +183,17 @@ func (o *Scow) updateCheckpointFile(
 			" err: ", err)
 		return err
 	}
+	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
+	defer func() {
+		errMsg := file.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", errMsg)
+		}
+	}()
+	_ = file.Sync()
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:updateCheckpointFile finish.")
@@ -1235,7 +1246,9 @@ func (task *ScowUploadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"ScowUploadPartTask:Run start.",
-		" sourceFile: ", sourceFile)
+		" sourceFile: ", sourceFile,
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber)
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
@@ -1251,6 +1264,8 @@ func (task *ScowUploadPartTask) Run(
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
+				" objectPath: ", task.ObjectPath,
+				" partNumber: ", task.PartNumber,
 				" err: ", errMsg)
 		}
 	}()
@@ -1264,6 +1279,8 @@ func (task *ScowUploadPartTask) Run(
 		Logger.WithContext(ctx).Error(
 			"fd.Seek failed.",
 			" sourceFile: ", sourceFile,
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
 			" err: ", err)
 		return err
 	}
@@ -1288,7 +1305,9 @@ func (task *ScowUploadPartTask) Run(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"ScowUploadPartTask:Run finish.")
+		"ScowUploadPartTask:Run finish.",
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber)
 	return err
 }
 
@@ -2250,6 +2269,7 @@ func (task *ScowDownloadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"ScowDownloadPartTask:Run start.",
+		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
 	err, downloadPartOutput :=
@@ -2260,12 +2280,16 @@ func (task *ScowDownloadPartTask) Run(
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"SClient.DownloadChunks finish.")
+			"SClient.DownloadChunks finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
 				Logger.WithContext(ctx).Warn(
-					"close response body failed.")
+					"close response body failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber)
 			}
 		}()
 		_err := task.S.UpdateDownloadFile(
@@ -2277,20 +2301,27 @@ func (task *ScowDownloadPartTask) Run(
 			if !task.EnableCheckpoint {
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
+					" objectPath: ", task.ObjectPath,
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
 				"Scow.updateDownloadFile failed.",
+				" objectPath: ", task.ObjectPath,
+				" partNumber: ", task.PartNumber,
 				" err: ", _err)
 			return _err
 		}
 		Logger.WithContext(ctx).Debug(
-			"DownloadPartTask.Run finish.")
+			"DownloadPartTask.Run finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
 
 	Logger.WithContext(ctx).Error(
 		"ScowDownloadPartTask:Run failed.",
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber,
 		" err: ", err)
 	return err
 }

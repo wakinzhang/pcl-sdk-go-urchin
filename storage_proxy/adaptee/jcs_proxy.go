@@ -390,6 +390,17 @@ func (o *JCSProxy) updateCheckpointFile(
 			" err: ", err)
 		return err
 	}
+	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
+	defer func() {
+		errMsg := file.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", errMsg)
+		}
+	}()
+	_ = file.Sync()
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:updateCheckpointFile finish.")
@@ -1254,6 +1265,8 @@ func (task *JCSProxyUploadPartTask) Run(
 	Logger.WithContext(ctx).Debug(
 		"JCSProxyUploadPartTask:Run start.",
 		" sourceFile: ", sourceFile,
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber,
 		" taskId: ", taskId)
 
 	fd, err := os.Open(sourceFile)
@@ -1261,6 +1274,8 @@ func (task *JCSProxyUploadPartTask) Run(
 		Logger.WithContext(ctx).Error(
 			"os.Open failed.",
 			" sourceFile: ", sourceFile,
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
 			" err: ", err)
 		return err
 	}
@@ -1270,6 +1285,8 @@ func (task *JCSProxyUploadPartTask) Run(
 			Logger.WithContext(ctx).Warn(
 				"close file failed.",
 				" sourceFile: ", sourceFile,
+				" objectPath: ", task.ObjectPath,
+				" partNumber: ", task.PartNumber,
 				" err: ", errMsg)
 		}
 	}()
@@ -1301,6 +1318,7 @@ func (task *JCSProxyUploadPartTask) Run(
 		Logger.WithContext(ctx).Error(
 			"UrchinClient.CreateJCSPreSignedObjectUploadPart failed.",
 			" objectId: ", task.ObjectId,
+			" objectPath: ", task.ObjectPath,
 			" partNumber: ", task.PartNumber,
 			" taskId: ", taskId,
 			" err: ", err)
@@ -1317,6 +1335,7 @@ func (task *JCSProxyUploadPartTask) Run(
 			"JcsProxyClient.UploadPartWithSignedUrl failed.",
 			" signedUrl: ", createUploadPartSignedUrlResp.SignedUrl,
 			" objectId: ", task.ObjectId,
+			" objectPath: ", task.ObjectPath,
 			" partNumber: ", task.PartNumber,
 			" taskId: ", taskId,
 			" err: ", err)
@@ -1324,7 +1343,9 @@ func (task *JCSProxyUploadPartTask) Run(
 	}
 
 	Logger.WithContext(ctx).Debug(
-		"JCSProxyUploadPartTask:Run finish.")
+		"JCSProxyUploadPartTask:Run finish.",
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber)
 	return uploadPartOutput
 }
 
@@ -2242,6 +2263,7 @@ func (task *JCSProxyDownloadPartTask) Run(
 	Logger.WithContext(ctx).Debug(
 		"JCSProxyDownloadPartTask:Run start.",
 		" taskId: ", taskId,
+		" objectId: ", task.ObjectId,
 		" partNumber: ", task.PartNumber)
 
 	createJCSPreSignedObjectDownloadReq :=
@@ -2259,6 +2281,8 @@ func (task *JCSProxyDownloadPartTask) Run(
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"UrchinClient.CreateGetObjectSignedUrl failed.",
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber,
 			" err: ", err)
 		return err
 	}
@@ -2270,12 +2294,16 @@ func (task *JCSProxyDownloadPartTask) Run(
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"JcsProxyClient.DownloadPartWithSignedUrl finish.")
+			"JcsProxyClient.DownloadPartWithSignedUrl finish.",
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber)
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
 				Logger.WithContext(ctx).Warn(
-					"close response body failed.")
+					"close response body failed.",
+					" objectId: ", task.ObjectId,
+					" partNumber: ", task.PartNumber)
 			}
 		}()
 		_err := task.JcsProxy.UpdateDownloadFile(
@@ -2287,21 +2315,28 @@ func (task *JCSProxyDownloadPartTask) Run(
 			if !task.EnableCheckpoint {
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
+					" objectId: ", task.ObjectId,
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
 				"JCSProxy.updateDownloadFile failed.",
+				" objectId: ", task.ObjectId,
+				" partNumber: ", task.PartNumber,
 				" err: ", _err)
 			return _err
 		}
 		Logger.WithContext(ctx).Debug(
-			"DownloadPartTask.Run finish.")
+			"DownloadPartTask.Run finish.",
+			" objectId: ", task.ObjectId,
+			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
 
 	Logger.WithContext(ctx).Error(
 		"JCSProxyDownloadPartTask:Run failed.",
 		" signedUrl: ", createJCSPreSignedObjectDownloadResp.SignedUrl,
+		" objectId: ", task.ObjectId,
+		" partNumber: ", task.PartNumber,
 		" err: ", err)
 	return err
 }

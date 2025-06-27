@@ -172,6 +172,17 @@ func (o *ParaCloud) updateCheckpointFile(
 			" err: ", err)
 		return err
 	}
+	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
+	defer func() {
+		errMsg := file.Close()
+		if errMsg != nil {
+			Logger.WithContext(ctx).Warn(
+				"close file failed.",
+				" checkpointFilePath: ", checkpointFilePath,
+				" err: ", errMsg)
+		}
+	}()
+	_ = file.Sync()
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:updateCheckpointFile finish.")
@@ -1514,6 +1525,7 @@ func (task *ParaCloudDownloadPartTask) Run(
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloudDownloadPartTask:Run start.",
+		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
 	err, downloadPartOutput :=
@@ -1525,7 +1537,9 @@ func (task *ParaCloudDownloadPartTask) Run(
 
 	if nil == err {
 		Logger.WithContext(ctx).Debug(
-			"PCClient.Download finish.")
+			"PCClient.Download finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
@@ -1542,20 +1556,27 @@ func (task *ParaCloudDownloadPartTask) Run(
 			if !task.EnableCheckpoint {
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
+					" objectPath: ", task.ObjectPath,
 					" partNumber: ", task.PartNumber)
 			}
 			Logger.WithContext(ctx).Error(
 				"ParaCloud.updateDownloadFile failed.",
+				" objectPath: ", task.ObjectPath,
+				" partNumber: ", task.PartNumber,
 				" err: ", _err)
 			return _err
 		}
 		Logger.WithContext(ctx).Debug(
-			"DownloadPartTask.Run finish.")
+			"DownloadPartTask.Run finish.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
 
 	Logger.WithContext(ctx).Error(
 		"ParaCloudDownloadPartTask:Run failed.",
+		" objectPath: ", task.ObjectPath,
+		" partNumber: ", task.PartNumber,
 		" err: ", err)
 	return err
 }
