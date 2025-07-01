@@ -1285,7 +1285,7 @@ func (task *ScowUploadPartTask) Run(
 		return err
 	}
 
-	err = task.SClient.UploadChunks(
+	err, resp := task.SClient.UploadChunks(
 		ctx,
 		task.FileName,
 		task.ObjectPath,
@@ -1308,7 +1308,7 @@ func (task *ScowUploadPartTask) Run(
 		"ScowUploadPartTask:Run finish.",
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
-	return err
+	return resp
 }
 
 func (o *Scow) Download(

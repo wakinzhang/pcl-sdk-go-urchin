@@ -1170,7 +1170,7 @@ func (task *JCSUploadPartTask) Run(
 		return err
 	}
 
-	err = task.JcsClient.UploadPart(
+	err, resp := task.JcsClient.UploadPart(
 		ctx,
 		task.ObjectId,
 		task.PartNumber,
@@ -1190,7 +1190,7 @@ func (task *JCSUploadPartTask) Run(
 		"JCSUploadPartTask:Run finish.",
 		" sourceFile: ", sourceFile,
 		" partNumber: ", task.PartNumber)
-	return err
+	return resp
 }
 
 func (o *JCS) Download(

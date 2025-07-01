@@ -318,7 +318,7 @@ func (o *SLClient) UploadChunks(
 	ctx context.Context,
 	file,
 	contentRange string,
-	data io.Reader) (err error) {
+	data io.Reader) (err error, resp *SLUploadChunksResponse) {
 
 	Logger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks start.",
@@ -330,7 +330,7 @@ func (o *SLClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"SLClient.refreshToken failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	input := new(SLUploadChunksReq)
@@ -342,7 +342,7 @@ func (o *SLClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"query.Values failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	url := o.endpoint + StarLightUploadInterface
@@ -368,7 +368,7 @@ func (o *SLClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"http.Do failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	Logger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks response.",
@@ -376,13 +376,13 @@ func (o *SLClient) UploadChunks(
 		" contentRange: ", contentRange,
 		" response: ", string(respBody))
 
-	resp := new(SLUploadChunksResponse)
+	resp = new(SLUploadChunksResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	if SLSuccessCode != resp.Code {
@@ -392,11 +392,11 @@ func (o *SLClient) UploadChunks(
 			" contentRange: ", contentRange,
 			" Code: ", resp.Code,
 			" Info: ", resp.Info)
-		return errors.New(resp.Info)
+		return errors.New(resp.Info), resp
 	}
 	Logger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks finish.")
-	return err
+	return nil, resp
 }
 
 func (o *SLClient) List(

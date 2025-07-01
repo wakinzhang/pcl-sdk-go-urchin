@@ -649,7 +649,7 @@ func (o *ScowClient) UploadChunks(
 	path,
 	md5 string,
 	partNum int32,
-	data io.Reader) (err error) {
+	data io.Reader) (err error, resp *ScowBaseMessageResponse) {
 
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks start.",
@@ -663,7 +663,7 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	input := new(ScowUploadChunksReq)
@@ -675,7 +675,7 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"query.Values failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	url := o.endpoint + ScowUploadChunksInterface + "?" + values.Encode()
@@ -693,14 +693,14 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"io.Copy failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	fileMd5Name := fmt.Sprintf("%s_%d.%s", md5, partNum, fileName)
@@ -717,7 +717,7 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"writer.Close failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	reqHttp, err := http.NewRequest(
@@ -728,7 +728,7 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	reqHttp.Header.Set(ScowHttpHeaderAuth, o.token)
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
@@ -738,7 +738,7 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	response, err := o.scowClient.Do(reqRetryableHttp)
@@ -746,7 +746,7 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"ScowClient.Do failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
@@ -763,7 +763,7 @@ func (o *ScowClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -774,13 +774,13 @@ func (o *ScowClient) UploadChunks(
 		" partNum: ", partNum,
 		" response: ", string(respBodyBuf))
 
-	resp := new(ScowBaseMessageResponse)
+	resp = new(ScowBaseMessageResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	if ScowSuccessMessage != resp.Message &&
@@ -792,11 +792,11 @@ func (o *ScowClient) UploadChunks(
 			" md5: ", md5,
 			" partNum: ", partNum,
 			" Message: ", resp.Message)
-		return errors.New(resp.Message)
+		return errors.New(resp.Message), resp
 	}
 	Logger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks finish.")
-	return err
+	return nil, resp
 }
 
 func (o *ScowClient) MergeChunks(

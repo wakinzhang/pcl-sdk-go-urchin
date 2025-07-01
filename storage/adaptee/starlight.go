@@ -1100,7 +1100,7 @@ func (task *SLUploadPartTask) Run(
 		task.Offset+task.PartSize-1,
 		task.TotalSize)
 
-	err = task.SlClient.UploadChunks(
+	err, resp := task.SlClient.UploadChunks(
 		ctx,
 		task.ObjectPath,
 		contentRange,
@@ -1119,7 +1119,7 @@ func (task *SLUploadPartTask) Run(
 		"SLUploadPartTask:Run finish.",
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
-	return err
+	return resp
 }
 
 func (o *StarLight) Download(

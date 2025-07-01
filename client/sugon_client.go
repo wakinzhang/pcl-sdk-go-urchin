@@ -565,7 +565,7 @@ func (o *SugonClient) UploadChunks(
 	totalSize,
 	chunkSize,
 	currentChunkSize int64,
-	data io.Reader) (err error) {
+	data io.Reader) (err error, resp *SugonBaseResponse) {
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:UploadChunks start.",
@@ -584,7 +584,7 @@ func (o *SugonClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	url := o.endpoint + SugonUploadChunksInterface
@@ -602,14 +602,14 @@ func (o *SugonClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"io.Copy failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	_ = writer.WriteField(
@@ -653,7 +653,7 @@ func (o *SugonClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"writer.Close failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	reqHttp, err := http.NewRequest(
@@ -664,7 +664,7 @@ func (o *SugonClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	reqHttp.Header.Set(SugonHttpHeaderToken, o.token)
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
@@ -674,7 +674,7 @@ func (o *SugonClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	response, err := o.sugonClient.Do(reqRetryableHttp)
@@ -682,7 +682,7 @@ func (o *SugonClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"sugonClient.Do failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
@@ -699,7 +699,7 @@ func (o *SugonClient) UploadChunks(
 		Logger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -714,19 +714,19 @@ func (o *SugonClient) UploadChunks(
 		" currentChunkSize: ", currentChunkSize,
 		"response: ", string(respBodyBuf))
 
-	resp := new(SugonBaseResponse)
+	resp = new(SugonBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	if SugonErrFileExist == resp.Code {
 		Logger.WithContext(ctx).Info(
 			"Already exist.")
-		return err
+		return nil, resp
 	} else if SugonSuccessCode != resp.Code {
 		Logger.WithContext(ctx).Error(
 			"SugonClient:UploadChunks response failed.",
@@ -740,12 +740,12 @@ func (o *SugonClient) UploadChunks(
 			" currentChunkSize: ", currentChunkSize,
 			" Code: ", resp.Code,
 			" Msg: ", resp.Msg)
-		return errors.New(resp.Msg)
+		return errors.New(resp.Msg), resp
 	}
 
 	Logger.WithContext(ctx).Debug(
 		"SugonClient:UploadChunks finish.")
-	return err
+	return nil, resp
 }
 
 func (o *SugonClient) MergeChunks(

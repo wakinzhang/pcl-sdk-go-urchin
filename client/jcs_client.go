@@ -1933,7 +1933,7 @@ func (o *JCSClient) UploadPart(
 	objectID,
 	index int32,
 	path string,
-	data io.Reader) (err error) {
+	data io.Reader) (err error, resp *JCSBaseResponse) {
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart start.",
@@ -1951,7 +1951,7 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"json.Marshal failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	reqUrl := o.endPoint + JCSUploadPartInterface
@@ -1970,14 +1970,14 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"io.Copy failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	_ = writer.WriteField(
 		JCSMultiPartFormFiledInfo,
@@ -1988,7 +1988,7 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"writer.Close failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	reqHttp, err := http.NewRequest(
@@ -1999,7 +1999,7 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
@@ -2008,7 +2008,7 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"JCSClient.signWithoutBody failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
@@ -2016,7 +2016,7 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
@@ -2024,7 +2024,7 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
@@ -2041,7 +2041,7 @@ func (o *JCSClient) UploadPart(
 		Logger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -2051,13 +2051,13 @@ func (o *JCSClient) UploadPart(
 		" path: ", path,
 		" response: ", string(respBodyBuf))
 
-	resp := new(JCSBaseResponse)
+	resp = new(JCSBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
 			" err: ", err)
-		return err
+		return err, resp
 	}
 
 	if JCSSuccessCode != resp.Code {
@@ -2068,12 +2068,12 @@ func (o *JCSClient) UploadPart(
 			" path: ", path,
 			" errCode: ", resp.Code,
 			" errMessage: ", resp.Message)
-		return errors.New(resp.Message)
+		return errors.New(resp.Message), resp
 	}
 
 	Logger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart finish.")
-	return err
+	return nil, resp
 }
 
 func (o *JCSClient) CompleteMultiPartUpload(

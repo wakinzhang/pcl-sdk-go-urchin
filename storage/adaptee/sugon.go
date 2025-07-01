@@ -1238,7 +1238,7 @@ func (task *SugonUploadPartTask) Run(
 		return err
 	}
 
-	err = task.SClient.UploadChunks(
+	err, resp := task.SClient.UploadChunks(
 		ctx,
 		task.File,
 		task.FileName,
@@ -1271,7 +1271,7 @@ func (task *SugonUploadPartTask) Run(
 		"SugonUploadPartTask:Run finish.",
 		" path: ", task.Path,
 		" chunkNumber: ", task.ChunkNumber)
-	return err
+	return resp
 }
 
 func (o *Sugon) Download(
