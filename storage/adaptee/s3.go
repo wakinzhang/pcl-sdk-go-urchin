@@ -23,18 +23,33 @@ func (o *S3) Init(
 	ak,
 	sk,
 	endpoint,
-	bucket string) (err error) {
+	bucket string,
+	nodeType int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"S3:Init start.",
 		" ak: ", "***",
 		" sk: ", "***",
 		" endpoint: ", endpoint,
-		" bucket: ", bucket)
+		" bucket: ", bucket,
+		" nodeType: ", nodeType)
 
 	o.bucket = bucket
 
-	o.obsClient, err = obs.New(ak, sk, endpoint)
+	switch nodeType {
+	case StorageCategoryEObs:
+		o.obsClient, err = obs.New(
+			ak,
+			sk,
+			endpoint,
+			obs.WithSignature(obs.SignatureObs))
+	default:
+		o.obsClient, err = obs.New(
+			ak,
+			sk,
+			endpoint,
+			obs.WithSignature(obs.SignatureV4))
+	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"obs.New failed.",

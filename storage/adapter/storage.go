@@ -45,7 +45,8 @@ func NewStorage(
 			storageNodeConfig.AccessKey,
 			storageNodeConfig.SecretKey,
 			storageNodeConfig.Endpoint,
-			storageNodeConfig.BucketName)
+			storageNodeConfig.BucketName,
+			nodeType)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"S3.Init failed.",

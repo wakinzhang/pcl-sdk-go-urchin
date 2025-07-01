@@ -28,11 +28,28 @@ type S3Proxy struct {
 	obsClient *obs.ObsClient
 }
 
-func (o *S3Proxy) Init(ctx context.Context) (err error) {
-	Logger.WithContext(ctx).Debug(
-		"S3Proxy:Init start.")
+func (o *S3Proxy) Init(
+	ctx context.Context,
+	nodeType int32) (err error) {
 
-	o.obsClient, err = obs.New("", "", "magicalParam")
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:Init start.",
+		" nodeType: ", nodeType)
+
+	switch nodeType {
+	case StorageCategoryEObs:
+		o.obsClient, err = obs.New(
+			"",
+			"",
+			"magicalParam",
+			obs.WithSignature(obs.SignatureObs))
+	default:
+		o.obsClient, err = obs.New(
+			"",
+			"",
+			"magicalParam",
+			obs.WithSignature(obs.SignatureV4))
+	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"obs.New failed.",
