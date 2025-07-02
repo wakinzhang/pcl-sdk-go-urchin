@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
@@ -15,7 +16,9 @@ func DownloadFileByProxy(
 	urchinServiceAddr,
 	objUuid,
 	source,
-	targetPath string) (err error) {
+	targetPath string) (
+	err error,
+	downloadFileResp *DownloadFileResp) {
 
 	requestId := uuid.NewV4().String()
 	var ctx context.Context
@@ -34,6 +37,8 @@ func DownloadFileByProxy(
 		" source: ", source,
 		" targetPath: ", targetPath)
 
+	downloadFileResp = new(DownloadFileResp)
+
 	UClient.Init(
 		ctx,
 		userId,
@@ -48,15 +53,17 @@ func DownloadFileByProxy(
 	downloadFileReq.Source = source
 	downloadFileReq.TargetLocalPath = targetPath
 
-	err, downloadFileResp := UClient.DownloadFile(ctx, downloadFileReq)
+	err, downloadFileResp = UClient.DownloadFile(ctx, downloadFileReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"UrchinClient.DownloadFile failed.",
 			" err: ", err)
-		return err
+		return err, downloadFileResp
 	}
 
-	fmt.Printf("DownloadFile TaskId: %d\n", downloadFileResp.TaskId)
+	downloadFileRespBuf, _ := json.Marshal(downloadFileResp)
+	fmt.Printf("DownloadFile Response: %s\n",
+		string(downloadFileRespBuf))
 
 	err = ProcessDownloadFileByProxy(
 		ctx,
@@ -69,11 +76,11 @@ func DownloadFileByProxy(
 		Logger.WithContext(ctx).Error(
 			"ProcessDownloadFileByProxy failed.",
 			" err: ", err)
-		return err
+		return err, downloadFileResp
 	}
 	Logger.WithContext(ctx).Debug(
 		"DownloadFileByProxy finish.")
-	return err
+	return err, downloadFileResp
 }
 
 func ProcessDownloadFileByProxy(

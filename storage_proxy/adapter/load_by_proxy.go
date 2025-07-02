@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
@@ -18,7 +19,9 @@ func LoadByProxy(
 	sourceNodeName *string,
 	targetNodeName string,
 	cachePath string,
-	needPure bool) (err error) {
+	needPure bool) (
+	err error,
+	loadObjectResp *LoadObjectResp) {
 
 	requestId := uuid.NewV4().String()
 	var ctx context.Context
@@ -39,6 +42,8 @@ func LoadByProxy(
 		" cachePath: ", cachePath,
 		" needPure: ", needPure)
 
+	loadObjectResp = new(LoadObjectResp)
+
 	UClient.Init(
 		ctx,
 		userId,
@@ -56,15 +61,17 @@ func LoadByProxy(
 	loadObjectReq.TargetNodeName = targetNodeName
 	loadObjectReq.CacheLocalPath = cachePath
 
-	err, loadObjectResp := UClient.LoadObject(ctx, loadObjectReq)
+	err, loadObjectResp = UClient.LoadObject(ctx, loadObjectReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"UrchinClient.LoadObject failed.",
 			" err: ", err)
-		return err
+		return err, loadObjectResp
 	}
 
-	fmt.Printf("Load TaskId: %d\n", loadObjectResp.TaskId)
+	loadObjectRespBuf, _ := json.Marshal(loadObjectResp)
+	fmt.Printf("Load Response: %s\n",
+		string(loadObjectRespBuf))
 
 	err = ProcessLoadByProxy(
 		ctx,
@@ -80,11 +87,11 @@ func LoadByProxy(
 		Logger.WithContext(ctx).Error(
 			"ProcessLoadByProxy failed.",
 			" err: ", err)
-		return err
+		return err, loadObjectResp
 	}
 	Logger.WithContext(ctx).Debug(
 		"LoadByProxy finish.")
-	return err
+	return err, loadObjectResp
 }
 
 func ProcessLoadByProxy(

@@ -47,8 +47,7 @@ func (o *S3Proxy) Init(
 		o.obsClient, err = obs.New(
 			"",
 			"",
-			"magicalParam",
-			obs.WithSignature(obs.SignatureV4))
+			"magicalParam")
 	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(

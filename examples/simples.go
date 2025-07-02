@@ -24,7 +24,7 @@ func main() {
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/source/diversicus.mp4"
 	var nodeName = ""
 
-	_ = UploadByProxy(
+	_, _ = UploadByProxy(
 		DefaultUrchinClientUserId,
 		DefaultUrchinClientToken,
 		urchinServiceAddr,
@@ -36,13 +36,15 @@ func main() {
 	/*
 		var objUuid = "e12074ba-e907-41b0-a6b7-9105159b9ff5"
 		var targetPath = "/Users/zhangjiayuan/Downloads/target"
+		var nodeName = ""
 
-		_ = DownloadByProxy(
+		_, _ = DownloadByProxy(
 			DefaultUrchinClientUserId,
 			DefaultUrchinClientToken,
 			urchinServiceAddr,
 			objUuid,
-			targetPath)
+			targetPath,
+			nodeName)
 	*/
 
 	/*导入数据对象，可不清理断点续传信息，可重试导入，needPure默认置false*/
@@ -52,7 +54,7 @@ func main() {
 		var targetNodeName = "test-jcs"
 		var cachePath = "/Users/zhangjiayuan/Downloads/cache"
 
-		_ = LoadByProxy(
+		_, _ = LoadByProxy(
 			DefaultUrchinClientUserId,
 			DefaultUrchinClientToken,
 			urchinServiceAddr,
@@ -69,7 +71,7 @@ func main() {
 		var objPath = "/"
 		var uploadFileSourcePath = "/Users/zhangjiayuan/Downloads/upload_file"
 
-		_ = UploadFileByProxy(
+		_, _ = UploadFileByProxy(
 			DefaultUrchinClientUserId,
 			DefaultUrchinClientToken,
 			urchinServiceAddr,
@@ -85,7 +87,7 @@ func main() {
 		var source = "/small/"
 		var targetPath = "/Users/zhangjiayuan/Downloads/download_file/"
 
-		_ = DownloadFileByProxy(
+		_, _ = DownloadFileByProxy(
 			DefaultUrchinClientUserId,
 			DefaultUrchinClientToken,
 			urchinServiceAddr,

@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	uuid "github.com/satori/go.uuid"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
@@ -16,7 +17,8 @@ func UploadByProxy(
 	urchinServiceAddr,
 	sourcePath,
 	objectName,
-	nodeName string) (err error) {
+	nodeName string) (
+	err error, uploadObjectResp *UploadObjectResp) {
 
 	requestId := uuid.NewV4().String()
 	var ctx context.Context
@@ -31,13 +33,15 @@ func UploadByProxy(
 		" objectName: ", objectName,
 		" nodeName: ", nodeName)
 
+	uploadObjectResp = new(UploadObjectResp)
+
 	_, err = os.Stat(sourcePath)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"os.Stat failed.",
 			" sourcePath: ", sourcePath,
 			" err: ", err)
-		return err
+		return err, uploadObjectResp
 	}
 
 	UClient.Init(
@@ -56,15 +60,17 @@ func UploadByProxy(
 		uploadObjectReq.NodeName = &nodeName
 	}
 
-	err, uploadObjectResp := UClient.UploadObject(ctx, uploadObjectReq)
+	err, uploadObjectResp = UClient.UploadObject(ctx, uploadObjectReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"UrchinClient.UploadObject failed.",
 			" err: ", err)
-		return err
+		return err, uploadObjectResp
 	}
 
-	fmt.Printf("Upload TaskId: %d\n", uploadObjectResp.TaskId)
+	uploadObjectRespBuf, _ := json.Marshal(uploadObjectResp)
+	fmt.Printf("Upload Response: %s\n",
+		string(uploadObjectRespBuf))
 
 	err = ProcessUploadByProxy(
 		ctx,
@@ -77,11 +83,11 @@ func UploadByProxy(
 		Logger.WithContext(ctx).Error(
 			"ProcessUploadByProxy failed.",
 			" err: ", err)
-		return err
+		return err, uploadObjectResp
 	}
 	Logger.WithContext(ctx).Debug(
 		"UploadByProxy success.")
-	return err
+	return err, uploadObjectResp
 }
 
 func ProcessUploadByProxy(

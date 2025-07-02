@@ -47,8 +47,7 @@ func (o *S3) Init(
 		o.obsClient, err = obs.New(
 			ak,
 			sk,
-			endpoint,
-			obs.WithSignature(obs.SignatureV4))
+			endpoint)
 	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -416,6 +415,7 @@ func (o *S3) uploadFile(
 
 	if DefaultS3UploadMultiSize < sourceFileStat.Size() {
 		input := new(obs.UploadFileInput)
+		input.Bucket = o.bucket
 		input.UploadFile = sourceFile
 		input.EnableCheckpoint = true
 		input.CheckpointFile = input.UploadFile + UploadFileRecordSuffix

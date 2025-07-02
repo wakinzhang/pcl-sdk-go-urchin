@@ -13,6 +13,9 @@ const (
 	SugonErrFileNotExist = "911020"
 	SugonErrFileExist    = "911021"
 
+	SugonAttempts = 3
+	SugonDelay    = 1
+
 	DefaultSugonUploadMultiSize = 500 * 1024 * 1024
 
 	DefaultSugonUploadFileTaskNum    = 100
@@ -54,6 +57,26 @@ const (
 
 	SugonMultiPartFormFiledCoverECover = "cover"
 )
+
+var SugonMkdirSuccessCode = map[string]bool{
+	SugonSuccessCode:  true,
+	SugonErrFileExist: true}
+
+var SugonDeleteSuccessCode = map[string]bool{
+	SugonSuccessCode:     true,
+	SugonErrFileNotExist: true}
+
+var SugonUploadSuccessCode = map[string]bool{
+	SugonSuccessCode:  true,
+	SugonErrFileExist: true}
+
+var SugonUploadChunkSuccessCode = map[string]bool{
+	SugonSuccessCode:  true,
+	SugonErrFileExist: true}
+
+var SugonMergeChunksSuccessCode = map[string]bool{
+	SugonSuccessCode:  true,
+	SugonErrFileExist: true}
 
 type SugonMkdirInput struct {
 	Path string
