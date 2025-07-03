@@ -73,6 +73,9 @@ func (o *S3) Mkdir(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
+	if 0 < len(objectKey) && '/' != objectKey[len(objectKey)-1] {
+		objectKey = objectKey + "/"
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"S3:Mkdir start.",
