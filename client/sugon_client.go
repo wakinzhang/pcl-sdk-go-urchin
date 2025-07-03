@@ -31,108 +31,6 @@ type SugonClient struct {
 	sugonClient *retryablehttp.Client
 }
 
-func sugonRetryV1(
-	ctx context.Context,
-	attempts int,
-	delay time.Duration,
-	successCode map[string]bool,
-	fn func() (error, interface{})) (err error) {
-
-	for attempt := 0; attempt < attempts; attempt++ {
-		err, output := fn()
-		if nil == err {
-			if sugonBaseResponse, ok := output.(*SugonBaseResponse); ok {
-				if _, exists := successCode[sugonBaseResponse.Code]; exists {
-					return nil
-				} else {
-					Logger.WithContext(ctx).Error(
-						"SugonClient response failed.",
-						" attempt: ", attempt,
-						" Code: ", sugonBaseResponse.Code,
-						" Msg: ", sugonBaseResponse.Msg)
-					err = errors.New(sugonBaseResponse.Msg)
-				}
-			} else {
-				Logger.WithContext(ctx).Error(
-					"output invalid.")
-				return errors.New("output invalid")
-			}
-
-		} else {
-			Logger.WithContext(ctx).Error(
-				"SugonClient opt failed.",
-				" attempt: ", attempt,
-				" err: ", err)
-		}
-		time.Sleep(delay)
-		delay *= 2
-	}
-	return err
-}
-
-func sugonRetryV2(
-	ctx context.Context,
-	attempts int,
-	delay time.Duration,
-	successCode map[string]bool,
-	fn func() (error, interface{})) (
-	err error, output interface{}) {
-
-	for attempt := 0; attempt < attempts; attempt++ {
-		err, output = fn()
-		if nil == err {
-			if sugonBaseResponse, ok := output.(*SugonBaseResponse); ok {
-				if _, exists := successCode[sugonBaseResponse.Code]; exists {
-					return nil, output
-				} else {
-					Logger.WithContext(ctx).Error(
-						"SugonClient response failed.",
-						" attempt: ", attempt,
-						" Code: ", sugonBaseResponse.Code,
-						" Msg: ", sugonBaseResponse.Msg)
-					err = errors.New(sugonBaseResponse.Msg)
-				}
-			} else {
-				Logger.WithContext(ctx).Error(
-					"output invalid.")
-				return errors.New("output invalid"), output
-			}
-		} else {
-			Logger.WithContext(ctx).Error(
-				"SugonClient opt failed.",
-				" attempt: ", attempt,
-				" err: ", err)
-		}
-		time.Sleep(delay)
-		delay *= 2
-	}
-	return err, output
-}
-
-func sugonRetryV3(
-	ctx context.Context,
-	attempts int,
-	delay time.Duration,
-	fn func() (error, interface{})) (
-	err error, output interface{}) {
-
-	for attempt := 0; attempt < attempts; attempt++ {
-		err, output = fn()
-		if nil == err {
-			return nil, output
-
-		} else {
-			Logger.WithContext(ctx).Error(
-				"SugonClient opt failed.",
-				" attempt: ", attempt,
-				" err: ", err)
-		}
-		time.Sleep(delay)
-		delay *= 2
-	}
-	return err, output
-}
-
 func (o *SugonClient) Init(
 	ctx context.Context,
 	user,
@@ -383,39 +281,39 @@ func (o *SugonClient) Mkdir(
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 	header.Add(SugonHttpHeaderToken, o.token)
 
-	err = sugonRetryV1(
+	err = RetryV2(
 		ctx,
-		SugonAttempts,
-		SugonDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		SugonMkdirSuccessCode,
 		func() (error, interface{}) {
 			resp := new(SugonBaseResponse)
-			err, respBody := Do(
+			_err, respBody := Do(
 				ctx,
 				url+"?"+values.Encode(),
 				http.MethodPost,
 				header,
 				nil,
 				o.sugonClient)
-			if nil != err {
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"http.Do failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
 			Logger.WithContext(ctx).Debug(
 				"SugonClient:Mkdir response.",
 				" path: ", path,
 				" response: ", string(respBody))
 
-			err = json.Unmarshal(respBody, resp)
-			if nil != err {
+			_err = json.Unmarshal(respBody, resp)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"json.Unmarshal failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
-			return err, resp
+			return _err, resp
 		})
 
 	if nil != err {
@@ -470,38 +368,38 @@ func (o *SugonClient) Delete(
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 	header.Add(SugonHttpHeaderToken, o.token)
 
-	err = sugonRetryV1(
+	err = RetryV2(
 		ctx,
-		SugonAttempts,
-		SugonDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		SugonDeleteSuccessCode,
 		func() (error, interface{}) {
 			resp := new(SugonBaseResponse)
-			err, respBody := Do(
+			_err, respBody := Do(
 				ctx,
 				url+"?"+values.Encode(),
 				http.MethodPost,
 				header,
 				nil,
 				o.sugonClient)
-			if nil != err {
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"http.Do failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
 			Logger.WithContext(ctx).Debug(
 				"SugonClient:Delete response.",
 				" paths: ", paths,
 				" response: ", string(respBody))
-			err = json.Unmarshal(respBody, resp)
-			if nil != err {
+			_err = json.Unmarshal(respBody, resp)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"json.Unmarshal failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
-			return err, resp
+			return _err, resp
 		})
 
 	if nil != err {
@@ -602,36 +500,36 @@ func (o *SugonClient) Upload(
 		return err
 	}
 
-	err = sugonRetryV1(
+	err = RetryV2(
 		ctx,
-		SugonAttempts,
-		SugonDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		SugonUploadSuccessCode,
 		func() (error, interface{}) {
 			resp := new(SugonBaseResponse)
-			response, err := o.sugonClient.Do(reqRetryableHttp)
-			if nil != err {
+			response, _err := o.sugonClient.Do(reqRetryableHttp)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"sugonClient.Do failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
 
 			defer func(body io.ReadCloser) {
-				_err := body.Close()
-				if nil != _err {
+				__err := body.Close()
+				if nil != __err {
 					Logger.WithContext(ctx).Error(
 						"io.ReadCloser failed.",
-						" err: ", _err)
+						" err: ", __err)
 				}
 			}(response.Body)
 
-			respBodyBuf, err := io.ReadAll(response.Body)
-			if nil != err {
+			respBodyBuf, _err := io.ReadAll(response.Body)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"io.ReadAll failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
 
 			Logger.WithContext(ctx).Debug(
@@ -640,14 +538,14 @@ func (o *SugonClient) Upload(
 				" path: ", path,
 				" response: ", string(respBodyBuf))
 
-			err = json.Unmarshal(respBodyBuf, resp)
-			if nil != err {
+			_err = json.Unmarshal(respBodyBuf, resp)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"json.Unmarshal failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
-			return err, resp
+			return _err, resp
 		})
 
 	if nil != err {
@@ -787,36 +685,36 @@ func (o *SugonClient) UploadChunks(
 		return err, resp
 	}
 
-	err, respTmp := sugonRetryV2(
+	err, respTmp := RetryV3(
 		ctx,
-		SugonAttempts,
-		SugonDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		SugonUploadChunkSuccessCode,
 		func() (error, interface{}) {
 			output := new(SugonBaseResponse)
-			response, err := o.sugonClient.Do(reqRetryableHttp)
-			if nil != err {
+			response, _err := o.sugonClient.Do(reqRetryableHttp)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"sugonClient.Do failed.",
-					" err: ", err)
-				return err, output
+					" err: ", _err)
+				return _err, output
 			}
 
 			defer func(body io.ReadCloser) {
-				_err := body.Close()
-				if nil != _err {
+				__err := body.Close()
+				if nil != __err {
 					Logger.WithContext(ctx).Error(
 						"io.ReadCloser failed.",
-						" err: ", _err)
+						" err: ", __err)
 				}
 			}(response.Body)
 
-			respBodyBuf, err := io.ReadAll(response.Body)
-			if nil != err {
+			respBodyBuf, _err := io.ReadAll(response.Body)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"io.ReadAll failed.",
-					" err: ", err)
-				return err, output
+					" err: ", _err)
+				return _err, output
 			}
 
 			Logger.WithContext(ctx).Debug(
@@ -831,14 +729,14 @@ func (o *SugonClient) UploadChunks(
 				" currentChunkSize: ", currentChunkSize,
 				"response: ", string(respBodyBuf))
 
-			err = json.Unmarshal(respBodyBuf, output)
-			if nil != err {
+			_err = json.Unmarshal(respBodyBuf, output)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"json.Unmarshal failed.",
-					" err: ", err)
-				return err, output
+					" err: ", _err)
+				return _err, output
 			}
-			return err, output
+			return _err, output
 		})
 
 	if nil != err {
@@ -856,10 +754,12 @@ func (o *SugonClient) UploadChunks(
 		return err, resp
 	}
 
-	if resp, ok := respTmp.(*SugonBaseResponse); !ok {
+	resp = new(SugonBaseResponse)
+	isValid := false
+	if resp, isValid = respTmp.(*SugonBaseResponse); !isValid {
 		Logger.WithContext(ctx).Error(
-			"respTmp invalid.")
-		return errors.New("respTmp invalid"), resp
+			"response invalid.")
+		return errors.New("response invalid"), resp
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -912,25 +812,25 @@ func (o *SugonClient) MergeChunks(
 	header.Set(HttpHeaderContentType, HttpHeaderContentTypeUrlEncoded)
 	header.Add(SugonHttpHeaderToken, o.token)
 
-	err = sugonRetryV1(
+	err = RetryV2(
 		ctx,
-		SugonAttempts,
-		SugonDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		SugonMergeChunksSuccessCode,
 		func() (error, interface{}) {
 			resp := new(SugonBaseResponse)
-			err, respBody := Do(
+			_err, respBody := Do(
 				ctx,
 				url,
 				http.MethodPost,
 				header,
 				strings.NewReader(values.Encode()),
 				o.sugonClient)
-			if nil != err {
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"http.Do failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
 			Logger.WithContext(ctx).Debug(
 				"SugonClient:MergeChunks response.",
@@ -939,14 +839,14 @@ func (o *SugonClient) MergeChunks(
 				" relativePath: ", relativePath,
 				" response: ", string(respBody))
 
-			err = json.Unmarshal(respBody, resp)
-			if nil != err {
+			_err = json.Unmarshal(respBody, resp)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"json.Unmarshal failed.",
-					" err: ", err)
-				return err, resp
+					" err: ", _err)
+				return _err, resp
 			}
-			return err, resp
+			return _err, resp
 		})
 
 	if nil != err {
@@ -1008,24 +908,24 @@ func (o *SugonClient) List(
 	header.Add(SugonHttpHeaderToken, o.token)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 
-	err, outputTmp := sugonRetryV3(
+	err, outputTmp := RetryV4(
 		ctx,
-		SugonAttempts,
-		SugonDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		func() (error, interface{}) {
 			sugonListResponseData := new(SugonListResponseData)
-			err, respBody := Do(
+			_err, respBody := Do(
 				ctx,
 				url+"?"+values.Encode(),
 				http.MethodGet,
 				header,
 				nil,
 				o.sugonClient)
-			if nil != err {
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"http.Do failed.",
-					" err: ", err)
-				return err, sugonListResponseData
+					" err: ", _err)
+				return _err, sugonListResponseData
 			}
 			Logger.WithContext(ctx).Debug(
 				"SugonClient:List response.",
@@ -1035,12 +935,12 @@ func (o *SugonClient) List(
 				" response: ", string(respBody))
 
 			resp := new(SugonListResponse)
-			err = json.Unmarshal(respBody, resp)
-			if nil != err {
+			_err = json.Unmarshal(respBody, resp)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"json.Unmarshal failed.",
-					" err: ", err)
-				return err, sugonListResponseData
+					" err: ", _err)
+				return _err, sugonListResponseData
 			}
 
 			if SugonSuccessCode != resp.Code {
@@ -1055,7 +955,7 @@ func (o *SugonClient) List(
 			}
 
 			sugonListResponseData = resp.Data
-			return err, sugonListResponseData
+			return _err, sugonListResponseData
 		})
 
 	if nil != err {
@@ -1068,10 +968,12 @@ func (o *SugonClient) List(
 		return err, output
 	}
 
-	if output, ok := outputTmp.(*SugonListResponseData); !ok {
+	output = new(SugonListResponseData)
+	isValid := false
+	if output, isValid = outputTmp.(*SugonListResponseData); !isValid {
 		Logger.WithContext(ctx).Error(
-			"outputTmp invalid.")
-		return errors.New("outputTmp invalid"), output
+			"response invalid.")
+		return errors.New("response invalid"), output
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -1133,38 +1035,38 @@ func (o *SugonClient) DownloadChunks(
 
 	request.Header = header
 
-	err, outputTmp := sugonRetryV3(
+	err, outputTmp := RetryV4(
 		ctx,
-		SugonAttempts,
-		SugonDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		func() (error, interface{}) {
 			downloadPartOutput := new(SugonDownloadPartOutput)
-			response, err := o.sugonClient.Do(request)
-			if nil != err {
+			response, _err := o.sugonClient.Do(request)
+			if nil != _err {
 				Logger.WithContext(ctx).Error(
 					"sugonClient.Do failed.",
-					" err: ", err)
-				return err, downloadPartOutput
+					" err: ", _err)
+				return _err, downloadPartOutput
 			}
 
 			if HttpHeaderContentTypeJson ==
 				response.Header.Get(HttpHeaderContentType) {
 
 				defer func(body io.ReadCloser) {
-					_err := body.Close()
-					if nil != _err {
+					__err := body.Close()
+					if nil != __err {
 						Logger.WithContext(ctx).Error(
 							"io.ReadCloser failed.",
-							" err: ", _err)
+							" err: ", __err)
 					}
 				}(response.Body)
 
-				respBodyBuf, err := io.ReadAll(response.Body)
-				if nil != err {
+				respBodyBuf, _err := io.ReadAll(response.Body)
+				if nil != _err {
 					Logger.WithContext(ctx).Error(
 						"io.ReadAll failed.",
-						" err: ", err)
-					return err, downloadPartOutput
+						" err: ", _err)
+					return _err, downloadPartOutput
 				}
 
 				Logger.WithContext(ctx).Debug(
@@ -1174,12 +1076,12 @@ func (o *SugonClient) DownloadChunks(
 					" response: ", string(respBodyBuf))
 
 				var resp *SugonBaseResponse
-				err = json.Unmarshal(respBodyBuf, resp)
-				if nil != err {
+				_err = json.Unmarshal(respBodyBuf, resp)
+				if nil != _err {
 					Logger.WithContext(ctx).Error(
 						"json.Unmarshal failed.",
-						" err: ", err)
-					return err, downloadPartOutput
+						" err: ", _err)
+					return _err, downloadPartOutput
 				}
 
 				Logger.WithContext(ctx).Error(
@@ -1192,7 +1094,7 @@ func (o *SugonClient) DownloadChunks(
 				return errors.New(resp.Msg), downloadPartOutput
 			}
 			downloadPartOutput.Body = response.Body
-			return err, downloadPartOutput
+			return _err, downloadPartOutput
 		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -1203,10 +1105,12 @@ func (o *SugonClient) DownloadChunks(
 		return err, output
 	}
 
-	if output, ok := outputTmp.(*SugonDownloadPartOutput); !ok {
+	output = new(SugonDownloadPartOutput)
+	isValid := false
+	if output, isValid = outputTmp.(*SugonDownloadPartOutput); !isValid {
 		Logger.WithContext(ctx).Error(
-			"outputTmp invalid.")
-		return errors.New("outputTmp invalid"), output
+			"response invalid.")
+		return errors.New("response invalid"), output
 	}
 
 	Logger.WithContext(ctx).Debug(

@@ -18,30 +18,6 @@ type ParaCloudClient struct {
 	pcClient *gowebdav.Client
 }
 
-func paraCloudRetryWithBackoff(
-	ctx context.Context,
-	attempts int,
-	delay time.Duration,
-	fn func() error) (err error) {
-
-	for attempt := 0; attempt < attempts; attempt++ {
-		err = fn()
-		if nil == err {
-			return nil
-		}
-		Logger.WithContext(ctx).Error(
-			"pcClient opt failed.",
-			" attempt: ", attempt,
-			" err: ", err)
-		if !gowebdav.IsErrCode(err, ParaCloudLockConflictCode) {
-			return err
-		}
-		time.Sleep(delay)
-		delay *= 2
-	}
-	return err
-}
-
 func (o *ParaCloudClient) Init(
 	ctx context.Context,
 	username,
@@ -86,10 +62,10 @@ func (o *ParaCloudClient) Mkdir(
 		fileMode = stat.Mode()
 	}
 
-	err = paraCloudRetryWithBackoff(
+	err = RetryV1(
 		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		func() error {
 			return o.pcClient.MkdirAll(targetFolder, fileMode)
 		})
@@ -150,10 +126,10 @@ func (o *ParaCloudClient) Upload(
 	readerWrapper.TotalCount = stat.Size()
 	readerWrapper.Mark = 0
 
-	err = paraCloudRetryWithBackoff(
+	err = RetryV1(
 		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		func() error {
 			return o.pcClient.WriteStream(
 				targetFile,
@@ -236,10 +212,10 @@ func (o *ParaCloudClient) Rm(
 		"ParaCloudClient:Rm start.",
 		" path: ", path)
 
-	err = paraCloudRetryWithBackoff(
+	err = RetryV1(
 		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
+		Attempts,
+		Delay*time.Second,
 		func() error {
 			return o.pcClient.RemoveAll(path)
 		})

@@ -13,9 +13,6 @@ const (
 	SugonErrFileNotExist = "911020"
 	SugonErrFileExist    = "911021"
 
-	SugonAttempts = 3
-	SugonDelay    = 1
-
 	DefaultSugonUploadMultiSize = 500 * 1024 * 1024
 
 	DefaultSugonUploadFileTaskNum    = 100

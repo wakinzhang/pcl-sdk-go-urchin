@@ -22,6 +22,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 type S3Proxy struct {
@@ -1046,33 +1047,63 @@ func (o *S3Proxy) uploadFolder(
 					return
 				}
 				if fileInfo.IsDir() {
-					_err = o.NewFolderWithSignedUrl(
+					_err = RetryV1(
 						ctx,
-						objectKey,
-						taskId)
+						Attempts,
+						Delay*time.Second,
+						func() error {
+							__err := o.NewFolderWithSignedUrl(
+								ctx,
+								objectKey,
+								taskId)
+							if nil != __err {
+								Logger.WithContext(ctx).Error(
+									"S3Proxy:NewFolderWithSignedUrl"+
+										" failed.",
+									" objectKey: ", objectKey,
+									" taskId: ", taskId,
+									" err: ", __err)
+								return __err
+							}
+							return nil
+						})
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"S3Proxy:NewFolderWithSignedUrl failed.",
+							"new folder failed.",
 							" objectKey: ", objectKey,
+							" taskId: ", taskId,
 							" err: ", _err)
 						return
 					}
 				} else {
-					_err = o.uploadFile(
+					_err = RetryV1(
 						ctx,
-						filePath,
-						objectKey,
-						taskId,
-						needPure)
+						Attempts,
+						Delay*time.Second,
+						func() error {
+							__err := o.uploadFile(
+								ctx,
+								filePath,
+								objectKey,
+								taskId,
+								needPure)
+							if nil != __err {
+								Logger.WithContext(ctx).Error(
+									"S3Proxy:uploadFile failed.",
+									" objectKey: ", objectKey,
+									" taskId: ", taskId,
+									" err: ", __err)
+								return __err
+							}
+							return nil
+						})
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
-							"S3Proxy:uploadFile failed.",
-							" filePath: ", filePath,
+							"upload file failed.",
 							" objectKey: ", objectKey,
 							" taskId: ", taskId,
-							" needPure: ", needPure,
 							" err: ", _err)
 						return
 					}
@@ -1103,6 +1134,7 @@ func (o *S3Proxy) uploadFolder(
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
 						"write file failed.",
+						" taskId: ", taskId,
 						" uploadFolderRecord: ", uploadFolderRecord,
 						" objectKey: ", objectKey,
 						" err: ", _err)
@@ -1113,6 +1145,7 @@ func (o *S3Proxy) uploadFolder(
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"ants.Submit failed.",
+					" taskId: ", taskId,
 					" err: ", err)
 				return err
 			}
@@ -1123,12 +1156,15 @@ func (o *S3Proxy) uploadFolder(
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath, " err: ", err)
+			" taskId: ", taskId,
+			" sourcePath: ", sourcePath,
+			" err: ", err)
 		return err
 	}
 	if !isAllSuccess {
 		Logger.WithContext(ctx).Error(
 			"S3Proxy:uploadFolder not all success.",
+			" taskId: ", taskId,
 			" sourcePath: ", sourcePath)
 
 		return errors.New("uploadFolder not all success")
@@ -2036,17 +2072,44 @@ func (o *S3Proxy) Download(
 
 	marker := ""
 	for {
-		listObjectsOutput, err := o.ListObjectsWithSignedUrl(
+		err, listObjectsOutputTmp := RetryV4(
 			ctx,
-			taskId,
-			marker)
+			Attempts,
+			Delay*time.Second,
+			func() (error, interface{}) {
+				output := new(obs.ListObjectsOutput)
+				output, _err := o.ListObjectsWithSignedUrl(
+					ctx,
+					taskId,
+					marker)
+				if nil != _err {
+					Logger.WithContext(ctx).Error(
+						"S3Proxy:ListObjectsWithSignedUrl start.",
+						" taskId: ", taskId,
+						" err: ", _err)
+					return _err, output
+				}
+				return _err, output
+			})
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"S3Proxy:ListObjectsWithSignedUrl start.",
+				"list objects failed.",
 				" taskId: ", taskId,
+				" marker: ", marker,
 				" err: ", err)
 			return err
 		}
+
+		listObjectsOutput := new(obs.ListObjectsOutput)
+		isValid := false
+		if listObjectsOutput, isValid =
+			listObjectsOutputTmp.(*obs.ListObjectsOutput); !isValid {
+
+			Logger.WithContext(ctx).Error(
+				"response invalid.")
+			return errors.New("response invalid")
+		}
+
 		err = o.downloadObjects(
 			ctx,
 			userId,
@@ -2190,16 +2253,33 @@ func (o *S3Proxy) downloadObjects(
 					return
 				}
 			} else {
-				_, _err := o.downloadPartWithSignedUrl(
+				_err := RetryV1(
 					ctx,
-					bucketName,
-					itemObject.Key,
-					targetPath+itemObject.Key,
-					taskId)
+					Attempts,
+					Delay*time.Second,
+					func() error {
+						_, __err := o.downloadPartWithSignedUrl(
+							ctx,
+							bucketName,
+							itemObject.Key,
+							targetPath+itemObject.Key,
+							taskId)
+						if nil != __err {
+							Logger.WithContext(ctx).Error(
+								"S3Proxy:downloadPartWithSignedUrl failed.",
+								" bucketName: ", bucketName,
+								" objectKey: ", itemObject.Key,
+								" targetFile: ", targetPath+itemObject.Key,
+								" taskId: ", taskId,
+								" err: ", __err)
+							return __err
+						}
+						return __err
+					})
 				if nil != _err {
 					isAllSuccess = false
 					Logger.WithContext(ctx).Error(
-						"S3Proxy:downloadPartWithSignedUrl failed.",
+						"S3Proxy:downloadObjects failed.",
 						" bucketName: ", bucketName,
 						" objectKey: ", itemObject.Key,
 						" targetFile: ", targetPath+itemObject.Key,

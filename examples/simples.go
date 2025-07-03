@@ -17,7 +17,7 @@ func main() {
 
 	/*上传数据对象*/
 	/**/
-	var objectName = "wakinzhang-test-obj-20250613-3"
+	var objectName = "wakinzhang-test-obj-20250703-1"
 	var sourcePath = "/Users/zhangjiayuan/Downloads/source"
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/empty"
