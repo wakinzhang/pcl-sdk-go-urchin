@@ -763,8 +763,8 @@ func (o *SugonClient) UploadChunks(
 				return _err, output
 			}
 
-			if SugonSuccessCode != resp.Code &&
-				SugonErrFileExist != resp.Code {
+			if SugonSuccessCode != output.Code &&
+				SugonErrFileExist != output.Code {
 
 				Logger.WithContext(ctx).Error(
 					"SugonClient:UploadChunks failed.",
@@ -776,8 +776,8 @@ func (o *SugonClient) UploadChunks(
 					" totalSize: ", totalSize,
 					" chunkSize: ", chunkSize,
 					" currentChunkSize: ", currentChunkSize,
-					" Message: ", resp.Msg)
-				return errors.New(resp.Msg), output
+					" Message: ", output.Msg)
+				return errors.New(output.Msg), output
 			}
 
 			return _err, output

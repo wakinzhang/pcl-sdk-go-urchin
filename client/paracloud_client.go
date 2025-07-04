@@ -64,8 +64,8 @@ func (o *ParaCloudClient) Mkdir(
 
 	err = RetryV1(
 		ctx,
-		Attempts,
-		Delay*time.Second,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
 		func() error {
 			return o.pcClient.MkdirAll(targetFolder, fileMode)
 		})
@@ -128,8 +128,8 @@ func (o *ParaCloudClient) Upload(
 
 	err = RetryV1(
 		ctx,
-		Attempts,
-		Delay*time.Second,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
 		func() error {
 			return o.pcClient.WriteStream(
 				targetFile,
@@ -158,14 +158,36 @@ func (o *ParaCloudClient) List(
 		"ParaCloudClient:List start.",
 		" path: ", path)
 
-	fileInfoList = make([]os.FileInfo, 0)
-	fileInfoList, err = o.pcClient.ReadDir(path)
+	err, fileInfoListTmp := RetryV4(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() (error, interface{}) {
+			output := make([]os.FileInfo, 0)
+			output, _err := o.pcClient.ReadDir(path)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"pcClient.ReadDir failed.",
+					" path: ", path,
+					" err: ", _err)
+				return _err, output
+			}
+			return _err, output
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"pcClient.ReadDir failed.",
+			"ParaCloudClient.List failed.",
 			" path: ", path,
 			" err: ", err)
 		return err, fileInfoList
+	}
+
+	fileInfoList = make([]os.FileInfo, 0)
+	isValid := false
+	if fileInfoList, isValid = fileInfoListTmp.([]os.FileInfo); !isValid {
+		Logger.WithContext(ctx).Error(
+			"response invalid.")
+		return errors.New("response invalid"), fileInfoList
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -185,10 +207,31 @@ func (o *ParaCloudClient) Download(
 		" offset: ", offset,
 		" length: ", length)
 
-	ioReadCloser, err := o.pcClient.ReadStreamRange(sourceFile, offset, length)
+	err, outputTmp := RetryV4(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() (error, interface{}) {
+			pcDownloadPartOutput := new(PCDownloadPartOutput)
+			ioReadCloser, _err := o.pcClient.ReadStreamRange(
+				sourceFile,
+				offset,
+				length)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"pcClient.ReadStreamRange failed.",
+					" sourceFile: ", sourceFile,
+					" offset: ", offset,
+					" length: ", length,
+					" err: ", _err)
+				return _err, pcDownloadPartOutput
+			}
+			pcDownloadPartOutput.Body = ioReadCloser
+			return _err, pcDownloadPartOutput
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"pcClient.ReadStreamRange failed.",
+			"ParaCloudClient.Download failed.",
 			" sourceFile: ", sourceFile,
 			" offset: ", offset,
 			" length: ", length,
@@ -197,7 +240,12 @@ func (o *ParaCloudClient) Download(
 	}
 
 	output = new(PCDownloadPartOutput)
-	output.Body = ioReadCloser
+	isValid := false
+	if output, isValid = outputTmp.(*PCDownloadPartOutput); !isValid {
+		Logger.WithContext(ctx).Error(
+			"response invalid.")
+		return errors.New("response invalid"), output
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloudClient:Download finish.")
@@ -214,8 +262,8 @@ func (o *ParaCloudClient) Rm(
 
 	err = RetryV1(
 		ctx,
-		Attempts,
-		Delay*time.Second,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
 		func() error {
 			return o.pcClient.RemoveAll(path)
 		})

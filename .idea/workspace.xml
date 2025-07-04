@@ -6,8 +6,12 @@
   <component name="ChangeListManager">
     <list default="true" id="9f917e8e-4140-4485-89fc-7c2a6f9a585f" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/paracloud_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/paracloud_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/starlight_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/starlight_client.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/sugon_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/sugon_client.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/common/util.go" beforeDir="false" afterPath="$PROJECT_DIR$/common/util.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module/paracloud.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/paracloud.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module/sugon.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/sugon.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/adaptee/s3.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adaptee/s3.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

@@ -192,41 +192,56 @@ func (o *SLClient) Mkdir(
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 	header.Add(StarLightHttpHeaderAuth, o.token)
 
-	err, respBody := Do(
+	err = RetryV1(
 		ctx,
-		url+"?"+values.Encode(),
-		http.MethodPost,
-		header,
-		nil,
-		o.slClient)
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err, respBody := Do(
+				ctx,
+				url+"?"+values.Encode(),
+				http.MethodPost,
+				header,
+				nil,
+				o.slClient)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"http.Do failed.",
+					" err: ", _err)
+				return _err
+			}
+			Logger.WithContext(ctx).Debug(
+				"SLClient:Mkdir response.",
+				" target: ", target,
+				" response: ", string(respBody))
+
+			resp := new(SLBaseResponse)
+			_err = json.Unmarshal(respBody, resp)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"json.Unmarshal failed.",
+					" err: ", _err)
+				return _err
+			}
+
+			if SLSuccessCode != resp.Code {
+				Logger.WithContext(ctx).Error(
+					"SLClient:Mkdir response failed.",
+					" target: ", target,
+					" Code: ", resp.Code,
+					" Info: ", resp.Info)
+				return errors.New(resp.Info)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
-			" err: ", err)
-		return err
-	}
-	Logger.WithContext(ctx).Debug(
-		"SLClient:Mkdir response.",
-		" target: ", target,
-		" response: ", string(respBody))
-
-	resp := new(SLBaseResponse)
-	err = json.Unmarshal(respBody, resp)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"json.Unmarshal failed.",
-			" err: ", err)
-		return err
-	}
-
-	if SLSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
-			"SLClient:Mkdir response failed.",
+			"SLClient.Mkdir failed.",
 			" target: ", target,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
-		return errors.New(resp.Info)
+			" err: ", err)
+		return err
 	}
+
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Mkdir finish.")
 	return err
@@ -273,41 +288,56 @@ func (o *SLClient) Rm(
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 	header.Add(StarLightHttpHeaderAuth, o.token)
 
-	err, respBody := Do(
+	err = RetryV1(
 		ctx,
-		url+"?"+values.Encode(),
-		http.MethodPost,
-		header,
-		nil,
-		o.slClient)
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err, respBody := Do(
+				ctx,
+				url+"?"+values.Encode(),
+				http.MethodPost,
+				header,
+				nil,
+				o.slClient)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"http.Do failed.",
+					" err: ", _err)
+				return _err
+			}
+			Logger.WithContext(ctx).Debug(
+				"SLClient:Rm response.",
+				" target: ", target,
+				" response: ", string(respBody))
+
+			resp := new(SLBaseResponse)
+			_err = json.Unmarshal(respBody, resp)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"json.Unmarshal failed.",
+					" err: ", _err)
+				return _err
+			}
+
+			if SLSuccessCode != resp.Code {
+				Logger.WithContext(ctx).Error(
+					"SLClient:Rm response failed.",
+					" target: ", target,
+					" Code: ", resp.Code,
+					" Info: ", resp.Info)
+				return errors.New(resp.Info)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
-			" err: ", err)
-		return err
-	}
-	Logger.WithContext(ctx).Debug(
-		"SLClient:Rm response.",
-		" target: ", target,
-		" response: ", string(respBody))
-
-	resp := new(SLBaseResponse)
-	err = json.Unmarshal(respBody, resp)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"json.Unmarshal failed.",
-			" err: ", err)
-		return err
-	}
-
-	if SLSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
-			"SLClient:Rm response failed.",
+			"SLClient.Rm failed.",
 			" target: ", target,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
-		return errors.New(resp.Info)
+			" err: ", err)
+		return err
 	}
+
 	Logger.WithContext(ctx).Debug(
 		"SLClient:Rm finish.")
 	return err
@@ -357,43 +387,68 @@ func (o *SLClient) UploadChunks(
 	header.Add(StarLightHttpHeaderAuth, o.token)
 	header.Add(HttpHeaderContentRange, contentRange)
 
-	err, respBody := Do(
+	err, respTmp := RetryV4(
 		ctx,
-		url+"?"+values.Encode(),
-		http.MethodPut,
-		header,
-		data,
-		o.slClient)
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			slUploadChunksResponse := new(SLUploadChunksResponse)
+			_err, respBody := Do(
+				ctx,
+				url+"?"+values.Encode(),
+				http.MethodPut,
+				header,
+				data,
+				o.slClient)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"http.Do failed.",
+					" err: ", _err)
+				return _err, slUploadChunksResponse
+			}
+			Logger.WithContext(ctx).Debug(
+				"SLClient:UploadChunks response.",
+				" file: ", file,
+				" contentRange: ", contentRange,
+				" response: ", string(respBody))
+
+			_err = json.Unmarshal(respBody, slUploadChunksResponse)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"json.Unmarshal failed.",
+					" err: ", _err)
+				return _err, slUploadChunksResponse
+			}
+
+			if SLSuccessCode != slUploadChunksResponse.Code {
+				Logger.WithContext(ctx).Error(
+					"SLClient:UploadChunks response failed.",
+					" file: ", file,
+					" contentRange: ", contentRange,
+					" Code: ", slUploadChunksResponse.Code,
+					" Info: ", slUploadChunksResponse.Info)
+				return errors.New(slUploadChunksResponse.Info),
+					slUploadChunksResponse
+			}
+			return _err, slUploadChunksResponse
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"http.Do failed.",
-			" err: ", err)
-		return err, resp
-	}
-	Logger.WithContext(ctx).Debug(
-		"SLClient:UploadChunks response.",
-		" file: ", file,
-		" contentRange: ", contentRange,
-		" response: ", string(respBody))
-
-	resp = new(SLUploadChunksResponse)
-	err = json.Unmarshal(respBody, resp)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"json.Unmarshal failed.",
-			" err: ", err)
-		return err, resp
-	}
-
-	if SLSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
-			"SLClient:UploadChunks response failed.",
+			"SLClient:UploadChunks failed.",
 			" file: ", file,
 			" contentRange: ", contentRange,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
-		return errors.New(resp.Info), resp
+			" err: ", err)
+		return err, resp
 	}
+
+	resp = new(SLUploadChunksResponse)
+	isValid := false
+	if resp, isValid = respTmp.(*SLUploadChunksResponse); !isValid {
+		Logger.WithContext(ctx).Error(
+			"response invalid.")
+		return errors.New("response invalid"), resp
+	}
+
 	Logger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks finish.")
 	return nil, resp
@@ -451,43 +506,66 @@ func (o *SLClient) List(
 
 	request.Header = header
 
-	response, err := o.slClient.Do(request)
+	err, outputTmp := RetryV4(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			slListOutput := new(SLListOutput)
+			response, _err := o.slClient.Do(request)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"slClient.Do failed.",
+					" err: ", _err)
+				return _err, slListOutput
+			}
+
+			defer func(body io.ReadCloser) {
+				__err := body.Close()
+				if nil != __err {
+					Logger.WithContext(ctx).Error(
+						"io.ReadCloser failed.",
+						" err: ", __err)
+				}
+			}(response.Body)
+
+			respBodyBuf, _err := io.ReadAll(response.Body)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"io.ReadAll failed.",
+					" err: ", _err)
+				return _err, slListOutput
+			}
+
+			Logger.WithContext(ctx).Debug(
+				"SLClient:List response.",
+				" path: ", path,
+				" response: ", string(respBodyBuf))
+
+			_err = json.Unmarshal(respBodyBuf, slListOutput)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"json.Unmarshal failed.",
+					" err: ", _err)
+				return _err, slListOutput
+			}
+			return _err, slListOutput
+		})
+
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"slClient.Do failed.",
+			"SLClient:List failed.",
+			" path: ", path,
 			" err: ", err)
 		return err, output
 	}
-
-	defer func(body io.ReadCloser) {
-		_err := body.Close()
-		if nil != _err {
-			Logger.WithContext(ctx).Error(
-				"io.ReadCloser failed.",
-				" err: ", _err)
-		}
-	}(response.Body)
-
-	respBodyBuf, err := io.ReadAll(response.Body)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"io.ReadAll failed.",
-			" err: ", err)
-		return err, output
-	}
-
-	Logger.WithContext(ctx).Debug(
-		"SLClient:List response.",
-		" path: ", path,
-		" response: ", string(respBodyBuf))
 
 	output = new(SLListOutput)
-	err = json.Unmarshal(respBodyBuf, output)
-	if nil != err {
+	isValid := false
+	if output, isValid = outputTmp.(*SLListOutput); !isValid {
 		Logger.WithContext(ctx).Error(
-			"json.Unmarshal failed.",
-			" err: ", err)
-		return err, output
+			"response invalid.")
+		return errors.New("response invalid"), output
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -549,61 +627,85 @@ func (o *SLClient) DownloadChunks(
 
 	request.Header = header
 
-	response, err := o.slClient.Do(request)
+	err, outputTmp := RetryV4(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			slDownloadPartOutput := new(SLDownloadPartOutput)
+			response, _err := o.slClient.Do(request)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"slClient.Do failed.",
+					" err: ", _err)
+				return _err, slDownloadPartOutput
+			}
+
+			if HttpHeaderContentTypeJson ==
+				response.Header.Get(HttpHeaderContentType) {
+
+				defer func(body io.ReadCloser) {
+					__err := body.Close()
+					if nil != __err {
+						Logger.WithContext(ctx).Error(
+							"io.ReadCloser failed.",
+							" err: ", __err)
+					}
+				}(response.Body)
+
+				respBodyBuf, _err := io.ReadAll(response.Body)
+				if nil != _err {
+					Logger.WithContext(ctx).Error(
+						"io.ReadAll failed.",
+						" err: ", _err)
+					return _err, slDownloadPartOutput
+				}
+
+				Logger.WithContext(ctx).Debug(
+					"SLClient:DownloadChunks response.",
+					" file: ", file,
+					" contentRange: ", contentRange,
+					" response: ", string(respBodyBuf))
+
+				resp := new(SLBaseResponse)
+				_err = json.Unmarshal(respBodyBuf, resp)
+				if nil != _err {
+					Logger.WithContext(ctx).Error(
+						"json.Unmarshal failed.",
+						" err: ", _err)
+					return _err, slDownloadPartOutput
+				}
+
+				Logger.WithContext(ctx).Error(
+					"SLClient:DownloadChunks response failed.",
+					" file: ", file,
+					" contentRange: ", contentRange,
+					" Code: ", resp.Code,
+					" Info: ", resp.Info)
+
+				return errors.New(resp.Info), slDownloadPartOutput
+			}
+
+			slDownloadPartOutput = new(SLDownloadPartOutput)
+			slDownloadPartOutput.Body = response.Body
+			return _err, slDownloadPartOutput
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"slClient.Do failed.",
+			"SLClient:List failed.",
+			" file: ", file,
+			" contentRange: ", contentRange,
 			" err: ", err)
 		return err, output
 	}
 
-	if HttpHeaderContentTypeJson ==
-		response.Header.Get(HttpHeaderContentType) {
-
-		defer func(body io.ReadCloser) {
-			_err := body.Close()
-			if nil != _err {
-				Logger.WithContext(ctx).Error(
-					"io.ReadCloser failed.",
-					" err: ", _err)
-			}
-		}(response.Body)
-
-		respBodyBuf, err := io.ReadAll(response.Body)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"io.ReadAll failed.",
-				" err: ", err)
-			return err, output
-		}
-
-		Logger.WithContext(ctx).Debug(
-			"SLClient:DownloadChunks response.",
-			" file: ", file,
-			" contentRange: ", contentRange,
-			" response: ", string(respBodyBuf))
-
-		var resp *SLBaseResponse
-		err = json.Unmarshal(respBodyBuf, resp)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"json.Unmarshal failed.",
-				" err: ", err)
-			return err, output
-		}
-
-		Logger.WithContext(ctx).Error(
-			"SLClient:DownloadChunks response failed.",
-			" file: ", file,
-			" contentRange: ", contentRange,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
-
-		return errors.New(resp.Info), output
-	}
-
 	output = new(SLDownloadPartOutput)
-	output.Body = response.Body
+	isValid := false
+	if output, isValid = outputTmp.(*SLDownloadPartOutput); !isValid {
+		Logger.WithContext(ctx).Error(
+			"response invalid.")
+		return errors.New("response invalid"), output
+	}
 
 	Logger.WithContext(ctx).Debug(
 		"SLClient:DownloadChunks finish.")

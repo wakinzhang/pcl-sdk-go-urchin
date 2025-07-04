@@ -493,34 +493,33 @@ func (o *S3) uploadFile(
 			return err
 		}
 	} else {
-		fd, err := os.Open(sourceFile)
-		if nil != err {
-			Logger.WithContext(ctx).Error(
-				"os.Open failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", err)
-			return err
-		}
-		defer func() {
-			errMsg := fd.Close()
-			if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-				Logger.WithContext(ctx).Warn(
-					"close file failed.",
-					" sourceFile: ", sourceFile,
-					" err: ", errMsg)
-			}
-		}()
-
-		input := new(obs.PutObjectInput)
-		input.Bucket = o.bucket
-		input.Key = objectKey
-		input.Body = fd
-
 		err = RetryV1(
 			ctx,
 			Attempts,
 			Delay*time.Second,
 			func() error {
+				fd, err := os.Open(sourceFile)
+				if nil != err {
+					Logger.WithContext(ctx).Error(
+						"os.Open failed.",
+						" sourceFile: ", sourceFile,
+						" err: ", err)
+					return err
+				}
+				defer func() {
+					errMsg := fd.Close()
+					if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
+						Logger.WithContext(ctx).Warn(
+							"close file failed.",
+							" sourceFile: ", sourceFile,
+							" err: ", errMsg)
+					}
+				}()
+
+				input := new(obs.PutObjectInput)
+				input.Bucket = o.bucket
+				input.Key = objectKey
+				input.Body = fd
 				_, _err := o.obsClient.PutObject(input)
 				if nil != _err {
 					if obsError, ok := _err.(obs.ObsError); ok {
@@ -540,11 +539,10 @@ func (o *S3) uploadFile(
 				}
 				return nil
 			})
-		_, err = o.obsClient.PutObject(input)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"S3:uploadFile failed.",
-				" objectKey: ", input.Key,
+				" objectKey: ", objectKey,
 				" err: ", err)
 			return err
 		}
