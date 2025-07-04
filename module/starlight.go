@@ -11,10 +11,10 @@ import (
 const (
 	SLSuccessCode = 200
 
-	DefaultSLUploadFileTaskNum    = 100
+	DefaultSLUploadFileTaskNum    = 10
 	DefaultSLUploadMultiTaskNum   = 1 //starlight并发度仅支持1，只能有一个端点
-	DefaultSLDownloadFileTaskNum  = 100
-	DefaultSLDownloadMultiTaskNum = 20
+	DefaultSLDownloadFileTaskNum  = 10
+	DefaultSLDownloadMultiTaskNum = 5
 	DefaultSLMaxPartSize          = 5 * 1024 * 1024 * 1024
 	DefaultSLMinPartSize          = 100 * 1024
 
