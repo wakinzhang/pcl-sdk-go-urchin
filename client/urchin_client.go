@@ -1302,6 +1302,64 @@ func (u *UrchinClient) LoadObject(
 	return nil, resp
 }
 
+func (u *UrchinClient) MigrateObject(
+	ctx context.Context,
+	req *MigrateObjectReq) (
+	err error, resp *MigrateObjectResp) {
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:MigrateObject start.")
+
+	reqBody, err := json.Marshal(req)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Marshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+	Logger.WithContext(ctx).Debug(
+		"request: ", string(reqBody))
+
+	resp = new(MigrateObjectResp)
+	err, respBody := Do(
+		ctx,
+		u.addr+UrchinClientMigrateObjectInterface,
+		http.MethodPut,
+		u.header,
+		reqBody,
+		u.urchinClient)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.Do failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"response: ", string(respBody))
+
+	err = json.Unmarshal(respBody, resp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err, resp
+	}
+
+	if SuccessCode != resp.Code {
+		Logger.WithContext(ctx).Error(
+			"response failed.",
+			" errCode: ", resp.Code,
+			" errMessage: ", resp.Message,
+			" requestId: ", resp.RequestId)
+		return errors.New(resp.Message), resp
+	}
+
+	Logger.WithContext(ctx).Debug(
+		"UrchinClient:MigrateObject finish.")
+	return nil, resp
+}
+
 func (u *UrchinClient) CopyObject(
 	ctx context.Context,
 	req *CopyObjectReq) (

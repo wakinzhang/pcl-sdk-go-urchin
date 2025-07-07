@@ -27,6 +27,8 @@ const (
 	HttpHeaderContentTypeFormData   = "form-data"
 	HttpHeaderContentTypeUrlEncoded = "application/x-www-form-urlencoded"
 
+	HttpHeaderContentLength = "Content-Length"
+
 	HttpHeaderRange        = "Range"
 	HttpHeaderContentRange = "Content-Range"
 

@@ -498,6 +498,15 @@ func (o *S3) uploadFile(
 			Attempts,
 			Delay*time.Second,
 			func() error {
+				stat, err := os.Stat(sourceFile)
+				if nil != err {
+					Logger.WithContext(ctx).Error(
+						"os.Stat failed.",
+						" sourceFile: ", sourceFile,
+						" err: ", err)
+					return err
+				}
+
 				fd, err := os.Open(sourceFile)
 				if nil != err {
 					Logger.WithContext(ctx).Error(
@@ -520,6 +529,7 @@ func (o *S3) uploadFile(
 				input.Bucket = o.bucket
 				input.Key = objectKey
 				input.Body = fd
+				input.ContentLength = stat.Size()
 				_, _err := o.obsClient.PutObject(input)
 				if nil != _err {
 					if obsError, ok := _err.(obs.ObsError); ok {

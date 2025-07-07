@@ -33,6 +33,7 @@ const (
 	UrchinClientUploadObjectInterface           = "/v1/object/upload"
 	UrchinClientDownloadObjectInterface         = "/v1/object/download"
 	UrchinClientLoadObjectInterface             = "/v1/object/load"
+	UrchinClientMigrateObjectInterface          = "/v1/object/migrate"
 	UrchinClientCopyObjectInterface             = "/v1/object/copy"
 	UrchinClientGetObjectInterface              = "/v1/object"
 	UrchinClientDeleteObjectInterface           = "/v1/object"
@@ -562,6 +563,28 @@ type LoadObjectResp struct {
 	TargetNodeType int32 `protobuf:"varint,12,opt,name=target_node_type,proto3" json:"target_node_type"`
 	// @inject_tag: json:"target_location"
 	TargetLocation string `protobuf:"bytes,13,opt,name=target_location,proto3" json:"target_location"`
+}
+
+type MigrateObjectReq struct {
+	// @inject_tag: json:"user_id"
+	UserId string `protobuf:"bytes,1,opt,name=user_id,proto3" json:"user_id"`
+	// @inject_tag: json:"obj_uuid"
+	ObjUuid string `protobuf:"bytes,2,opt,name=obj_uuid,proto3" json:"obj_uuid"`
+	// @inject_tag: json:"source_node_name"
+	SourceNodeName *string `protobuf:"bytes,3,opt,name=source_node_name,proto3,oneof" json:"source_node_name"`
+	// @inject_tag: json:"target_node_name"
+	TargetNodeName string `protobuf:"bytes,4,opt,name=target_node_name,proto3" json:"target_node_name"`
+}
+
+type MigrateObjectResp struct {
+	// @inject_tag: json:"code"
+	Code int32 `protobuf:"varint,1,opt,name=code,proto3" json:"code"`
+	// @inject_tag: json:"message"
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,3,opt,name=request_id,proto3" json:"request_id"`
+	// @inject_tag: json:"task_id"
+	TaskId int32 `protobuf:"varint,4,opt,name=task_id,proto3" json:"task_id"`
 }
 
 type CopyObjectReq struct {

@@ -48,7 +48,8 @@ func (o *S3Proxy) Init(
 		o.obsClient, err = obs.New(
 			"",
 			"",
-			"magicalParam")
+			"magicalParam",
+			obs.WithSignature(obs.SignatureV4))
 	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(
@@ -146,12 +147,25 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 			" err: ", err)
 		return err
 	}
+
 	var putObjectWithSignedUrlHeader = http.Header{}
 	for key, item := range createPutObjectSignedUrlResp.Header {
 		for _, value := range item.Values {
 			putObjectWithSignedUrlHeader.Set(key, value)
 		}
 	}
+
+	stat, err := os.Stat(sourceFile)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"os.Stat failed.",
+			" sourceFile: ", sourceFile,
+			" err: ", err)
+		return err
+	}
+	putObjectWithSignedUrlHeader.Set(
+		HttpHeaderContentLength,
+		strconv.FormatInt(stat.Size(), 10))
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
@@ -1035,6 +1049,8 @@ func (o *S3Proxy) uploadFolder(
 						" err: ", _err)
 					return
 				}
+				// 统一linux目录风格
+				objectKey = filepath.ToSlash(objectKey)
 				if strings.HasSuffix(objectKey, UploadFileRecordSuffix) {
 					Logger.WithContext(ctx).Info(
 						"upload record file.",
@@ -2135,7 +2151,7 @@ func (o *S3Proxy) Download(
 			break
 		}
 	}
-	fromPath := tmpTargetPath
+	fromPath := tmpTargetPath + uuid
 	toPath := targetPath + uuid + fmt.Sprintf("_%d", taskId)
 	err = os.Rename(fromPath, toPath)
 	if nil != err {
