@@ -19,6 +19,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 type Scow struct {
@@ -78,10 +79,23 @@ func (o *Scow) Mkdir(
 		"Scow:Mkdir start.",
 		" path: ", path)
 
-	err = o.sClient.Mkdir(ctx, path)
+	err = RetryV1(
+		ctx,
+		ScowAttempts,
+		ScowDelay*time.Second,
+		func() error {
+			_err := o.sClient.Mkdir(ctx, path)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sClient.Mkdir failed.",
+					" path: ", path,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sClient.Mkdir failed.",
+			"Scow.Mkdir failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -222,7 +236,20 @@ func (o *Scow) Upload(
 		" targetPath: ", targetPath,
 		" needPure: ", needPure)
 
-	err = o.sClient.Mkdir(ctx, targetPath)
+	err = RetryV1(
+		ctx,
+		ScowAttempts,
+		ScowDelay*time.Second,
+		func() error {
+			_err := o.sClient.Mkdir(ctx, targetPath)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sClient.Mkdir failed.",
+					" targetPath: ", targetPath,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"sClient.Mkdir failed.",
@@ -690,32 +717,46 @@ func (o *Scow) uploadFileStream(
 		" sourceFile: ", sourceFile,
 		" objectPath: ", objectPath)
 
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return err
-	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
-		}
-	}()
-
-	err = o.sClient.Upload(
+	err = RetryV1(
 		ctx,
-		sourceFile,
-		objectPath,
-		fd)
+		ScowAttempts,
+		ScowDelay*time.Second,
+		func() error {
+			fd, _err := os.Open(sourceFile)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Open failed.",
+					" sourceFile: ", sourceFile,
+					" err: ", _err)
+				return _err
+			}
+			defer func() {
+				errMsg := fd.Close()
+				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
+					Logger.WithContext(ctx).Warn(
+						"close file failed.",
+						" sourceFile: ", sourceFile,
+						" err: ", errMsg)
+				}
+			}()
+
+			_err = o.sClient.Upload(
+				ctx,
+				sourceFile,
+				objectPath,
+				fd)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sClient.Upload failed.",
+					" sourceFile: ", sourceFile,
+					" objectPath: ", objectPath,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sClient.Upload failed.",
+			"Scow.uploadFileStream failed.",
 			" sourceFile: ", sourceFile,
 			" objectPath: ", objectPath,
 			" err: ", err)
@@ -1197,20 +1238,36 @@ func (o *Scow) completeParts(
 		" ObjectPath: ", input.ObjectPath,
 		" Md5: ", input.Md5)
 
-	err = o.sClient.MergeChunks(
+	err = RetryV1(
 		ctx,
-		input.FileName,
-		filepath.Dir(input.ObjectPath),
-		input.Md5)
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err := o.sClient.MergeChunks(
+				ctx,
+				input.FileName,
+				filepath.Dir(input.ObjectPath),
+				input.Md5)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sClient.MergeChunks failed.",
+					" FileName: ", input.FileName,
+					" Path: ", filepath.Dir(input.ObjectPath),
+					" Md5: ", input.Md5,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sClient.MergeChunks failed.",
+			"Scow.completeParts failed.",
 			" FileName: ", input.FileName,
 			" Path: ", filepath.Dir(input.ObjectPath),
 			" Md5: ", input.Md5,
 			" err: ", err)
 		return err
 	}
+
 	if enableCheckpoint {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
@@ -1250,52 +1307,67 @@ func (task *ScowUploadPartTask) Run(
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return err
-	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", task.ObjectPath,
-				" partNumber: ", task.PartNumber,
-				" err: ", errMsg)
-		}
-	}()
-
-	readerWrapper := new(ReaderWrapper)
-	readerWrapper.Reader = fd
-
-	readerWrapper.TotalCount = task.PartSize
-	readerWrapper.Mark = task.Offset
-	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
-		Logger.WithContext(ctx).Error(
-			"fd.Seek failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
-		return err
-	}
-
-	err, resp := task.SClient.UploadChunks(
+	err, resp := RetryV4(
 		ctx,
-		task.FileName,
-		task.ObjectPath,
-		task.Md5,
-		task.PartNumber,
-		readerWrapper)
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			fd, _err := os.Open(sourceFile)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Open failed.",
+					" sourceFile: ", sourceFile,
+					" err: ", _err)
+				return _err, nil
+			}
+			defer func() {
+				errMsg := fd.Close()
+				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
+					Logger.WithContext(ctx).Warn(
+						"close file failed.",
+						" sourceFile: ", sourceFile,
+						" objectPath: ", task.ObjectPath,
+						" partNumber: ", task.PartNumber,
+						" err: ", errMsg)
+				}
+			}()
 
+			readerWrapper := new(ReaderWrapper)
+			readerWrapper.Reader = fd
+
+			readerWrapper.TotalCount = task.PartSize
+			readerWrapper.Mark = task.Offset
+			if _, _err = fd.Seek(task.Offset, io.SeekStart); nil != _err {
+				Logger.WithContext(ctx).Error(
+					"fd.Seek failed.",
+					" sourceFile: ", sourceFile,
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+				return _err, nil
+			}
+			_err, respTmp := task.SClient.UploadChunks(
+				ctx,
+				task.FileName,
+				task.ObjectPath,
+				task.Md5,
+				task.PartNumber,
+				readerWrapper)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"SClient.UploadChunks failed.",
+					" task.FileName: ", task.FileName,
+					" task.ObjectPath: ", task.ObjectPath,
+					" task.Md5: ", task.Md5,
+					" task.PartNumber: ", task.PartNumber,
+					" err: ", _err)
+				return _err, nil
+			}
+			return _err, respTmp
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"SClient.UploadChunks failed.",
+			"ScowUploadPartTask.Run failed.",
 			" task.FileName: ", task.FileName,
 			" task.ObjectPath: ", task.ObjectPath,
 			" task.Md5: ", task.Md5,
@@ -1387,16 +1459,36 @@ func (o *Scow) downloadBatch(
 		" targetPath: ", targetPath,
 		" downloadFolderRecord: ", downloadFolderRecord)
 
-	scowListResponseBody := new(ScowListResponseBody)
-	err, scowListResponseBody = o.sClient.List(
+	err, scowListResponseBodyTmp := RetryV4(
 		ctx,
-		sourcePath)
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			output := new(ScowListResponseBody)
+			_err, output := o.sClient.List(ctx, sourcePath)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sClient:List start.",
+					" sourcePath: ", sourcePath,
+					" err: ", _err)
+			}
+			return _err, output
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"sClient:List start.",
 			" sourcePath: ", sourcePath,
 			" err: ", err)
 		return err
+	}
+	scowListResponseBody := new(ScowListResponseBody)
+	isValid := false
+	if scowListResponseBody, isValid =
+		scowListResponseBodyTmp.(*ScowListResponseBody); !isValid {
+
+		Logger.WithContext(ctx).Error(
+			"response invalid.")
+		return errors.New("response invalid")
 	}
 
 	objects := make([]*ScowObject, 0)
@@ -2236,10 +2328,24 @@ func (o *Scow) Delete(
 		" path: ", path,
 		" target: ", target)
 
-	err = o.sClient.Delete(ctx, path, target)
+	err = RetryV1(
+		ctx,
+		ScowAttempts,
+		ScowDelay*time.Second,
+		func() error {
+			_err := o.sClient.Delete(ctx, path, target)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sClient.Delete failed.",
+					" path: ", path,
+					" target: ", target,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sClient.Delete failed.",
+			"Scow.Delete failed.",
 			" path: ", path,
 			" target: ", target,
 			" err: ", err)
@@ -2272,15 +2378,45 @@ func (task *ScowDownloadPartTask) Run(
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
-	err, downloadPartOutput :=
-		task.SClient.DownloadChunks(
-			ctx,
-			task.ObjectPath,
-			task.Range)
+	err, downloadPartOutputTmp := RetryV4(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			output := new(ScowDownloadPartOutput)
+			_err, output := task.SClient.DownloadChunks(
+				ctx,
+				task.ObjectPath,
+				task.Range)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"SClient:DownloadChunks failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+			}
+			return _err, output
+		})
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ScowDownloadPartTask:Run failed.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
+			" err: ", err)
+		return err
+	} else {
+		downloadPartOutput := new(ScowDownloadPartOutput)
+		isValid := false
+		if downloadPartOutput, isValid =
+			downloadPartOutputTmp.(*ScowDownloadPartOutput); !isValid {
 
-	if nil == err {
+			Logger.WithContext(ctx).Error(
+				"response invalid.")
+			return errors.New("response invalid")
+		}
+
 		Logger.WithContext(ctx).Debug(
-			"SClient.DownloadChunks finish.",
+			"ScowDownloadPartTask.Run finish.",
 			" objectPath: ", task.ObjectPath,
 			" partNumber: ", task.PartNumber)
 		defer func() {
@@ -2317,11 +2453,4 @@ func (task *ScowDownloadPartTask) Run(
 			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
-
-	Logger.WithContext(ctx).Error(
-		"ScowDownloadPartTask:Run failed.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber,
-		" err: ", err)
-	return err
 }

@@ -17,6 +17,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 type Sugon struct {
@@ -79,10 +80,23 @@ func (o *Sugon) Mkdir(
 		"Sugon:Mkdir start.",
 		" path: ", path)
 
-	err = o.sugonClient.Mkdir(ctx, path)
+	err = RetryV1(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err := o.sugonClient.Mkdir(ctx, path)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sugonClient.Mkdir failed.",
+					" path: ", path,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sugonClient.Mkdir failed.",
+			"Sugon.Mkdir failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -662,36 +676,49 @@ func (o *Sugon) uploadFileStream(
 		" sourceFile: ", sourceFile,
 		" objectPath: ", objectPath)
 
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
-		return err
-	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
-		}
-	}()
-
-	fileName := filepath.Base(objectPath)
-	path := filepath.Dir(objectPath)
-	err = o.sugonClient.Upload(
+	err = RetryV1(
 		ctx,
-		fileName,
-		path,
-		fd)
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			fd, _err := os.Open(sourceFile)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Open failed.",
+					" sourceFile: ", sourceFile,
+					" err: ", _err)
+				return _err
+			}
+			defer func() {
+				errMsg := fd.Close()
+				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
+					Logger.WithContext(ctx).Warn(
+						"close file failed.",
+						" sourceFile: ", sourceFile,
+						" err: ", errMsg)
+				}
+			}()
+			fileName := filepath.Base(objectPath)
+			path := filepath.Dir(objectPath)
+			_err = o.sugonClient.Upload(
+				ctx,
+				fileName,
+				path,
+				fd)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sugonClient.Upload failed.",
+					" fileName: ", fileName,
+					" path: ", path,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sugonClient.Upload failed.",
-			" fileName: ", fileName,
-			" path: ", path,
+			"Sugon.uploadFileStream failed.",
+			" sourceFile: ", sourceFile,
+			" objectPath: ", objectPath,
 			" err: ", err)
 		return err
 	}
@@ -1145,14 +1172,29 @@ func (o *Sugon) completeParts(
 		" enableCheckpoint: ", enableCheckpoint,
 		" checkpointFilePath: ", checkpointFilePath)
 
-	err = o.sugonClient.MergeChunks(
+	err = RetryV1(
 		ctx,
-		input.FileName,
-		filepath.Dir(input.ObjectPath),
-		input.RelativePath)
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err := o.sugonClient.MergeChunks(
+				ctx,
+				input.FileName,
+				filepath.Dir(input.ObjectPath),
+				input.RelativePath)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sugonClient.MergeChunks failed.",
+					" FileName: ", input.FileName,
+					" Path: ", filepath.Dir(input.ObjectPath),
+					" RelativePath: ", input.RelativePath,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sugonClient.MergeChunks failed.",
+			"Sugon.completeParts failed.",
 			" FileName: ", input.FileName,
 			" Path: ", filepath.Dir(input.ObjectPath),
 			" RelativePath: ", input.RelativePath,
@@ -1201,68 +1243,81 @@ func (task *SugonUploadPartTask) Run(
 		" path: ", task.Path,
 		" chunkNumber: ", task.ChunkNumber)
 
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" path: ", task.Path,
-			" chunkNumber: ", task.ChunkNumber,
-			" err: ", err)
-		return err
-	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" path: ", task.Path,
-				" chunkNumber: ", task.ChunkNumber,
-				" err: ", errMsg)
-		}
-	}()
-
-	readerWrapper := new(ReaderWrapper)
-	readerWrapper.Reader = fd
-
-	readerWrapper.TotalCount = task.CurrentChunkSize
-	readerWrapper.Mark = task.Offset
-	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
-		Logger.WithContext(ctx).Error(
-			"fd.Seek failed.",
-			" sourceFile: ", sourceFile,
-			" path: ", task.Path,
-			" chunkNumber: ", task.ChunkNumber,
-			" err: ", err)
-		return err
-	}
-
-	err, resp := task.SClient.UploadChunks(
+	err, resp := RetryV4(
 		ctx,
-		task.File,
-		task.FileName,
-		task.Path,
-		task.RelativePath,
-		task.ChunkNumber,
-		task.TotalChunks,
-		task.TotalSize,
-		task.ChunkSize,
-		task.CurrentChunkSize,
-		readerWrapper)
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			fd, _err := os.Open(sourceFile)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Open failed.",
+					" sourceFile: ", sourceFile,
+					" path: ", task.Path,
+					" chunkNumber: ", task.ChunkNumber,
+					" err: ", _err)
+				return _err, nil
+			}
+			defer func() {
+				errMsg := fd.Close()
+				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
+					Logger.WithContext(ctx).Warn(
+						"close file failed.",
+						" sourceFile: ", sourceFile,
+						" path: ", task.Path,
+						" chunkNumber: ", task.ChunkNumber,
+						" err: ", errMsg)
+				}
+			}()
+			readerWrapper := new(ReaderWrapper)
+			readerWrapper.Reader = fd
 
+			readerWrapper.TotalCount = task.CurrentChunkSize
+			readerWrapper.Mark = task.Offset
+			if _, _err = fd.Seek(task.Offset, io.SeekStart); nil != _err {
+				Logger.WithContext(ctx).Error(
+					"fd.Seek failed.",
+					" sourceFile: ", sourceFile,
+					" path: ", task.Path,
+					" chunkNumber: ", task.ChunkNumber,
+					" err: ", _err)
+				return _err, nil
+			}
+			respTmp := new(SugonBaseResponse)
+			_err, respTmp = task.SClient.UploadChunks(
+				ctx,
+				task.File,
+				task.FileName,
+				task.Path,
+				task.RelativePath,
+				task.ChunkNumber,
+				task.TotalChunks,
+				task.TotalSize,
+				task.ChunkSize,
+				task.CurrentChunkSize,
+				readerWrapper)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"SClient.UploadChunks failed.",
+					" task.File: ", task.File,
+					" task.FileName: ", task.FileName,
+					" task.Path: ", task.Path,
+					" task.RelativePath: ", task.RelativePath,
+					" task.ChunkNumber: ", task.ChunkNumber,
+					" task.TotalChunks: ", task.TotalChunks,
+					" task.TotalSize: ", task.TotalSize,
+					" task.ChunkSize: ", task.ChunkSize,
+					" task.CurrentChunkSize: ", task.CurrentChunkSize,
+					" err: ", _err)
+				return _err, nil
+			}
+			return _err, respTmp
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"SClient.UploadChunks failed.",
-			" task.File: ", task.File,
-			" task.FileName: ", task.FileName,
-			" task.Path: ", task.Path,
-			" task.RelativePath: ", task.RelativePath,
-			" task.ChunkNumber: ", task.ChunkNumber,
-			" task.TotalChunks: ", task.TotalChunks,
-			" task.TotalSize: ", task.TotalSize,
-			" task.ChunkSize: ", task.ChunkSize,
-			" task.CurrentChunkSize: ", task.CurrentChunkSize,
+			"SugonUploadPartTask.Run failed.",
+			" path: ", task.Path,
+			" chunkNumber: ", task.ChunkNumber,
 			" err: ", err)
 		return err
 	}
@@ -1353,20 +1408,45 @@ func (o *Sugon) downloadBatch(
 	var start int32 = 0
 	var limit int32 = DefaultSugonListLimit
 	for {
-		sugonListResponseData := new(SugonListResponseData)
-		err, sugonListResponseData = o.sugonClient.List(
+		err, sugonListResponseDataTmp := RetryV4(
 			ctx,
-			sourcePath,
-			start,
-			limit)
+			Attempts,
+			Delay*time.Second,
+			func() (error, interface{}) {
+				output := new(SugonListResponseData)
+				_err, output := o.sugonClient.List(
+					ctx,
+					sourcePath,
+					start,
+					limit)
+				if nil != _err {
+					Logger.WithContext(ctx).Error(
+						"sugonClient:List start.",
+						" sourcePath: ", sourcePath,
+						" start: ", start,
+						" limit: ", limit,
+						" err: ", _err)
+				}
+				return _err, output
+			})
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"sugonClient:List start.",
+				"sugonClient:List failed.",
 				" sourcePath: ", sourcePath,
 				" start: ", start,
 				" limit: ", limit,
 				" err: ", err)
 			return err
+		}
+
+		sugonListResponseData := new(SugonListResponseData)
+		isValid := false
+		if sugonListResponseData, isValid =
+			sugonListResponseDataTmp.(*SugonListResponseData); !isValid {
+
+			Logger.WithContext(ctx).Error(
+				"response invalid.")
+			return errors.New("response invalid")
 		}
 
 		for _, folder := range sugonListResponseData.Children {
@@ -2204,10 +2284,23 @@ func (o *Sugon) Delete(
 		"Sugon:Delete start.",
 		" path: ", path)
 
-	err = o.sugonClient.Delete(ctx, path)
+	err = RetryV1(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err := o.sugonClient.Delete(ctx, path)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"sugonClient.Delete failed.",
+					" path: ", path,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"sugonClient.Delete failed.",
+			"Sugon.Delete failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -2239,15 +2332,45 @@ func (task *SugonDownloadPartTask) Run(
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
-	err, downloadPartOutput :=
-		task.SClient.DownloadChunks(
-			ctx,
-			task.ObjectPath,
-			task.Range)
+	err, downloadPartOutputTmp := RetryV4(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			output := new(SugonDownloadPartOutput)
+			_err, output := task.SClient.DownloadChunks(
+				ctx,
+				task.ObjectPath,
+				task.Range)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"SClient:DownloadChunks failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+			}
+			return _err, output
+		})
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"SugonDownloadPartTask:Run failed.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
+			" err: ", err)
+		return err
+	} else {
+		downloadPartOutput := new(SugonDownloadPartOutput)
+		isValid := false
+		if downloadPartOutput, isValid =
+			downloadPartOutputTmp.(*SugonDownloadPartOutput); !isValid {
 
-	if nil == err {
+			Logger.WithContext(ctx).Error(
+				"response invalid.")
+			return errors.New("response invalid")
+		}
+
 		Logger.WithContext(ctx).Debug(
-			"SClient.DownloadChunks finish.",
+			"SugonDownloadPartTask.Run finish.",
 			" objectPath: ", task.ObjectPath,
 			" partNumber: ", task.PartNumber)
 		defer func() {
@@ -2284,11 +2407,4 @@ func (task *SugonDownloadPartTask) Run(
 			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
-
-	Logger.WithContext(ctx).Error(
-		"SugonDownloadPartTask:Run failed.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber,
-		" err: ", err)
-	return err
 }

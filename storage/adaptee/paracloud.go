@@ -17,6 +17,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 type ParaCloud struct {
@@ -66,10 +67,24 @@ func (o *ParaCloud) Mkdir(
 		" sourceFolder: ", sourceFolder,
 		" targetFolder: ", targetFolder)
 
-	err = o.pcClient.Mkdir(ctx, sourceFolder, targetFolder)
+	err = RetryV1(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() error {
+			_err := o.pcClient.Mkdir(ctx, sourceFolder, targetFolder)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"pcClient.Mkdir failed.",
+					" sourceFolder: ", sourceFolder,
+					" targetFolder: ", targetFolder,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"pcClient.Mkdir failed.",
+			"ParaCloud.Mkdir failed.",
 			" sourceFolder: ", sourceFolder,
 			" targetFolder: ", targetFolder,
 			" err: ", err)
@@ -231,10 +246,24 @@ func (o *ParaCloud) Upload(
 		}
 	} else {
 		objectPath := targetPath + filepath.Base(sourcePath)
-		err = o.pcClient.Upload(ctx, sourcePath, objectPath)
+		err = RetryV1(
+			ctx,
+			ParaCloudAttempts,
+			ParaCloudDelay*time.Second,
+			func() error {
+				_err := o.pcClient.Upload(ctx, sourcePath, objectPath)
+				if nil != _err {
+					Logger.WithContext(ctx).Error(
+						"pcClient.Upload failed.",
+						" sourcePath: ", sourcePath,
+						" objectPath: ", objectPath,
+						" err: ", _err)
+				}
+				return _err
+			})
 		if nil != err {
 			Logger.WithContext(ctx).Error(
-				"pcClient.Upload failed.",
+				"ParaCloud.Upload failed.",
 				" sourcePath: ", sourcePath,
 				" objectPath: ", objectPath,
 				" err: ", err)
@@ -493,7 +522,25 @@ func (o *ParaCloud) uploadFolder(
 							"already finish. objectPath: ", objectPath)
 						return
 					}
-					_err = o.pcClient.Upload(ctx, filePath, objectPath)
+					_err = RetryV1(
+						ctx,
+						ParaCloudAttempts,
+						ParaCloudDelay*time.Second,
+						func() error {
+							__err := o.pcClient.Upload(
+								ctx,
+								filePath,
+								objectPath)
+							if nil != __err {
+								isAllSuccess = false
+								Logger.WithContext(ctx).Error(
+									"pcClient.Upload failed.",
+									" filePath: ", filePath,
+									" objectPath: ", objectPath,
+									" err: ", __err)
+							}
+							return __err
+						})
 					if nil != _err {
 						isAllSuccess = false
 						Logger.WithContext(ctx).Error(
@@ -655,16 +702,35 @@ func (o *ParaCloud) downloadBatch(
 		" targetPath: ", targetPath,
 		" downloadFolderRecord: ", downloadFolderRecord)
 
-	fileInfoList := make([]os.FileInfo, 0)
-	err, fileInfoList = o.pcClient.List(
+	err, fileInfoListTmp := RetryV4(
 		ctx,
-		sourcePath)
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() (error, interface{}) {
+			output := make([]os.FileInfo, 0)
+			_err, output := o.pcClient.List(ctx, sourcePath)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"pcClient:List start.",
+					" sourcePath: ", sourcePath,
+					" err: ", _err)
+			}
+			return _err, output
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"pcClient:List start.",
+			"pcClient:List failed.",
 			" sourcePath: ", sourcePath,
 			" err: ", err)
 		return err
+	}
+
+	fileInfoList := make([]os.FileInfo, 0)
+	isValid := false
+	if fileInfoList, isValid = fileInfoListTmp.([]os.FileInfo); !isValid {
+		Logger.WithContext(ctx).Error(
+			"response invalid.")
+		return errors.New("response invalid")
 	}
 
 	objects := make([]*PCObject, 0)
@@ -1493,10 +1559,23 @@ func (o *ParaCloud) Delete(
 		"ParaCloud:Delete start.",
 		" path: ", path)
 
-	err = o.pcClient.Rm(ctx, path)
+	err = RetryV1(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() error {
+			_err := o.pcClient.Rm(ctx, path)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"pcClient.Rm failed.",
+					" path: ", path,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"pcClient.Delete failed.",
+			"ParaCloud.Delete failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -1528,16 +1607,46 @@ func (task *ParaCloudDownloadPartTask) Run(
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
-	err, downloadPartOutput :=
-		task.PCClient.Download(
-			ctx,
-			task.ObjectPath,
-			task.Offset,
-			task.Length)
+	err, downloadPartOutputTmp := RetryV4(
+		ctx,
+		ParaCloudAttempts,
+		ParaCloudDelay*time.Second,
+		func() (error, interface{}) {
+			output := new(PCDownloadPartOutput)
+			_err, output := task.PCClient.Download(
+				ctx,
+				task.ObjectPath,
+				task.Offset,
+				task.Length)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"PCClient:Download failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+			}
+			return _err, output
+		})
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"ParaCloudDownloadPartTask:Run failed.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
+			" err: ", err)
+		return err
+	} else {
+		downloadPartOutput := new(PCDownloadPartOutput)
+		isValid := false
+		if downloadPartOutput, isValid =
+			downloadPartOutputTmp.(*PCDownloadPartOutput); !isValid {
 
-	if nil == err {
+			Logger.WithContext(ctx).Error(
+				"response invalid.")
+			return errors.New("response invalid")
+		}
+
 		Logger.WithContext(ctx).Debug(
-			"PCClient.Download finish.",
+			"ParaCloudDownloadPartTask.Run finish.",
 			" objectPath: ", task.ObjectPath,
 			" partNumber: ", task.PartNumber)
 		defer func() {
@@ -1572,11 +1681,4 @@ func (task *ParaCloudDownloadPartTask) Run(
 			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
-
-	Logger.WithContext(ctx).Error(
-		"ParaCloudDownloadPartTask:Run failed.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber,
-		" err: ", err)
-	return err
 }

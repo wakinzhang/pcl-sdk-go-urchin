@@ -17,6 +17,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 )
 
 type StarLight struct {
@@ -70,10 +71,23 @@ func (o *StarLight) Mkdir(
 		"StarLight:Mkdir start.",
 		" target: ", target)
 
-	err = o.slClient.Mkdir(ctx, target)
+	err = RetryV1(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err := o.slClient.Mkdir(ctx, target)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"slClient.Mkdir failed.",
+					" target: ", target,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"slClient.Mkdir failed.",
+			"StarLight.Mkdir failed.",
 			" target: ", target,
 			" err: ", err)
 		return err
@@ -1058,57 +1072,70 @@ func (task *SLUploadPartTask) Run(
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
-	fd, err := os.Open(sourceFile)
-	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
-		return err
-	}
-	defer func() {
-		errMsg := fd.Close()
-		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
-				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", task.ObjectPath,
-				" partNumber: ", task.PartNumber,
-				" err: ", errMsg)
-		}
-	}()
-
-	readerWrapper := new(ReaderWrapper)
-	readerWrapper.Reader = fd
-
-	readerWrapper.TotalCount = task.PartSize
-	readerWrapper.Mark = task.Offset
-	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
-		Logger.WithContext(ctx).Error(
-			"fd.Seek failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
-		return err
-	}
-
-	contentRange := fmt.Sprintf("bytes=%d-%d/%d",
-		task.Offset,
-		task.Offset+task.PartSize-1,
-		task.TotalSize)
-
-	err, resp := task.SlClient.UploadChunks(
+	err, resp := RetryV4(
 		ctx,
-		task.ObjectPath,
-		contentRange,
-		readerWrapper)
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			fd, _err := os.Open(sourceFile)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Open failed.",
+					" sourceFile: ", sourceFile,
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+				return _err, nil
+			}
+			defer func() {
+				errMsg := fd.Close()
+				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
+					Logger.WithContext(ctx).Warn(
+						"close file failed.",
+						" sourceFile: ", sourceFile,
+						" objectPath: ", task.ObjectPath,
+						" partNumber: ", task.PartNumber,
+						" err: ", errMsg)
+				}
+			}()
+			readerWrapper := new(ReaderWrapper)
+			readerWrapper.Reader = fd
 
+			readerWrapper.TotalCount = task.PartSize
+			readerWrapper.Mark = task.Offset
+			if _, _err = fd.Seek(task.Offset, io.SeekStart); nil != _err {
+				Logger.WithContext(ctx).Error(
+					"fd.Seek failed.",
+					" sourceFile: ", sourceFile,
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+				return _err, nil
+			}
+
+			contentRange := fmt.Sprintf("bytes=%d-%d/%d",
+				task.Offset,
+				task.Offset+task.PartSize-1,
+				task.TotalSize)
+
+			_err, respTmp := task.SlClient.UploadChunks(
+				ctx,
+				task.ObjectPath,
+				contentRange,
+				readerWrapper)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"SlClient.UploadChunks failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+				return _err, nil
+			}
+			return _err, respTmp
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"SlClient.UploadChunks failed.",
+			"SLUploadPartTask.Run failed.",
 			" objectPath: ", task.ObjectPath,
 			" partNumber: ", task.PartNumber,
 			" err: ", err)
@@ -1198,16 +1225,34 @@ func (o *StarLight) downloadBatch(
 		" targetPath: ", targetPath,
 		" downloadFolderRecord: ", downloadFolderRecord)
 
-	listOutput := new(SLListOutput)
-	err, listOutput = o.slClient.List(
+	err, listOutputTmp := RetryV4(
 		ctx,
-		sourcePath)
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			output := new(SLListOutput)
+			_err, output := o.slClient.List(ctx, sourcePath)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"slClient:List start.",
+					" sourcePath: ", sourcePath,
+					" err: ", _err)
+			}
+			return _err, output
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"slClient:List start.",
+			"slClient:List failed.",
 			" sourcePath: ", sourcePath,
 			" err: ", err)
 		return err
+	}
+	listOutput := new(SLListOutput)
+	isValid := false
+	if listOutput, isValid = listOutputTmp.(*SLListOutput); !isValid {
+		Logger.WithContext(ctx).Error(
+			"response invalid.")
+		return errors.New("response invalid")
 	}
 
 	objects := make([]*SLObject, 0)
@@ -2027,10 +2072,23 @@ func (o *StarLight) Delete(
 		"StarLight:Delete start.",
 		" path: ", path)
 
-	err = o.slClient.Rm(ctx, path)
+	err = RetryV1(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() error {
+			_err := o.slClient.Rm(ctx, path)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"slClient.Rm failed.",
+					" path: ", path,
+					" err: ", _err)
+			}
+			return _err
+		})
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"slClient.Rm failed.",
+			"StarLight.Delete failed.",
 			" path: ", path,
 			" err: ", err)
 		return err
@@ -2062,13 +2120,43 @@ func (task *SLDownloadPartTask) Run(
 		" objectPath: ", task.ObjectPath,
 		" partNumber: ", task.PartNumber)
 
-	err, downloadPartOutput :=
-		task.SlClient.DownloadChunks(
-			ctx,
-			task.ObjectPath,
-			task.Range)
+	err, downloadPartOutputTmp := RetryV4(
+		ctx,
+		Attempts,
+		Delay*time.Second,
+		func() (error, interface{}) {
+			output := new(SLDownloadPartOutput)
+			_err, output := task.SlClient.DownloadChunks(
+				ctx,
+				task.ObjectPath,
+				task.Range)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"SlClient:DownloadChunks failed.",
+					" objectPath: ", task.ObjectPath,
+					" partNumber: ", task.PartNumber,
+					" err: ", _err)
+			}
+			return _err, output
+		})
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"SLDownloadPartTask:Run failed.",
+			" objectPath: ", task.ObjectPath,
+			" partNumber: ", task.PartNumber,
+			" err: ", err)
+		return err
+	} else {
+		downloadPartOutput := new(SLDownloadPartOutput)
+		isValid := false
+		if downloadPartOutput, isValid =
+			downloadPartOutputTmp.(*SLDownloadPartOutput); !isValid {
 
-	if nil == err {
+			Logger.WithContext(ctx).Error(
+				"response invalid.")
+			return errors.New("response invalid")
+		}
+
 		Logger.WithContext(ctx).Debug(
 			"SlClient.DownloadChunks finish.",
 			" objectPath: ", task.ObjectPath,
@@ -2082,12 +2170,12 @@ func (task *SLDownloadPartTask) Run(
 					" partNumber: ", task.PartNumber)
 			}
 		}()
-		_err := task.Sl.UpdateDownloadFile(
+		err = task.Sl.UpdateDownloadFile(
 			ctx,
 			task.TempFileURL,
 			task.Offset,
 			downloadPartOutput)
-		if nil != _err {
+		if nil != err {
 			if !task.EnableCheckpoint {
 				Logger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
@@ -2098,8 +2186,8 @@ func (task *SLDownloadPartTask) Run(
 				"SL.updateDownloadFile failed.",
 				" objectPath: ", task.ObjectPath,
 				" partNumber: ", task.PartNumber,
-				" err: ", _err)
-			return _err
+				" err: ", err)
+			return err
 		}
 		Logger.WithContext(ctx).Debug(
 			"DownloadPartTask.Run finish.",
@@ -2107,11 +2195,4 @@ func (task *SLDownloadPartTask) Run(
 			" partNumber: ", task.PartNumber)
 		return downloadPartOutput
 	}
-
-	Logger.WithContext(ctx).Error(
-		"SLDownloadPartTask:Run failed.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber,
-		" err: ", err)
-	return err
 }

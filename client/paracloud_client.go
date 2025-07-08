@@ -7,7 +7,6 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	"os"
-	"time"
 	// ParaCloud "github.com/urchinfs/paracloud-sdk/paracloud"
 )
 
@@ -62,13 +61,7 @@ func (o *ParaCloudClient) Mkdir(
 		fileMode = stat.Mode()
 	}
 
-	err = RetryV1(
-		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
-		func() error {
-			return o.pcClient.MkdirAll(targetFolder, fileMode)
-		})
+	err = o.pcClient.MkdirAll(targetFolder, fileMode)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"pcClient.MkdirAll failed.",
@@ -126,16 +119,7 @@ func (o *ParaCloudClient) Upload(
 	readerWrapper.TotalCount = stat.Size()
 	readerWrapper.Mark = 0
 
-	err = RetryV1(
-		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
-		func() error {
-			return o.pcClient.WriteStream(
-				targetFile,
-				readerWrapper,
-				stat.Mode())
-		})
+	err = o.pcClient.WriteStream(targetFile, readerWrapper, stat.Mode())
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"pcClient.WriteStream failed.",
@@ -158,36 +142,15 @@ func (o *ParaCloudClient) List(
 		"ParaCloudClient:List start.",
 		" path: ", path)
 
-	err, fileInfoListTmp := RetryV4(
-		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
-		func() (error, interface{}) {
-			output := make([]os.FileInfo, 0)
-			output, _err := o.pcClient.ReadDir(path)
-			if nil != _err {
-				Logger.WithContext(ctx).Error(
-					"pcClient.ReadDir failed.",
-					" path: ", path,
-					" err: ", _err)
-				return _err, output
-			}
-			return _err, output
-		})
+	fileInfoList = make([]os.FileInfo, 0)
+
+	fileInfoList, err = o.pcClient.ReadDir(path)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ParaCloudClient.List failed.",
+			"pcClient.ReadDir failed.",
 			" path: ", path,
 			" err: ", err)
 		return err, fileInfoList
-	}
-
-	fileInfoList = make([]os.FileInfo, 0)
-	isValid := false
-	if fileInfoList, isValid = fileInfoListTmp.([]os.FileInfo); !isValid {
-		Logger.WithContext(ctx).Error(
-			"response invalid.")
-		return errors.New("response invalid"), fileInfoList
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -207,31 +170,13 @@ func (o *ParaCloudClient) Download(
 		" offset: ", offset,
 		" length: ", length)
 
-	err, outputTmp := RetryV4(
-		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
-		func() (error, interface{}) {
-			pcDownloadPartOutput := new(PCDownloadPartOutput)
-			ioReadCloser, _err := o.pcClient.ReadStreamRange(
-				sourceFile,
-				offset,
-				length)
-			if nil != _err {
-				Logger.WithContext(ctx).Error(
-					"pcClient.ReadStreamRange failed.",
-					" sourceFile: ", sourceFile,
-					" offset: ", offset,
-					" length: ", length,
-					" err: ", _err)
-				return _err, pcDownloadPartOutput
-			}
-			pcDownloadPartOutput.Body = ioReadCloser
-			return _err, pcDownloadPartOutput
-		})
+	ioReadCloser, err := o.pcClient.ReadStreamRange(
+		sourceFile,
+		offset,
+		length)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
-			"ParaCloudClient.Download failed.",
+			"pcClient.ReadStreamRange failed.",
 			" sourceFile: ", sourceFile,
 			" offset: ", offset,
 			" length: ", length,
@@ -240,12 +185,7 @@ func (o *ParaCloudClient) Download(
 	}
 
 	output = new(PCDownloadPartOutput)
-	isValid := false
-	if output, isValid = outputTmp.(*PCDownloadPartOutput); !isValid {
-		Logger.WithContext(ctx).Error(
-			"response invalid.")
-		return errors.New("response invalid"), output
-	}
+	output.Body = ioReadCloser
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloudClient:Download finish.")
@@ -260,13 +200,7 @@ func (o *ParaCloudClient) Rm(
 		"ParaCloudClient:Rm start.",
 		" path: ", path)
 
-	err = RetryV1(
-		ctx,
-		ParaCloudAttempts,
-		ParaCloudDelay*time.Second,
-		func() error {
-			return o.pcClient.RemoveAll(path)
-		})
+	err = o.pcClient.RemoveAll(path)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"pcClient.RemoveAll failed.",

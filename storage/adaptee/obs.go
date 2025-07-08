@@ -3,13 +3,12 @@ package adaptee
 import (
 	"context"
 	"errors"
-	SS "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/huaweicloud/huaweicloud-sdk-go-obs/obs"
 	"github.com/panjf2000/ants/v2"
-	"os"
-	"path/filepath"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -17,7 +16,7 @@ import (
 
 type S3 struct {
 	bucket    string
-	obsClient *SS.
+	obsClient *obs.ObsClient
 }
 
 func (o *S3) Init(
