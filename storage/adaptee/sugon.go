@@ -1457,7 +1457,7 @@ func (o *Sugon) downloadBatch(
 					"os.MkdirAll failed.",
 					" itemPath: ", itemPath,
 					" err: ", err)
-				return
+				return err
 			}
 		}
 
