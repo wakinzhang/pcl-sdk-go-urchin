@@ -2068,6 +2068,56 @@ func (o *S3Proxy) Download(
 		return errors.New("task not exist")
 	}
 	task := getTaskResp.Data.List[0].Task
+
+	var uuid, location string
+	if TaskTypeDownload == getTaskResp.Data.List[0].Task.Type {
+		taskParams := new(DownloadObjectTaskParams)
+		err = json.Unmarshal(
+			[]byte(getTaskResp.Data.List[0].Task.Params),
+			taskParams)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"DownloadObjectTaskParams Unmarshal failed.",
+				" params: ", getTaskResp.Data.List[0].Task.Params,
+				" err: ", err)
+			return err
+		}
+		uuid = taskParams.Request.ObjUuid
+		location = taskParams.Location
+	} else if TaskTypeDownloadFile == getTaskResp.Data.List[0].Task.Type {
+		taskParams := new(DownloadFileTaskParams)
+		err = json.Unmarshal(
+			[]byte(getTaskResp.Data.List[0].Task.Params),
+			taskParams)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"DownloadFileTaskParams Unmarshal failed.",
+				" params: ", getTaskResp.Data.List[0].Task.Params,
+				" err: ", err)
+			return err
+		}
+		uuid = taskParams.Request.ObjUuid
+		location = taskParams.Location
+	} else if TaskTypeLoad == getTaskResp.Data.List[0].Task.Type {
+		taskParams := new(LoadObjectTaskParams)
+		err = json.Unmarshal(
+			[]byte(getTaskResp.Data.List[0].Task.Params),
+			taskParams)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"DownloadFileTaskParams Unmarshal failed.",
+				" params: ", getTaskResp.Data.List[0].Task.Params,
+				" err: ", err)
+			return err
+		}
+		uuid = taskParams.Request.ObjUuid
+		location = taskParams.SourceLocation
+	} else {
+		Logger.WithContext(ctx).Error(
+			"task type invalid. taskId: ", taskId)
+		return errors.New("task type invalid")
+	}
+
 	downloadObjectTaskParams := new(DownloadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), downloadObjectTaskParams)
 	if nil != err {
@@ -2079,7 +2129,6 @@ func (o *S3Proxy) Download(
 		return err
 	}
 
-	uuid := downloadObjectTaskParams.Request.ObjUuid
 	downloadFolderRecord := targetPath +
 		uuid +
 		fmt.Sprintf("_%d_tmp", taskId) +
@@ -2151,7 +2200,7 @@ func (o *S3Proxy) Download(
 			break
 		}
 	}
-	fromPath := tmpTargetPath + uuid
+	fromPath := tmpTargetPath + strings.TrimSuffix(location, "/")
 	toPath := targetPath + uuid + fmt.Sprintf("_%d", taskId)
 	err = os.Rename(fromPath, toPath)
 	if nil != err {

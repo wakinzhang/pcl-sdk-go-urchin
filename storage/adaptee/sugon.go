@@ -1450,14 +1450,14 @@ func (o *Sugon) downloadBatch(
 		}
 
 		for _, folder := range sugonListResponseData.Children {
-			itemPath := targetPath + folder.Path
+			itemPath := strings.TrimSuffix(targetPath, "/") + folder.Path
 			err = os.MkdirAll(itemPath, os.ModePerm)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"os.MkdirAll failed.",
 					" itemPath: ", itemPath,
 					" err: ", err)
-				return err
+				return
 			}
 		}
 
@@ -1583,16 +1583,18 @@ func (o *Sugon) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
+			targetFile := strings.TrimSuffix(targetPath, "/") +
+				itemObject.Path
 			_err := o.downloadPart(
 				ctx,
 				itemObject,
-				targetPath+itemObject.Path)
+				targetFile)
 			if nil != _err {
 				isAllSuccess = false
 				Logger.WithContext(ctx).Error(
 					"Sugon:downloadPart failed.",
 					" objectPath: ", itemObject.Path,
-					" targetFile: ", targetPath+itemObject.Path,
+					" targetFile: ", targetFile,
 					" err: ", _err)
 				return
 			}

@@ -1266,7 +1266,7 @@ func (o *StarLight) downloadBatch(
 	}
 
 	for _, folder := range folders {
-		itemPath := targetPath + folder.Path
+		itemPath := strings.TrimSuffix(targetPath, "/") + folder.Path
 		err = os.MkdirAll(itemPath, os.ModePerm)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -1379,7 +1379,8 @@ func (o *StarLight) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			targetFile := targetPath + itemObject.Path
+			targetFile := strings.TrimSuffix(targetPath, "/") +
+				itemObject.Path
 			_err := o.downloadPart(
 				ctx,
 				itemObject,

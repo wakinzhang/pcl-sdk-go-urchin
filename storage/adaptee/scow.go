@@ -1194,7 +1194,7 @@ func (o *Scow) handleUploadTaskResult(
 		" checkpointFilePath: ", checkpointFilePath,
 		" partNum: ", partNum)
 
-	if _, ok := result.(*ScowBaseResponse); ok {
+	if _, ok := result.(*ScowBaseMessageResponse); ok {
 		lock.Lock()
 		defer lock.Unlock()
 		ufc.UploadParts[partNum-1].IsCompleted = true
@@ -1504,9 +1504,8 @@ func (o *Scow) downloadBatch(
 	}
 
 	for _, folder := range folders {
-		itemPath :=
-			strings.TrimSuffix(targetPath, "/") +
-				folder.PathExt
+		itemPath := strings.TrimSuffix(targetPath, "/") +
+			folder.PathExt
 		err = os.MkdirAll(itemPath, os.ModePerm)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -1622,9 +1621,8 @@ func (o *Scow) downloadObjects(
 					isAllSuccess = false
 				}
 			}()
-			targetFile :=
-				strings.TrimSuffix(targetPath, "/") +
-					itemObject.PathExt
+			targetFile := strings.TrimSuffix(targetPath, "/") +
+				itemObject.PathExt
 			_err := o.downloadPart(
 				ctx,
 				itemObject,

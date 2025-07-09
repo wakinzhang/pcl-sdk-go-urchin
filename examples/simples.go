@@ -17,12 +17,12 @@ func main() {
 
 	/*上传数据对象*/
 	/**/
-	var objectName = "wakinzhang-test-obj-20250707-3"
+	var objectName = "wakinzhang-test-obj-20250709-2"
 	var sourcePath = "/Users/zhangjiayuan/Downloads/source/"
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/test.zip"
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/empty"
 	//var sourcePath = "/Users/zhangjiayuan/Downloads/source/diversicus.mp4"
-	var nodeName = "test-50-minio"
+	var nodeName = ""
 
 	_, _ = UploadByProxy(
 		DefaultUrchinClientUserId,
