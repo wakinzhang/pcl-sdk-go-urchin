@@ -132,14 +132,14 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 		" objectKey: ", objectKey,
 		" taskId: ", taskId)
 
-	createEmptyFileSignedUrlReq := new(CreatePutObjectSignedUrlReq)
-	createEmptyFileSignedUrlReq.TaskId = taskId
-	createEmptyFileSignedUrlReq.Source = objectKey
+	createPutObjectSignedUrlReq := new(CreatePutObjectSignedUrlReq)
+	createPutObjectSignedUrlReq.TaskId = taskId
+	createPutObjectSignedUrlReq.Source = objectKey
 
 	err, createPutObjectSignedUrlResp :=
 		UClient.CreatePutObjectSignedUrl(
 			ctx,
-			createEmptyFileSignedUrlReq)
+			createPutObjectSignedUrlReq)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"UrchinClient.CreatePutObjectSignedUrl failed.",
@@ -185,10 +185,17 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 		}
 	}()
 
-	_, err = o.obsClient.PutObjectWithSignedUrl(
-		createPutObjectSignedUrlResp.SignedUrl,
-		putObjectWithSignedUrlHeader,
-		fd)
+	if 0 == stat.Size() {
+		_, err = o.obsClient.PutObjectWithSignedUrl(
+			createPutObjectSignedUrlResp.SignedUrl,
+			putObjectWithSignedUrlHeader,
+			nil)
+	} else {
+		_, err = o.obsClient.PutObjectWithSignedUrl(
+			createPutObjectSignedUrlResp.SignedUrl,
+			putObjectWithSignedUrlHeader,
+			fd)
+	}
 	if nil != err {
 		if obsError, ok := err.(obs.ObsError); ok {
 			Logger.WithContext(ctx).Error(
