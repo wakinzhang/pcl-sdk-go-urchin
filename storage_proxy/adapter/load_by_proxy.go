@@ -116,13 +116,15 @@ func ProcessLoadByProxy(
 		" targetNodeType: ", targetNodeType,
 		" needPure: ", needPure)
 
-	loadDownloadFinishFile :=
-		cachePath + objUuid + ".load_download_finish"
+	loadDownloadFinishFile := cachePath +
+		objUuid +
+		fmt.Sprintf("_%d.load_download_finish", taskId)
 
-	loadUploadFinishFile :=
-		cachePath + objUuid + ".load_upload_finish"
+	loadUploadFinishFile := cachePath +
+		objUuid +
+		fmt.Sprintf("_%d.load_upload_finish", taskId)
 
-	loadCachePath := cachePath + objUuid
+	loadCachePath := cachePath + objUuid + fmt.Sprintf("_%d", taskId)
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
@@ -140,26 +142,28 @@ func ProcessLoadByProxy(
 				" err: ", _err)
 			return
 		}
-		_err = os.RemoveAll(loadCachePath)
-		if nil != _err {
-			Logger.WithContext(ctx).Error(
-				"os.Remove failed.",
-				" loadCachePath: ", loadCachePath,
-				" err: ", _err)
-		}
-		_err = os.Remove(loadDownloadFinishFile)
-		if nil != _err {
-			Logger.WithContext(ctx).Error(
-				"os.Remove failed.",
-				" loadDownloadFinishFile: ", loadDownloadFinishFile,
-				" err: ", _err)
-		}
-		_err = os.Remove(loadUploadFinishFile)
-		if nil != _err {
-			Logger.WithContext(ctx).Error(
-				"os.Remove failed.",
-				" loadUploadFinishFile: ", loadUploadFinishFile,
-				" err: ", _err)
+		if TaskFResultESuccess == finishTaskReq.Result {
+			_err = os.RemoveAll(loadCachePath)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" loadCachePath: ", loadCachePath,
+					" err: ", _err)
+			}
+			_err = os.Remove(loadDownloadFinishFile)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" loadDownloadFinishFile: ", loadDownloadFinishFile,
+					" err: ", _err)
+			}
+			_err = os.Remove(loadUploadFinishFile)
+			if nil != _err {
+				Logger.WithContext(ctx).Error(
+					"os.Remove failed.",
+					" loadUploadFinishFile: ", loadUploadFinishFile,
+					" err: ", _err)
+			}
 		}
 	}()
 
@@ -242,20 +246,6 @@ func ProcessLoadByProxy(
 				Logger.WithContext(ctx).Error(
 					"target NewStorageProxy failed.",
 					" err: ", err)
-				return err
-			}
-			entries, err := os.ReadDir(loadCachePath)
-			if nil != err {
-				Logger.WithContext(ctx).Error(
-					"os.ReadDir failed.",
-					" loadCachePath: ", loadCachePath,
-					" err: ", err)
-				return err
-			}
-			if 0 == len(entries) {
-				Logger.WithContext(ctx).Error(
-					"object cache empty.",
-					" loadCachePath: ", loadCachePath)
 				return err
 			}
 			err = targetStorage.Upload(
