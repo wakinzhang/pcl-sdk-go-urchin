@@ -530,6 +530,9 @@ func (o *S3) uploadFile(
 				input.Key = objectKey
 				input.Body = fd
 				input.ContentLength = stat.Size()
+				if 0 == input.ContentLength {
+					input.Body = nil
+				}
 				_, _err := o.obsClient.PutObject(input)
 				if nil != _err {
 					if obsError, ok := _err.(obs.ObsError); ok {
