@@ -300,6 +300,8 @@ type UploadObjectTaskParams struct {
 	NodeType int32 `protobuf:"varint,5,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"location"
 	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,7,opt,name=request_id,proto3" json:"request_id"`
 }
 
 type UploadObjectResp struct {
@@ -343,6 +345,8 @@ type UploadFileTaskParams struct {
 	NodeType int32 `protobuf:"varint,4,opt,name=node_type,proto3" json:"node_type"`
 	// @inject_tag: json:"location"
 	Location string `protobuf:"bytes,5,opt,name=location,proto3" json:"location"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,6,opt,name=request_id,proto3" json:"request_id"`
 }
 
 type UploadFileResp struct {
@@ -386,6 +390,8 @@ type DownloadFileTaskParams struct {
 	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
 	// @inject_tag: json:"location"
 	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,7,opt,name=request_id,proto3" json:"request_id"`
 }
 
 type DownloadFileResp struct {
@@ -483,6 +489,8 @@ type DownloadObjectTaskParams struct {
 	BucketName string `protobuf:"bytes,5,opt,name=bucket_name,proto3" json:"bucket_name"`
 	// @inject_tag: json:"location"
 	Location string `protobuf:"bytes,6,opt,name=location,proto3" json:"location"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,7,opt,name=request_id,proto3" json:"request_id"`
 }
 
 type DownloadObjectResp struct {
@@ -534,6 +542,8 @@ type LoadObjectTaskParams struct {
 	TargetNodeType int32 `protobuf:"varint,9,opt,name=target_node_type,proto3" json:"target_node_type"`
 	// @inject_tag: json:"target_location"
 	TargetLocation string `protobuf:"bytes,10,opt,name=target_location,proto3" json:"target_location"`
+	// @inject_tag: json:"request_id"
+	RequestId string `protobuf:"bytes,11,opt,name=request_id,proto3" json:"request_id"`
 }
 
 type LoadObjectResp struct {
