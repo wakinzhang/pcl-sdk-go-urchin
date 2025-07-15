@@ -23,7 +23,11 @@ import (
 )
 
 type Scow struct {
-	sClient *ScowClient
+	sClient               *ScowClient
+	sUploadFileTaskNum    int
+	sUploadMultiTaskNum   int
+	sDownloadFileTaskNum  int
+	sDownloadMultiTaskNum int
 }
 
 func (o *Scow) Init(
@@ -57,8 +61,34 @@ func (o *Scow) Init(
 		reqTimeout,
 		maxConnection)
 
+	o.sUploadFileTaskNum = DefaultScowUploadFileTaskNum
+	o.sUploadMultiTaskNum = DefaultScowUploadMultiTaskNum
+	o.sDownloadFileTaskNum = DefaultScowDownloadFileTaskNum
+	o.sDownloadMultiTaskNum = DefaultScowDownloadMultiTaskNum
+
 	Logger.WithContext(ctx).Debug(
 		"Scow:Init finish.")
+	return nil
+}
+
+func (o *Scow) SetConcurrency(
+	ctx context.Context,
+	config *StorageNodeConcurrencyConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:SetConcurrency start.",
+		" UploadFileTaskNum: ", config.UploadFileTaskNum,
+		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
+		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
+		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+
+	o.sUploadFileTaskNum = int(config.UploadFileTaskNum)
+	o.sUploadMultiTaskNum = int(config.UploadMultiTaskNum)
+	o.sDownloadFileTaskNum = int(config.DownloadFileTaskNum)
+	o.sDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:SetConcurrency finish.")
 	return nil
 }
 
@@ -356,7 +386,7 @@ func (o *Scow) uploadFolder(
 		return err
 	}
 
-	pool, err := ants.NewPool(DefaultScowUploadFileTaskNum)
+	pool, err := ants.NewPool(o.sUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -787,7 +817,7 @@ func (o *Scow) uploadFileResume(
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
 		uploadFileInput.UploadFile + UploadFileRecordSuffix
-	uploadFileInput.TaskNum = DefaultScowUploadMultiTaskNum
+	uploadFileInput.TaskNum = o.sUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultScowMinPartSize {
 		uploadFileInput.PartSize = DefaultScowMinPartSize
@@ -1589,7 +1619,7 @@ func (o *Scow) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultScowDownloadFileTaskNum)
+	pool, err := ants.NewPool(o.sDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download object failed.",
@@ -1704,7 +1734,7 @@ func (o *Scow) downloadPart(
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
-	downloadFileInput.TaskNum = DefaultScowDownloadMultiTaskNum
+	downloadFileInput.TaskNum = o.sDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
 	err = o.resumeDownload(

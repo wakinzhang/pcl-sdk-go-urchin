@@ -22,6 +22,10 @@ type StorageProxy interface {
 		targetPath string,
 		taskId int32,
 		bucketName string) error
+
+	SetConcurrency(
+		ctx context.Context,
+		config *StorageNodeConcurrencyConfig) error
 }
 
 func NewStorageProxy(

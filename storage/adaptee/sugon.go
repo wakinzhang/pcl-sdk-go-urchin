@@ -21,7 +21,11 @@ import (
 )
 
 type Sugon struct {
-	sugonClient *SugonClient
+	sugonClient               *SugonClient
+	sugonUploadFileTaskNum    int
+	sugonUploadMultiTaskNum   int
+	sugonDownloadFileTaskNum  int
+	sugonDownloadMultiTaskNum int
 }
 
 func (o *Sugon) Init(
@@ -58,8 +62,34 @@ func (o *Sugon) Init(
 		reqTimeout,
 		maxConnection)
 
+	o.sugonUploadFileTaskNum = DefaultSugonUploadFileTaskNum
+	o.sugonUploadMultiTaskNum = DefaultSugonUploadMultiTaskNum
+	o.sugonDownloadFileTaskNum = DefaultSugonDownloadFileTaskNum
+	o.sugonDownloadMultiTaskNum = DefaultSugonDownloadMultiTaskNum
+
 	Logger.WithContext(ctx).Debug(
 		"Sugon:Init finish.")
+	return nil
+}
+
+func (o *Sugon) SetConcurrency(
+	ctx context.Context,
+	config *StorageNodeConcurrencyConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:SetConcurrency start.",
+		" UploadFileTaskNum: ", config.UploadFileTaskNum,
+		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
+		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
+		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+
+	o.sugonUploadFileTaskNum = int(config.UploadFileTaskNum)
+	o.sugonUploadMultiTaskNum = int(config.UploadMultiTaskNum)
+	o.sugonDownloadFileTaskNum = int(config.DownloadFileTaskNum)
+	o.sugonDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:SetConcurrency finish.")
 	return nil
 }
 
@@ -335,7 +365,7 @@ func (o *Sugon) uploadFolder(
 		return err
 	}
 
-	pool, err := ants.NewPool(DefaultSugonUploadFileTaskNum)
+	pool, err := ants.NewPool(o.sugonUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -748,7 +778,7 @@ func (o *Sugon) uploadFileResume(
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
 		uploadFileInput.UploadFile + UploadFileRecordSuffix
-	uploadFileInput.TaskNum = DefaultSugonUploadMultiTaskNum
+	uploadFileInput.TaskNum = o.sugonUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultSugonMinPartSize {
 		uploadFileInput.PartSize = DefaultSugonMinPartSize
@@ -1542,7 +1572,7 @@ func (o *Sugon) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultSugonDownloadFileTaskNum)
+	pool, err := ants.NewPool(o.sugonDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download object failed.",
@@ -1666,7 +1696,7 @@ func (o *Sugon) downloadPart(
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
-	downloadFileInput.TaskNum = DefaultSugonDownloadMultiTaskNum
+	downloadFileInput.TaskNum = o.sugonDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
 	err = o.resumeDownload(

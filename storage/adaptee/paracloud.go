@@ -21,7 +21,10 @@ import (
 )
 
 type ParaCloud struct {
-	pcClient *ParaCloudClient
+	pcClient               *ParaCloudClient
+	pcUploadFileTaskNum    int
+	pcDownloadFileTaskNum  int
+	pcDownloadMultiTaskNum int
 }
 
 func (o *ParaCloud) Init(
@@ -43,8 +46,31 @@ func (o *ParaCloud) Init(
 		password,
 		endpoint)
 
+	o.pcUploadFileTaskNum = DefaultParaCloudUploadFileTaskNum
+	o.pcDownloadFileTaskNum = DefaultParaCloudDownloadFileTaskNum
+	o.pcDownloadMultiTaskNum = DefaultParaCloudDownloadMultiTaskNum
+
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:Init finish.")
+	return nil
+}
+
+func (o *ParaCloud) SetConcurrency(
+	ctx context.Context,
+	config *StorageNodeConcurrencyConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:SetConcurrency start.",
+		" UploadFileTaskNum: ", config.UploadFileTaskNum,
+		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
+		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+
+	o.pcUploadFileTaskNum = int(config.UploadFileTaskNum)
+	o.pcDownloadFileTaskNum = int(config.DownloadFileTaskNum)
+	o.pcDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:SetConcurrency finish.")
 	return nil
 }
 
@@ -336,7 +362,7 @@ func (o *ParaCloud) uploadFolder(
 		return err
 	}
 
-	pool, err := ants.NewPool(DefaultParaCloudUploadFileTaskNum)
+	pool, err := ants.NewPool(o.pcUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -833,7 +859,7 @@ func (o *ParaCloud) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultParaCloudDownloadFileTaskNum)
+	pool, err := ants.NewPool(o.pcDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download object failed.",
@@ -947,7 +973,7 @@ func (o *ParaCloud) downloadPart(
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
-	downloadFileInput.TaskNum = DefaultParaCloudDownloadMultiTaskNum
+	downloadFileInput.TaskNum = o.pcDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
 	err = o.resumeDownload(

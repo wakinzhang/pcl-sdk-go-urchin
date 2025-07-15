@@ -24,6 +24,10 @@ type Storage interface {
 	Delete(
 		ctx context.Context,
 		input interface{}) error
+
+	SetConcurrency(
+		ctx context.Context,
+		config *StorageNodeConcurrencyConfig) error
 }
 
 func NewStorage(

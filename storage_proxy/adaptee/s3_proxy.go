@@ -26,7 +26,11 @@ import (
 )
 
 type S3Proxy struct {
-	obsClient *obs.ObsClient
+	obsClient              *obs.ObsClient
+	s3UploadFileTaskNum    int
+	s3UploadMultiTaskNum   int
+	s3DownloadFileTaskNum  int
+	s3DownloadMultiTaskNum int
 }
 
 func (o *S3Proxy) Init(
@@ -58,8 +62,34 @@ func (o *S3Proxy) Init(
 		return err
 	}
 
+	o.s3UploadFileTaskNum = DefaultS3UploadFileTaskNum
+	o.s3UploadMultiTaskNum = DefaultS3UploadMultiTaskNum
+	o.s3DownloadFileTaskNum = DefaultS3DownloadFileTaskNum
+	o.s3DownloadMultiTaskNum = DefaultS3DownloadMultiTaskNum
+
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Init finish.")
+	return nil
+}
+
+func (o *S3Proxy) SetConcurrency(
+	ctx context.Context,
+	config *StorageNodeConcurrencyConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:SetConcurrency start.",
+		" UploadFileTaskNum: ", config.UploadFileTaskNum,
+		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
+		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
+		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+
+	o.s3UploadFileTaskNum = int(config.UploadFileTaskNum)
+	o.s3UploadMultiTaskNum = int(config.UploadMultiTaskNum)
+	o.s3DownloadFileTaskNum = int(config.DownloadFileTaskNum)
+	o.s3DownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:SetConcurrency finish.")
 	return nil
 }
 
@@ -1008,7 +1038,7 @@ func (o *S3Proxy) uploadFolder(
 		}
 	}
 
-	pool, err := ants.NewPool(DefaultS3UploadFileTaskNum)
+	pool, err := ants.NewPool(o.s3UploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -1293,7 +1323,7 @@ func (o *S3Proxy) uploadFileResume(
 			"_" +
 			strconv.FormatInt(int64(taskId), 10) +
 			UploadFileRecordSuffix
-	uploadFileInput.TaskNum = DefaultS3UploadMultiTaskNum
+	uploadFileInput.TaskNum = o.s3UploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	uploadFileInput.Key = objectKey
 	if uploadFileInput.PartSize < obs.MIN_PART_SIZE {
@@ -2278,7 +2308,7 @@ func (o *S3Proxy) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultS3DownloadFileTaskNum)
+	pool, err := ants.NewPool(o.s3DownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download Object failed.",
@@ -2467,7 +2497,7 @@ func (o *S3Proxy) downloadPartWithSignedUrl(
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
-	downloadFileInput.TaskNum = DefaultS3DownloadMultiTaskNum
+	downloadFileInput.TaskNum = o.s3DownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 	downloadFileInput.Bucket = bucketName
 	downloadFileInput.Key = objectKey

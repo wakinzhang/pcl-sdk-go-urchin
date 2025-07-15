@@ -21,7 +21,11 @@ import (
 )
 
 type StarLight struct {
-	slClient *SLClient
+	slClient               *SLClient
+	slUploadFileTaskNum    int
+	slUploadMultiTaskNum   int //starlight并发度仅支持1，只能有一个端点
+	slDownloadFileTaskNum  int
+	slDownloadMultiTaskNum int
 }
 
 func (o *StarLight) Init(
@@ -49,8 +53,33 @@ func (o *StarLight) Init(
 		reqTimeout,
 		maxConnection)
 
+	o.slUploadFileTaskNum = DefaultSLUploadFileTaskNum
+	//starlight并发度仅支持1，只能有一个端点
+	o.slUploadMultiTaskNum = DefaultSLUploadMultiTaskNum
+	o.slDownloadFileTaskNum = DefaultSLDownloadFileTaskNum
+	o.slDownloadMultiTaskNum = DefaultSLDownloadMultiTaskNum
+
 	Logger.WithContext(ctx).Debug(
 		"StarLight:Init finish.")
+	return nil
+}
+
+func (o *StarLight) SetConcurrency(
+	ctx context.Context,
+	config *StorageNodeConcurrencyConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:SetConcurrency start.",
+		" UploadFileTaskNum: ", config.UploadFileTaskNum,
+		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
+		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+
+	o.slUploadFileTaskNum = int(config.UploadFileTaskNum)
+	o.slDownloadFileTaskNum = int(config.DownloadFileTaskNum)
+	o.slDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:SetConcurrency finish.")
 	return nil
 }
 
@@ -326,7 +355,7 @@ func (o *StarLight) uploadFolder(
 		return err
 	}
 
-	pool, err := ants.NewPool(DefaultSLUploadFileTaskNum)
+	pool, err := ants.NewPool(o.slUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -619,7 +648,7 @@ func (o *StarLight) uploadFileResume(
 	uploadFileInput.EnableCheckpoint = true
 	uploadFileInput.CheckpointFile =
 		uploadFileInput.UploadFile + UploadFileRecordSuffix
-	uploadFileInput.TaskNum = DefaultSLUploadMultiTaskNum
+	uploadFileInput.TaskNum = o.slUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultSLMinPartSize {
 		uploadFileInput.PartSize = DefaultSLMinPartSize
@@ -1347,7 +1376,7 @@ func (o *StarLight) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultSLDownloadFileTaskNum)
+	pool, err := ants.NewPool(o.slDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download Object failed.",
@@ -1462,7 +1491,7 @@ func (o *StarLight) downloadPart(
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
-	downloadFileInput.TaskNum = DefaultSLDownloadMultiTaskNum
+	downloadFileInput.TaskNum = o.slDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
 	err = o.resumeDownload(

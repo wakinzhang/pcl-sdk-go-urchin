@@ -16,6 +16,25 @@ import (
 type IPFSProxy struct {
 }
 
+func (o *IPFSProxy) SetConcurrency(
+	ctx context.Context,
+	config *StorageNodeConcurrencyConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"IPFSProxy:SetConcurrency start.",
+		" UploadFileTaskNum: ", config.UploadFileTaskNum,
+		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
+		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
+		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+
+	Logger.WithContext(ctx).Error(
+		"IPFSProxy not support concurrency config.")
+
+	Logger.WithContext(ctx).Debug(
+		"IPFSProxy:SetConcurrency finish.")
+	return nil
+}
+
 func (o *IPFSProxy) Upload(
 	ctx context.Context,
 	userId string,

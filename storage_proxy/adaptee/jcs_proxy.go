@@ -22,7 +22,11 @@ import (
 )
 
 type JCSProxy struct {
-	jcsProxyClient *JCSProxyClient
+	jcsProxyClient          *JCSProxyClient
+	jcsUploadFileTaskNum    int
+	jcsUploadMultiTaskNum   int
+	jcsDownloadFileTaskNum  int
+	jcsDownloadMultiTaskNum int
 }
 
 func (o *JCSProxy) Init(
@@ -38,8 +42,34 @@ func (o *JCSProxy) Init(
 	o.jcsProxyClient = new(JCSProxyClient)
 	o.jcsProxyClient.Init(ctx, reqTimeout, maxConnection)
 
+	o.jcsUploadFileTaskNum = DefaultJCSUploadFileTaskNum
+	o.jcsUploadMultiTaskNum = DefaultJCSUploadMultiTaskNum
+	o.jcsDownloadFileTaskNum = DefaultJCSDownloadFileTaskNum
+	o.jcsDownloadMultiTaskNum = DefaultJCSDownloadMultiTaskNum
+
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:Init finish.")
+	return nil
+}
+
+func (o *JCSProxy) SetConcurrency(
+	ctx context.Context,
+	config *StorageNodeConcurrencyConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:SetConcurrency start.",
+		" UploadFileTaskNum: ", config.UploadFileTaskNum,
+		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
+		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
+		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+
+	o.jcsUploadFileTaskNum = int(config.UploadFileTaskNum)
+	o.jcsUploadMultiTaskNum = int(config.UploadMultiTaskNum)
+	o.jcsDownloadFileTaskNum = int(config.DownloadFileTaskNum)
+	o.jcsDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:SetConcurrency finish.")
 	return nil
 }
 
@@ -514,7 +544,7 @@ func (o *JCSProxy) uploadFolder(
 		}
 	}
 
-	pool, err := ants.NewPool(DefaultJCSUploadFileTaskNum)
+	pool, err := ants.NewPool(o.jcsUploadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
@@ -763,7 +793,7 @@ func (o *JCSProxy) uploadFileResume(
 			"_" +
 			strconv.FormatInt(int64(taskId), 10) +
 			UploadFileRecordSuffix
-	uploadFileInput.TaskNum = DefaultJCSUploadMultiTaskNum
+	uploadFileInput.TaskNum = o.jcsUploadMultiTaskNum
 	uploadFileInput.PartSize = DefaultPartSize
 	if uploadFileInput.PartSize < DefaultJCSMinPartSize {
 		uploadFileInput.PartSize = DefaultJCSMinPartSize
@@ -1504,7 +1534,7 @@ func (o *JCSProxy) downloadObjects(
 
 	var isAllSuccess = true
 	var wg sync.WaitGroup
-	pool, err := ants.NewPool(DefaultJCSDownloadFileTaskNum)
+	pool, err := ants.NewPool(o.jcsDownloadFileTaskNum)
 	if nil != err {
 		Logger.WithContext(ctx).Error(
 			"ants.NewPool for download Object failed.",
@@ -1642,7 +1672,7 @@ func (o *JCSProxy) downloadPartWithSignedUrl(
 	downloadFileInput.EnableCheckpoint = true
 	downloadFileInput.CheckpointFile =
 		downloadFileInput.DownloadFile + DownloadFileRecordSuffix
-	downloadFileInput.TaskNum = DefaultJCSDownloadMultiTaskNum
+	downloadFileInput.TaskNum = o.jcsDownloadMultiTaskNum
 	downloadFileInput.PartSize = DefaultPartSize
 
 	err = o.resumeDownload(

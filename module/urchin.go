@@ -909,4 +909,13 @@ type StorageNodeConfig struct {
 	ReqTimeout int32 `protobuf:"varint,16,opt,name=req_timeout,proto3" json:"req_timeout"`
 	// @inject_tag: json:"max_connection"
 	MaxConnection int32 `protobuf:"varint,17,opt,name=max_connection,proto3" json:"max_connection"`
+	// @inject_tag: json:"concurrency"
+	Concurrency *StorageNodeConcurrencyConfig `protobuf:"bytes,18,opt,name=concurrency,proto3" json:"concurrency"`
+}
+
+type StorageNodeConcurrencyConfig struct {
+	UploadFileTaskNum    int32 `protobuf:"varint,1,opt,name=upload_file_task_num,proto3" json:"upload_file_task_num,omitempty"`
+	UploadMultiTaskNum   int32 `protobuf:"varint,2,opt,name=upload_multi_task_num,proto3" json:"upload_multi_task_num,omitempty"`
+	DownloadFileTaskNum  int32 `protobuf:"varint,3,opt,name=download_file_task_num,proto3" json:"download_file_task_num,omitempty"`
+	DownloadMultiTaskNum int32 `protobuf:"varint,4,opt,name=download_multi_task_num,proto3" json:"download_multi_task_num,omitempty"`
 }
