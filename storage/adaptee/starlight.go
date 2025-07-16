@@ -10,6 +10,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,6 +20,10 @@ import (
 	"syscall"
 	"time"
 )
+
+var StarLightRateLimiter = rate.NewLimiter(
+	DefaultSLRateLimit,
+	DefaultSLRateBurst)
 
 type StarLight struct {
 	slClient               *SLClient
@@ -80,6 +85,23 @@ func (o *StarLight) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"StarLight:SetConcurrency finish.")
+	return nil
+}
+
+func (o *StarLight) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	StarLightRateLimiter.SetLimit(rate.Limit(config.Limit))
+	StarLightRateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"StarLight:SetRate finish.")
 	return nil
 }
 
@@ -384,6 +406,14 @@ func (o *StarLight) uploadFolder(
 				return nil
 			}
 
+			err = StarLightRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
+			}
+
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -503,6 +533,14 @@ func (o *StarLight) uploadFolder(
 				Logger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
+			}
+
+			err = StarLightRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
 			}
 
 			fileWaitGroup.Add(1)
@@ -828,6 +866,15 @@ func (o *StarLight) uploadPartConcurrent(
 			SlClient:         o.slClient,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
+
+		err = StarLightRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1397,6 +1444,15 @@ func (o *StarLight) downloadObjects(
 				" Path: ", itemObject.Path)
 			continue
 		}
+
+		err = StarLightRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1672,6 +1728,14 @@ func (o *StarLight) downloadFileConcurrent(
 			" PartNumber: ", downloadPart.PartNumber,
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
+
+		err = StarLightRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
 
 		wg.Add(1)
 		err = pool.Submit(func() {

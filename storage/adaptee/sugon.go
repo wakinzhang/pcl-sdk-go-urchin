@@ -10,6 +10,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,6 +20,10 @@ import (
 	"syscall"
 	"time"
 )
+
+var SugonRateLimiter = rate.NewLimiter(
+	DefaultSugonRateLimit,
+	DefaultSugonRateBurst)
 
 type Sugon struct {
 	sugonClient               *SugonClient
@@ -90,6 +95,23 @@ func (o *Sugon) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:SetConcurrency finish.")
+	return nil
+}
+
+func (o *Sugon) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	SugonRateLimiter.SetLimit(rate.Limit(config.Limit))
+	SugonRateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"Sugon:SetRate finish.")
 	return nil
 }
 
@@ -394,6 +416,14 @@ func (o *Sugon) uploadFolder(
 				return nil
 			}
 
+			err = SugonRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
+			}
+
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -513,6 +543,14 @@ func (o *Sugon) uploadFolder(
 				Logger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
+			}
+
+			err = SugonRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
 			}
 
 			fileWaitGroup.Add(1)
@@ -963,6 +1001,15 @@ func (o *Sugon) uploadPartConcurrent(
 			SClient:          o.sugonClient,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
+
+		err = SugonRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1602,6 +1649,15 @@ func (o *Sugon) downloadObjects(
 				" Path: ", itemObject.Path)
 			continue
 		}
+
+		err = SugonRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1877,6 +1933,14 @@ func (o *Sugon) downloadFileConcurrent(
 			" PartNumber: ", downloadPart.PartNumber,
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
+
+		err = SugonRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
 
 		wg.Add(1)
 		err = pool.Submit(func() {

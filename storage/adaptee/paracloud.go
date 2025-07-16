@@ -10,6 +10,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,6 +20,10 @@ import (
 	"syscall"
 	"time"
 )
+
+var ParaCloudRateLimiter = rate.NewLimiter(
+	DefaultParaCloudRateLimit,
+	DefaultParaCloudRateBurst)
 
 type ParaCloud struct {
 	pcClient               *ParaCloudClient
@@ -71,6 +76,23 @@ func (o *ParaCloud) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:SetConcurrency finish.")
+	return nil
+}
+
+func (o *ParaCloud) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	ParaCloudRateLimiter.SetLimit(rate.Limit(config.Limit))
+	ParaCloudRateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"ParaCloud:SetRate finish.")
 	return nil
 }
 
@@ -392,6 +414,14 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
+			err = ParaCloudRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
+			}
+
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -514,6 +544,14 @@ func (o *ParaCloud) uploadFolder(
 				Logger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
+			}
+
+			err = ParaCloudRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
 			}
 
 			fileWaitGroup.Add(1)
@@ -880,6 +918,15 @@ func (o *ParaCloud) downloadObjects(
 				" objectPath: ", itemObject.ObjectPath)
 			continue
 		}
+
+		err = ParaCloudRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1154,6 +1201,14 @@ func (o *ParaCloud) downloadFileConcurrent(
 			" PartNumber: ", downloadPart.PartNumber,
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
+
+		err = ParaCloudRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
 
 		wg.Add(1)
 		err = pool.Submit(func() {

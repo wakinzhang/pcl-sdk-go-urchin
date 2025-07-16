@@ -12,6 +12,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"io"
 	"os"
 	"path/filepath"
@@ -21,6 +22,10 @@ import (
 	"syscall"
 	"time"
 )
+
+var ScowRateLimiter = rate.NewLimiter(
+	DefaultScowRateLimit,
+	DefaultScowRateBurst)
 
 type Scow struct {
 	sClient               *ScowClient
@@ -89,6 +94,23 @@ func (o *Scow) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:SetConcurrency finish.")
+	return nil
+}
+
+func (o *Scow) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	ScowRateLimiter.SetLimit(rate.Limit(config.Limit))
+	ScowRateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"Scow:SetRate finish.")
 	return nil
 }
 
@@ -415,6 +437,14 @@ func (o *Scow) uploadFolder(
 				return nil
 			}
 
+			err = ScowRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
+			}
+
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -541,6 +571,14 @@ func (o *Scow) uploadFolder(
 				Logger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
+			}
+
+			err = ScowRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
 			}
 
 			fileWaitGroup.Add(1)
@@ -1028,6 +1066,15 @@ func (o *Scow) uploadPartConcurrent(
 			SClient:          o.sClient,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
+
+		err = ScowRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1640,6 +1687,15 @@ func (o *Scow) downloadObjects(
 				" objectPath: ", itemObject.PathExt)
 			continue
 		}
+
+		err = ScowRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1915,6 +1971,14 @@ func (o *Scow) downloadFileConcurrent(
 			" PartNumber: ", downloadPart.PartNumber,
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
+
+		err = ScowRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
 
 		wg.Add(1)
 		err = pool.Submit(func() {

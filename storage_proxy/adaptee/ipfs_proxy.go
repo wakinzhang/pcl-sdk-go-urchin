@@ -35,6 +35,23 @@ func (o *IPFSProxy) SetConcurrency(
 	return nil
 }
 
+func (o *IPFSProxy) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"IPFSProxy:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	Logger.WithContext(ctx).Error(
+		"IPFSProxy not support rate config.")
+
+	Logger.WithContext(ctx).Debug(
+		"IPFSProxy:SetRate finish.")
+	return nil
+}
+
 func (o *IPFSProxy) Upload(
 	ctx context.Context,
 	userId string,

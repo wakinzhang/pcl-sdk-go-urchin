@@ -7,6 +7,9 @@ const (
 	DefaultS3UploadMultiTaskNum   = 20
 	DefaultS3DownloadFileTaskNum  = 100
 	DefaultS3DownloadMultiTaskNum = 20
+
+	DefaultS3RateLimit = 65535
+	DefaultS3RateBurst = 65535
 )
 
 type S3MkdirInput struct {

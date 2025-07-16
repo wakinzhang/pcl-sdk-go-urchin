@@ -25,8 +25,12 @@ const (
 	DefaultScowUploadMultiTaskNum   = 20
 	DefaultScowDownloadFileTaskNum  = 100
 	DefaultScowDownloadMultiTaskNum = 20
-	DefaultScowMaxPartSize          = 5 * 1024 * 1024 * 1024
-	DefaultScowMinPartSize          = 100 * 1024
+
+	DefaultScowRateLimit = 65535
+	DefaultScowRateBurst = 65535
+
+	DefaultScowMaxPartSize = 5 * 1024 * 1024 * 1024
+	DefaultScowMinPartSize = 100 * 1024
 
 	DefaultScowTokenExpireHours = 6
 

@@ -10,6 +10,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,6 +20,10 @@ import (
 	"sync/atomic"
 	"syscall"
 )
+
+var JCSRateLimiter = rate.NewLimiter(
+	DefaultJCSRateLimit,
+	DefaultJCSRateBurst)
 
 type JCS struct {
 	jcsClient               *JCSClient
@@ -96,6 +101,23 @@ func (o *JCS) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"JCS:SetConcurrency finish.")
+	return nil
+}
+
+func (o *JCS) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	JCSRateLimiter.SetLimit(rate.Limit(config.Limit))
+	JCSRateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"JCS:SetRate finish.")
 	return nil
 }
 
@@ -396,6 +418,14 @@ func (o *JCS) uploadFolder(
 				Logger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
+			}
+
+			err = JCSRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
 			}
 
 			wg.Add(1)
@@ -861,6 +891,15 @@ func (o *JCS) uploadPartConcurrent(
 			JcsClient:        o.jcsClient,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
+
+		err = JCSRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1374,6 +1413,15 @@ func (o *JCS) downloadObjects(
 				" Path: ", itemObject.Path)
 			continue
 		}
+
+		err = JCSRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1656,6 +1704,14 @@ func (o *JCS) downloadFileConcurrent(
 			" PartNumber: ", downloadPart.PartNumber,
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
+
+		err = JCSRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
 
 		wg.Add(1)
 		err = pool.Submit(func() {

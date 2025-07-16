@@ -28,6 +28,10 @@ type Storage interface {
 	SetConcurrency(
 		ctx context.Context,
 		config *StorageNodeConcurrencyConfig) error
+
+	SetRate(
+		ctx context.Context,
+		config *StorageNodeRateConfig) error
 }
 
 func NewStorage(

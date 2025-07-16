@@ -1,6 +1,8 @@
 module github.com/wakinzhang/pcl-sdk-go-urchin
 
-go 1.22.6
+go 1.23.0
+
+toolchain go1.24.5
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.36.3
@@ -13,6 +15,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/studio-b12/gowebdav v0.9.0
 	github.com/urchinfs/go-urchin2-sdk v0.1.2
+	golang.org/x/time v0.12.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 )
 

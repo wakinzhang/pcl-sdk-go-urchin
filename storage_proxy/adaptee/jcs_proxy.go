@@ -11,6 +11,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,6 +21,10 @@ import (
 	"sync/atomic"
 	"syscall"
 )
+
+var JCSProxyRateLimiter = rate.NewLimiter(
+	DefaultJCSRateLimit,
+	DefaultJCSRateBurst)
 
 type JCSProxy struct {
 	jcsProxyClient          *JCSProxyClient
@@ -70,6 +75,23 @@ func (o *JCSProxy) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:SetConcurrency finish.")
+	return nil
+}
+
+func (o *JCSProxy) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	JCSProxyRateLimiter.SetLimit(rate.Limit(config.Limit))
+	JCSProxyRateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"JCSProxy:SetRate finish.")
 	return nil
 }
 
@@ -573,6 +595,14 @@ func (o *JCSProxy) uploadFolder(
 				return nil
 			}
 
+			err = JCSProxyRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
+			}
+
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -988,6 +1018,15 @@ func (o *JCSProxy) uploadPartConcurrent(
 			JcsProxyClient:   o.jcsProxyClient,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
+
+		err = JCSProxyRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1557,6 +1596,15 @@ func (o *JCSProxy) downloadObjects(
 				" Path: ", itemObject.Path)
 			continue
 		}
+
+		err = JCSProxyRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -1853,6 +1901,14 @@ func (o *JCSProxy) downloadFileConcurrent(
 			" PartNumber: ", downloadPart.PartNumber,
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
+
+		err = JCSProxyRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
 
 		wg.Add(1)
 		err = pool.Submit(func() {

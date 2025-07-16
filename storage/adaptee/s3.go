@@ -7,12 +7,17 @@ import (
 	"github.com/panjf2000/ants/v2"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 )
+
+var S3RateLimiter = rate.NewLimiter(
+	DefaultS3RateLimit,
+	DefaultS3RateBurst)
 
 type S3 struct {
 	bucket                 string
@@ -89,6 +94,23 @@ func (o *S3) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"S3:SetConcurrency finish.")
+	return nil
+}
+
+func (o *S3) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"S3:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	S3RateLimiter.SetLimit(rate.Limit(config.Limit))
+	S3RateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"S3:SetRate finish.")
 	return nil
 }
 
@@ -305,6 +327,14 @@ func (o *S3) uploadFolder(
 				Logger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
+			}
+
+			err = S3RateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
 			}
 
 			wg.Add(1)
@@ -774,6 +804,15 @@ func (o *S3) downloadObjects(
 				" objectKey: ", itemObject.Key)
 			continue
 		}
+
+		err = S3RateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {

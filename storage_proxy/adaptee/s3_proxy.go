@@ -12,6 +12,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"io"
 	"net/http"
 	"os"
@@ -24,6 +25,10 @@ import (
 	"syscall"
 	"time"
 )
+
+var S3ProxyRateLimiter = rate.NewLimiter(
+	DefaultS3RateLimit,
+	DefaultS3RateBurst)
 
 type S3Proxy struct {
 	obsClient              *obs.ObsClient
@@ -90,6 +95,23 @@ func (o *S3Proxy) SetConcurrency(
 
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:SetConcurrency finish.")
+	return nil
+}
+
+func (o *S3Proxy) SetRate(
+	ctx context.Context,
+	config *StorageNodeRateConfig) (err error) {
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:SetRate start.",
+		" Limit: ", config.Limit,
+		" Burst: ", config.Burst)
+
+	S3ProxyRateLimiter.SetLimit(rate.Limit(config.Limit))
+	S3ProxyRateLimiter.SetBurst(int(config.Burst))
+
+	Logger.WithContext(ctx).Debug(
+		"S3Proxy:SetRate finish.")
 	return nil
 }
 
@@ -1064,6 +1086,15 @@ func (o *S3Proxy) uploadFolder(
 					"root dir no need todo.")
 				return nil
 			}
+
+			err = S3ProxyRateLimiter.Wait(ctx)
+			if nil != err {
+				Logger.WithContext(ctx).Error(
+					"RateLimiter.Wait failed.",
+					" err: ", err)
+				return err
+			}
+
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -1551,6 +1582,15 @@ func (o *S3Proxy) uploadPartConcurrent(
 			abort:            &abort,
 			enableCheckpoint: input.EnableCheckpoint,
 		}
+
+		err = S3ProxyRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -2330,6 +2370,15 @@ func (o *S3Proxy) downloadObjects(
 				" objectKey: ", itemObject.Key)
 			continue
 		}
+
+		err = S3ProxyRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
+
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
@@ -2711,6 +2760,14 @@ func (o *S3Proxy) downloadFileConcurrent(
 			" partNumber: ", downloadPart.PartNumber,
 			" tempFileURL: ", dfc.TempFileInfo.TempFileUrl,
 			" enableCheckpoint: ", input.EnableCheckpoint)
+
+		err = S3ProxyRateLimiter.Wait(ctx)
+		if nil != err {
+			Logger.WithContext(ctx).Error(
+				"RateLimiter.Wait failed.",
+				" err: ", err)
+			return err
+		}
 
 		wg.Add(1)
 		err = pool.Submit(func() {

@@ -15,8 +15,12 @@ const (
 	DefaultSLUploadMultiTaskNum   = 1 //starlight并发度仅支持1，只能有一个端点
 	DefaultSLDownloadFileTaskNum  = 4
 	DefaultSLDownloadMultiTaskNum = 2
-	DefaultSLMaxPartSize          = 5 * 1024 * 1024 * 1024
-	DefaultSLMinPartSize          = 100 * 1024
+
+	DefaultSLRateLimit = 90
+	DefaultSLRateBurst = 20
+
+	DefaultSLMaxPartSize = 5 * 1024 * 1024 * 1024
+	DefaultSLMinPartSize = 100 * 1024
 
 	DefaultStarLightTokenExpireHours = 12
 

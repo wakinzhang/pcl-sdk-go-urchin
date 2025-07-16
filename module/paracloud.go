@@ -18,9 +18,12 @@ const (
 	ParaCloudAttempts = 5
 	ParaCloudDelay    = 3
 
-	DefaultParaCloudUploadFileTaskNum    = 20
+	DefaultParaCloudUploadFileTaskNum    = 1
 	DefaultParaCloudDownloadFileTaskNum  = 100
 	DefaultParaCloudDownloadMultiTaskNum = 20
+
+	DefaultParaCloudRateLimit = 65535
+	DefaultParaCloudRateBurst = 65535
 )
 
 type ParaCloudMkdirInput struct {

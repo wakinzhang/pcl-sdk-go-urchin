@@ -19,8 +19,12 @@ const (
 	DefaultSugonUploadMultiTaskNum   = 20
 	DefaultSugonDownloadFileTaskNum  = 100
 	DefaultSugonDownloadMultiTaskNum = 20
-	DefaultSugonMaxPartSize          = 5 * 1024 * 1024 * 1024
-	DefaultSugonMinPartSize          = 100 * 1024
+
+	DefaultSugonRateLimit = 65535
+	DefaultSugonRateBurst = 65535
+
+	DefaultSugonMaxPartSize = 5 * 1024 * 1024 * 1024
+	DefaultSugonMinPartSize = 100 * 1024
 
 	DefaultSugonListLimit = 100
 

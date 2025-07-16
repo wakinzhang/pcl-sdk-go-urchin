@@ -39,9 +39,13 @@ const (
 	DefaultJCSUploadMultiTaskNum   = 20
 	DefaultJCSDownloadFileTaskNum  = 100
 	DefaultJCSDownloadMultiTaskNum = 20
-	DefaultJCSMaxPartSize          = 5 * 1024 * 1024 * 1024
-	DefaultJCSMinPartSize          = 100 * 1024
-	DefaultJCSListLimit            = 1000
+
+	DefaultJCSRateLimit = 65535
+	DefaultJCSRateBurst = 65535
+
+	DefaultJCSMaxPartSize = 5 * 1024 * 1024 * 1024
+	DefaultJCSMinPartSize = 100 * 1024
+	DefaultJCSListLimit   = 1000
 
 	JCSMultiPartFormFiledInfo  = "info"
 	JCSMultiPartFormFiledFile  = "file"
