@@ -6,6 +6,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adaptee"
+	"golang.org/x/time/rate"
 )
 
 type StorageProxy interface {
@@ -29,7 +30,7 @@ type StorageProxy interface {
 
 	SetRate(
 		ctx context.Context,
-		config *StorageNodeRateConfig) error
+		rateLimiter *rate.Limiter) error
 }
 
 func NewStorageProxy(

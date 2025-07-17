@@ -15,10 +15,6 @@ import (
 	"time"
 )
 
-var S3RateLimiter = rate.NewLimiter(
-	DefaultS3RateLimit,
-	DefaultS3RateBurst)
-
 type S3 struct {
 	bucket                 string
 	obsClient              *obs.ObsClient
@@ -26,6 +22,7 @@ type S3 struct {
 	s3UploadMultiTaskNum   int
 	s3DownloadFileTaskNum  int
 	s3DownloadMultiTaskNum int
+	s3RateLimiter          *rate.Limiter
 }
 
 func (o *S3) Init(
@@ -71,6 +68,10 @@ func (o *S3) Init(
 	o.s3DownloadFileTaskNum = DefaultS3DownloadFileTaskNum
 	o.s3DownloadMultiTaskNum = DefaultS3DownloadMultiTaskNum
 
+	o.s3RateLimiter = rate.NewLimiter(
+		DefaultS3RateLimit,
+		DefaultS3RateBurst)
+
 	Logger.WithContext(ctx).Debug(
 		"S3:Init finish.")
 	return nil
@@ -99,15 +100,12 @@ func (o *S3) SetConcurrency(
 
 func (o *S3) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"S3:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"S3:SetRate start.")
 
-	S3RateLimiter.SetLimit(rate.Limit(config.Limit))
-	S3RateLimiter.SetBurst(int(config.Burst))
+	o.s3RateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"S3:SetRate finish.")
@@ -329,7 +327,7 @@ func (o *S3) uploadFolder(
 				return nil
 			}
 
-			err = S3RateLimiter.Wait(ctx)
+			err = o.s3RateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -805,7 +803,7 @@ func (o *S3) downloadObjects(
 			continue
 		}
 
-		err = S3RateLimiter.Wait(ctx)
+		err = o.s3RateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",

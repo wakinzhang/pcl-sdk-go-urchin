@@ -23,16 +23,13 @@ import (
 	"time"
 )
 
-var ScowRateLimiter = rate.NewLimiter(
-	DefaultScowRateLimit,
-	DefaultScowRateBurst)
-
 type Scow struct {
 	sClient               *ScowClient
 	sUploadFileTaskNum    int
 	sUploadMultiTaskNum   int
 	sDownloadFileTaskNum  int
 	sDownloadMultiTaskNum int
+	sRateLimiter          *rate.Limiter
 }
 
 func (o *Scow) Init(
@@ -71,6 +68,10 @@ func (o *Scow) Init(
 	o.sDownloadFileTaskNum = DefaultScowDownloadFileTaskNum
 	o.sDownloadMultiTaskNum = DefaultScowDownloadMultiTaskNum
 
+	o.sRateLimiter = rate.NewLimiter(
+		DefaultScowRateLimit,
+		DefaultScowRateBurst)
+
 	Logger.WithContext(ctx).Debug(
 		"Scow:Init finish.")
 	return nil
@@ -99,15 +100,12 @@ func (o *Scow) SetConcurrency(
 
 func (o *Scow) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"Scow:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"Scow:SetRate start.")
 
-	ScowRateLimiter.SetLimit(rate.Limit(config.Limit))
-	ScowRateLimiter.SetBurst(int(config.Burst))
+	o.sRateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"Scow:SetRate finish.")
@@ -437,7 +435,7 @@ func (o *Scow) uploadFolder(
 				return nil
 			}
 
-			err = ScowRateLimiter.Wait(ctx)
+			err = o.sRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -573,7 +571,7 @@ func (o *Scow) uploadFolder(
 				return nil
 			}
 
-			err = ScowRateLimiter.Wait(ctx)
+			err = o.sRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -1067,7 +1065,7 @@ func (o *Scow) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = ScowRateLimiter.Wait(ctx)
+		err = o.sRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1688,7 +1686,7 @@ func (o *Scow) downloadObjects(
 			continue
 		}
 
-		err = ScowRateLimiter.Wait(ctx)
+		err = o.sRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1972,7 +1970,7 @@ func (o *Scow) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = ScowRateLimiter.Wait(ctx)
+		err = o.sRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",

@@ -21,15 +21,12 @@ import (
 	"time"
 )
 
-var ParaCloudRateLimiter = rate.NewLimiter(
-	DefaultParaCloudRateLimit,
-	DefaultParaCloudRateBurst)
-
 type ParaCloud struct {
 	pcClient               *ParaCloudClient
 	pcUploadFileTaskNum    int
 	pcDownloadFileTaskNum  int
 	pcDownloadMultiTaskNum int
+	pcRateLimiter          *rate.Limiter
 }
 
 func (o *ParaCloud) Init(
@@ -54,6 +51,10 @@ func (o *ParaCloud) Init(
 	o.pcUploadFileTaskNum = DefaultParaCloudUploadFileTaskNum
 	o.pcDownloadFileTaskNum = DefaultParaCloudDownloadFileTaskNum
 	o.pcDownloadMultiTaskNum = DefaultParaCloudDownloadMultiTaskNum
+
+	o.pcRateLimiter = rate.NewLimiter(
+		DefaultParaCloudRateLimit,
+		DefaultParaCloudRateBurst)
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:Init finish.")
@@ -81,15 +82,12 @@ func (o *ParaCloud) SetConcurrency(
 
 func (o *ParaCloud) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"ParaCloud:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"ParaCloud:SetRate start.")
 
-	ParaCloudRateLimiter.SetLimit(rate.Limit(config.Limit))
-	ParaCloudRateLimiter.SetBurst(int(config.Burst))
+	o.pcRateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"ParaCloud:SetRate finish.")
@@ -414,7 +412,7 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
-			err = ParaCloudRateLimiter.Wait(ctx)
+			err = o.pcRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -546,7 +544,7 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
-			err = ParaCloudRateLimiter.Wait(ctx)
+			err = o.pcRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -919,7 +917,7 @@ func (o *ParaCloud) downloadObjects(
 			continue
 		}
 
-		err = ParaCloudRateLimiter.Wait(ctx)
+		err = o.pcRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1202,7 +1200,7 @@ func (o *ParaCloud) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = ParaCloudRateLimiter.Wait(ctx)
+		err = o.pcRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",

@@ -22,16 +22,13 @@ import (
 	"syscall"
 )
 
-var JCSProxyRateLimiter = rate.NewLimiter(
-	DefaultJCSRateLimit,
-	DefaultJCSRateBurst)
-
 type JCSProxy struct {
 	jcsProxyClient          *JCSProxyClient
 	jcsUploadFileTaskNum    int
 	jcsUploadMultiTaskNum   int
 	jcsDownloadFileTaskNum  int
 	jcsDownloadMultiTaskNum int
+	jcsRateLimiter          *rate.Limiter
 }
 
 func (o *JCSProxy) Init(
@@ -51,6 +48,10 @@ func (o *JCSProxy) Init(
 	o.jcsUploadMultiTaskNum = DefaultJCSUploadMultiTaskNum
 	o.jcsDownloadFileTaskNum = DefaultJCSDownloadFileTaskNum
 	o.jcsDownloadMultiTaskNum = DefaultJCSDownloadMultiTaskNum
+
+	o.jcsRateLimiter = rate.NewLimiter(
+		DefaultJCSRateLimit,
+		DefaultJCSRateBurst)
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:Init finish.")
@@ -80,15 +81,12 @@ func (o *JCSProxy) SetConcurrency(
 
 func (o *JCSProxy) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCSProxy:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"JCSProxy:SetRate start.")
 
-	JCSProxyRateLimiter.SetLimit(rate.Limit(config.Limit))
-	JCSProxyRateLimiter.SetBurst(int(config.Burst))
+	o.jcsRateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"JCSProxy:SetRate finish.")
@@ -595,7 +593,7 @@ func (o *JCSProxy) uploadFolder(
 				return nil
 			}
 
-			err = JCSProxyRateLimiter.Wait(ctx)
+			err = o.jcsRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -1019,7 +1017,7 @@ func (o *JCSProxy) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = JCSProxyRateLimiter.Wait(ctx)
+		err = o.jcsRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1597,7 +1595,7 @@ func (o *JCSProxy) downloadObjects(
 			continue
 		}
 
-		err = JCSProxyRateLimiter.Wait(ctx)
+		err = o.jcsRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1902,7 +1900,7 @@ func (o *JCSProxy) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = JCSProxyRateLimiter.Wait(ctx)
+		err = o.jcsRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",

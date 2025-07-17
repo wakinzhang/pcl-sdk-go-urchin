@@ -26,16 +26,13 @@ import (
 	"time"
 )
 
-var S3ProxyRateLimiter = rate.NewLimiter(
-	DefaultS3RateLimit,
-	DefaultS3RateBurst)
-
 type S3Proxy struct {
 	obsClient              *obs.ObsClient
 	s3UploadFileTaskNum    int
 	s3UploadMultiTaskNum   int
 	s3DownloadFileTaskNum  int
 	s3DownloadMultiTaskNum int
+	s3RateLimiter          *rate.Limiter
 }
 
 func (o *S3Proxy) Init(
@@ -72,6 +69,10 @@ func (o *S3Proxy) Init(
 	o.s3DownloadFileTaskNum = DefaultS3DownloadFileTaskNum
 	o.s3DownloadMultiTaskNum = DefaultS3DownloadMultiTaskNum
 
+	o.s3RateLimiter = rate.NewLimiter(
+		DefaultS3RateLimit,
+		DefaultS3RateBurst)
+
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Init finish.")
 	return nil
@@ -100,15 +101,12 @@ func (o *S3Proxy) SetConcurrency(
 
 func (o *S3Proxy) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"S3Proxy:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"S3Proxy:SetRate start.")
 
-	S3ProxyRateLimiter.SetLimit(rate.Limit(config.Limit))
-	S3ProxyRateLimiter.SetBurst(int(config.Burst))
+	o.s3RateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:SetRate finish.")
@@ -1087,7 +1085,7 @@ func (o *S3Proxy) uploadFolder(
 				return nil
 			}
 
-			err = S3ProxyRateLimiter.Wait(ctx)
+			err = o.s3RateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -1583,7 +1581,7 @@ func (o *S3Proxy) uploadPartConcurrent(
 			enableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = S3ProxyRateLimiter.Wait(ctx)
+		err = o.s3RateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -2371,7 +2369,7 @@ func (o *S3Proxy) downloadObjects(
 			continue
 		}
 
-		err = S3ProxyRateLimiter.Wait(ctx)
+		err = o.s3RateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -2761,7 +2759,7 @@ func (o *S3Proxy) downloadFileConcurrent(
 			" tempFileURL: ", dfc.TempFileInfo.TempFileUrl,
 			" enableCheckpoint: ", input.EnableCheckpoint)
 
-		err = S3ProxyRateLimiter.Wait(ctx)
+		err = o.s3RateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",

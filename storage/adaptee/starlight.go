@@ -21,16 +21,13 @@ import (
 	"time"
 )
 
-var StarLightRateLimiter = rate.NewLimiter(
-	DefaultSLRateLimit,
-	DefaultSLRateBurst)
-
 type StarLight struct {
 	slClient               *SLClient
 	slUploadFileTaskNum    int
 	slUploadMultiTaskNum   int //starlight并发度仅支持1，只能有一个端点
 	slDownloadFileTaskNum  int
 	slDownloadMultiTaskNum int
+	slRateLimiter          *rate.Limiter
 }
 
 func (o *StarLight) Init(
@@ -64,6 +61,10 @@ func (o *StarLight) Init(
 	o.slDownloadFileTaskNum = DefaultSLDownloadFileTaskNum
 	o.slDownloadMultiTaskNum = DefaultSLDownloadMultiTaskNum
 
+	o.slRateLimiter = rate.NewLimiter(
+		DefaultSLRateLimit,
+		DefaultSLRateBurst)
+
 	Logger.WithContext(ctx).Debug(
 		"StarLight:Init finish.")
 	return nil
@@ -90,15 +91,12 @@ func (o *StarLight) SetConcurrency(
 
 func (o *StarLight) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"StarLight:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"StarLight:SetRate start.")
 
-	StarLightRateLimiter.SetLimit(rate.Limit(config.Limit))
-	StarLightRateLimiter.SetBurst(int(config.Burst))
+	o.slRateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"StarLight:SetRate finish.")
@@ -406,7 +404,7 @@ func (o *StarLight) uploadFolder(
 				return nil
 			}
 
-			err = StarLightRateLimiter.Wait(ctx)
+			err = o.slRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -535,7 +533,7 @@ func (o *StarLight) uploadFolder(
 				return nil
 			}
 
-			err = StarLightRateLimiter.Wait(ctx)
+			err = o.slRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -867,7 +865,7 @@ func (o *StarLight) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = StarLightRateLimiter.Wait(ctx)
+		err = o.slRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1445,7 +1443,7 @@ func (o *StarLight) downloadObjects(
 			continue
 		}
 
-		err = StarLightRateLimiter.Wait(ctx)
+		err = o.slRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1729,7 +1727,7 @@ func (o *StarLight) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = StarLightRateLimiter.Wait(ctx)
+		err = o.slRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",

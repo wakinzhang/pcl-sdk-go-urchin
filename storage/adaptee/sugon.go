@@ -21,16 +21,13 @@ import (
 	"time"
 )
 
-var SugonRateLimiter = rate.NewLimiter(
-	DefaultSugonRateLimit,
-	DefaultSugonRateBurst)
-
 type Sugon struct {
 	sugonClient               *SugonClient
 	sugonUploadFileTaskNum    int
 	sugonUploadMultiTaskNum   int
 	sugonDownloadFileTaskNum  int
 	sugonDownloadMultiTaskNum int
+	sugonRateLimiter          *rate.Limiter
 }
 
 func (o *Sugon) Init(
@@ -72,6 +69,10 @@ func (o *Sugon) Init(
 	o.sugonDownloadFileTaskNum = DefaultSugonDownloadFileTaskNum
 	o.sugonDownloadMultiTaskNum = DefaultSugonDownloadMultiTaskNum
 
+	o.sugonRateLimiter = rate.NewLimiter(
+		DefaultSugonRateLimit,
+		DefaultSugonRateBurst)
+
 	Logger.WithContext(ctx).Debug(
 		"Sugon:Init finish.")
 	return nil
@@ -100,15 +101,12 @@ func (o *Sugon) SetConcurrency(
 
 func (o *Sugon) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"Sugon:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"Sugon:SetRate start.")
 
-	SugonRateLimiter.SetLimit(rate.Limit(config.Limit))
-	SugonRateLimiter.SetBurst(int(config.Burst))
+	o.sugonRateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"Sugon:SetRate finish.")
@@ -416,7 +414,7 @@ func (o *Sugon) uploadFolder(
 				return nil
 			}
 
-			err = SugonRateLimiter.Wait(ctx)
+			err = o.sugonRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -545,7 +543,7 @@ func (o *Sugon) uploadFolder(
 				return nil
 			}
 
-			err = SugonRateLimiter.Wait(ctx)
+			err = o.sugonRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -1002,7 +1000,7 @@ func (o *Sugon) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = SugonRateLimiter.Wait(ctx)
+		err = o.sugonRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1650,7 +1648,7 @@ func (o *Sugon) downloadObjects(
 			continue
 		}
 
-		err = SugonRateLimiter.Wait(ctx)
+		err = o.sugonRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1934,7 +1932,7 @@ func (o *Sugon) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = SugonRateLimiter.Wait(ctx)
+		err = o.sugonRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",

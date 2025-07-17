@@ -8,6 +8,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"golang.org/x/time/rate"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,12 +38,10 @@ func (o *IPFSProxy) SetConcurrency(
 
 func (o *IPFSProxy) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"IPFSProxy:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"IPFSProxy:SetRate start.")
 
 	Logger.WithContext(ctx).Error(
 		"IPFSProxy not support rate config.")

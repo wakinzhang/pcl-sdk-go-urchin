@@ -21,16 +21,13 @@ import (
 	"syscall"
 )
 
-var JCSRateLimiter = rate.NewLimiter(
-	DefaultJCSRateLimit,
-	DefaultJCSRateBurst)
-
 type JCS struct {
 	jcsClient               *JCSClient
 	jcsUploadFileTaskNum    int
 	jcsUploadMultiTaskNum   int
 	jcsDownloadFileTaskNum  int
 	jcsDownloadMultiTaskNum int
+	jcsRateLimiter          *rate.Limiter
 }
 
 func (o *JCS) Init(
@@ -78,6 +75,10 @@ func (o *JCS) Init(
 	o.jcsDownloadFileTaskNum = DefaultJCSDownloadFileTaskNum
 	o.jcsDownloadMultiTaskNum = DefaultJCSDownloadMultiTaskNum
 
+	o.jcsRateLimiter = rate.NewLimiter(
+		DefaultJCSRateLimit,
+		DefaultJCSRateBurst)
+
 	Logger.WithContext(ctx).Debug(
 		"JCS:Init finish.")
 	return nil
@@ -106,15 +107,12 @@ func (o *JCS) SetConcurrency(
 
 func (o *JCS) SetRate(
 	ctx context.Context,
-	config *StorageNodeRateConfig) (err error) {
+	rateLimiter *rate.Limiter) (err error) {
 
 	Logger.WithContext(ctx).Debug(
-		"JCS:SetRate start.",
-		" Limit: ", config.Limit,
-		" Burst: ", config.Burst)
+		"JCS:SetRate start.")
 
-	JCSRateLimiter.SetLimit(rate.Limit(config.Limit))
-	JCSRateLimiter.SetBurst(int(config.Burst))
+	o.jcsRateLimiter = rateLimiter
 
 	Logger.WithContext(ctx).Debug(
 		"JCS:SetRate finish.")
@@ -420,7 +418,7 @@ func (o *JCS) uploadFolder(
 				return nil
 			}
 
-			err = JCSRateLimiter.Wait(ctx)
+			err = o.jcsRateLimiter.Wait(ctx)
 			if nil != err {
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
@@ -892,7 +890,7 @@ func (o *JCS) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = JCSRateLimiter.Wait(ctx)
+		err = o.jcsRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1414,7 +1412,7 @@ func (o *JCS) downloadObjects(
 			continue
 		}
 
-		err = JCSRateLimiter.Wait(ctx)
+		err = o.jcsRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
@@ -1705,7 +1703,7 @@ func (o *JCS) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = JCSRateLimiter.Wait(ctx)
+		err = o.jcsRateLimiter.Wait(ctx)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
