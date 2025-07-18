@@ -54,15 +54,17 @@ func (o *S3) Init(
 			sk,
 			endpoint,
 			obs.WithSignature(obs.SignatureObs),
-			obs.WithConnectTimeout(int(reqTimeout)),
-			obs.WithMaxConnections(int(maxConnection)))
+			obs.WithSocketTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)),
+			obs.WithMaxRetryCount(DefaultSeMaxRetryCount))
 	default:
 		o.obsClient, err = obs.New(
 			ak,
 			sk,
 			endpoint,
-			obs.WithConnectTimeout(int(reqTimeout)),
-			obs.WithMaxConnections(int(maxConnection)))
+			obs.WithSocketTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)),
+			obs.WithMaxRetryCount(DefaultSeMaxRetryCount))
 	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(

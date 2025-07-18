@@ -54,16 +54,18 @@ func (o *S3Proxy) Init(
 			"",
 			"magicalParam",
 			obs.WithSignature(obs.SignatureObs),
-			obs.WithConnectTimeout(int(reqTimeout)),
-			obs.WithMaxConnections(int(maxConnection)))
+			obs.WithSocketTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)),
+			obs.WithMaxRetryCount(DefaultSeMaxRetryCount))
 	default:
 		o.obsClient, err = obs.New(
 			"",
 			"",
 			"magicalParam",
 			obs.WithSignature(obs.SignatureV4),
-			obs.WithConnectTimeout(int(reqTimeout)),
-			obs.WithMaxConnections(int(maxConnection)))
+			obs.WithSocketTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)),
+			obs.WithMaxRetryCount(DefaultSeMaxRetryCount))
 	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(
