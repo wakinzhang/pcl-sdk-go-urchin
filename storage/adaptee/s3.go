@@ -811,7 +811,11 @@ func (o *S3) downloadObjects(
 			continue
 		}
 
-		err = o.s3RateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		func() {
+			defer cancel()
+		}()
+		err = o.s3RateLimiter.Wait(ctxRate)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
