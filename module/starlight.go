@@ -17,7 +17,7 @@ const (
 	DefaultSLDownloadMultiTaskNum = 2
 
 	DefaultSLRateLimit = 90
-	DefaultSLRateBurst = 20
+	DefaultSLRateBurst = 90
 
 	DefaultSLMaxPartSize = 5 * 1024 * 1024 * 1024
 	DefaultSLMinPartSize = 100 * 1024

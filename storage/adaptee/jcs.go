@@ -418,13 +418,16 @@ func (o *JCS) uploadFolder(
 				return nil
 			}
 
-			err = o.jcsRateLimiter.Wait(ctx)
+			ctxRate, cancel := context.WithCancel(context.Background())
+			err = o.jcsRateLimiter.Wait(ctxRate)
 			if nil != err {
+				cancel()
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
 					" err: ", err)
 				return err
 			}
+			cancel()
 
 			wg.Add(1)
 			err = pool.Submit(func() {
@@ -890,13 +893,16 @@ func (o *JCS) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = o.jcsRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.jcsRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1412,13 +1418,16 @@ func (o *JCS) downloadObjects(
 			continue
 		}
 
-		err = o.jcsRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.jcsRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1703,13 +1712,16 @@ func (o *JCS) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = o.jcsRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.jcsRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {

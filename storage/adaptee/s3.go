@@ -335,13 +335,16 @@ func (o *S3) uploadFolder(
 				return nil
 			}
 
-			err = o.s3RateLimiter.Wait(ctx)
+			ctxRate, cancel := context.WithCancel(context.Background())
+			err = o.s3RateLimiter.Wait(ctxRate)
 			if nil != err {
+				cancel()
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
 					" err: ", err)
 				return err
 			}
+			cancel()
 
 			wg.Add(1)
 			err = pool.Submit(func() {

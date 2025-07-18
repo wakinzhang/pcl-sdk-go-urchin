@@ -414,13 +414,16 @@ func (o *Sugon) uploadFolder(
 				return nil
 			}
 
-			err = o.sugonRateLimiter.Wait(ctx)
+			ctxRate, cancel := context.WithCancel(context.Background())
+			err = o.sugonRateLimiter.Wait(ctxRate)
 			if nil != err {
+				cancel()
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
 					" err: ", err)
 				return err
 			}
+			cancel()
 
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
@@ -543,13 +546,16 @@ func (o *Sugon) uploadFolder(
 				return nil
 			}
 
-			err = o.sugonRateLimiter.Wait(ctx)
+			ctxRate, cancel := context.WithCancel(context.Background())
+			err = o.sugonRateLimiter.Wait(ctxRate)
 			if nil != err {
+				cancel()
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
 					" err: ", err)
 				return err
 			}
+			cancel()
 
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
@@ -1000,13 +1006,16 @@ func (o *Sugon) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
-		err = o.sugonRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.sugonRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1648,13 +1657,16 @@ func (o *Sugon) downloadObjects(
 			continue
 		}
 
-		err = o.sugonRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.sugonRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1932,13 +1944,16 @@ func (o *Sugon) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = o.sugonRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.sugonRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {

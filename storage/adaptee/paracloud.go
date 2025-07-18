@@ -412,13 +412,16 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
-			err = o.pcRateLimiter.Wait(ctx)
+			ctxRate, cancel := context.WithCancel(context.Background())
+			err = o.pcRateLimiter.Wait(ctxRate)
 			if nil != err {
+				cancel()
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
 					" err: ", err)
 				return err
 			}
+			cancel()
 
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
@@ -544,13 +547,16 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
-			err = o.pcRateLimiter.Wait(ctx)
+			ctxRate, cancel := context.WithCancel(context.Background())
+			err = o.pcRateLimiter.Wait(ctxRate)
 			if nil != err {
+				cancel()
 				Logger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
 					" err: ", err)
 				return err
 			}
+			cancel()
 
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
@@ -917,13 +923,16 @@ func (o *ParaCloud) downloadObjects(
 			continue
 		}
 
-		err = o.pcRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.pcRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1200,13 +1209,16 @@ func (o *ParaCloud) downloadFileConcurrent(
 			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
 			" EnableCheckpoint: ", input.EnableCheckpoint)
 
-		err = o.pcRateLimiter.Wait(ctx)
+		ctxRate, cancel := context.WithCancel(context.Background())
+		err = o.pcRateLimiter.Wait(ctxRate)
 		if nil != err {
+			cancel()
 			Logger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
 				" err: ", err)
 			return err
 		}
+		cancel()
 
 		wg.Add(1)
 		err = pool.Submit(func() {
