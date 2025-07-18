@@ -42,7 +42,11 @@ func NewStorageProxy(
 	if StorageCategoryEObs == nodeType ||
 		StorageCategoryEMinio == nodeType {
 		var s3Proxy S3Proxy
-		err = s3Proxy.Init(ctx, nodeType)
+		err = s3Proxy.Init(
+			ctx,
+			nodeType,
+			DefaultS3ReqTimeout,
+			DefaultS3MaxConnection)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
 				"S3Proxy.Init failed.",

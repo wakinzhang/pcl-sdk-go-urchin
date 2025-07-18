@@ -1,6 +1,9 @@
 package module
 
 const (
+	DefaultS3ReqTimeout    = 3600
+	DefaultS3MaxConnection = 500
+
 	DefaultS3UploadMultiSize = 500 * 1024 * 1024
 
 	DefaultS3UploadFileTaskNum    = 100

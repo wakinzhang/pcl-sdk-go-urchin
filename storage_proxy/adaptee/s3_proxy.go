@@ -37,11 +37,15 @@ type S3Proxy struct {
 
 func (o *S3Proxy) Init(
 	ctx context.Context,
-	nodeType int32) (err error) {
+	nodeType int32,
+	reqTimeout,
+	maxConnection int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"S3Proxy:Init start.",
-		" nodeType: ", nodeType)
+		" nodeType: ", nodeType,
+		" reqTimeout: ", reqTimeout,
+		" maxConnection: ", maxConnection)
 
 	switch nodeType {
 	case StorageCategoryEObs:
@@ -49,13 +53,17 @@ func (o *S3Proxy) Init(
 			"",
 			"",
 			"magicalParam",
-			obs.WithSignature(obs.SignatureObs))
+			obs.WithSignature(obs.SignatureObs),
+			obs.WithConnectTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)))
 	default:
 		o.obsClient, err = obs.New(
 			"",
 			"",
 			"magicalParam",
-			obs.WithSignature(obs.SignatureV4))
+			obs.WithSignature(obs.SignatureV4),
+			obs.WithConnectTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)))
 	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(

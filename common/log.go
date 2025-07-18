@@ -22,6 +22,7 @@ func (h *RequestIDHook) Fire(entry *logrus.Entry) error {
 	return nil
 }
 
+/*
 type writerHook struct {
 	Writer    *lumberjack.Logger
 	LogLevels []logrus.Level
@@ -38,6 +39,43 @@ func (hook *writerHook) Fire(entry *logrus.Entry) error {
 
 func (hook *writerHook) Levels() []logrus.Level {
 	return hook.LogLevels
+}
+*/
+
+type AsyncLogger struct {
+	ch        chan []byte
+	logLevels []logrus.Level
+	writer    *lumberjack.Logger
+}
+
+func (al *AsyncLogger) Fire(entry *logrus.Entry) error {
+	line, err := entry.String()
+	if err != nil {
+		return err
+	}
+	al.ch <- []byte(line)
+	return err
+}
+
+/*
+func NewAsyncLogger(bufferSize int) *AsyncLogger {
+	al := &AsyncLogger{
+		ch:     make(chan []byte, bufferSize),
+		writer: &lumberjack.Logger{Filename: "app.log"},
+	}
+	go al.process()
+	return al
+}
+*/
+
+func (al *AsyncLogger) process() {
+	for msg := range al.ch {
+		_, _ = al.writer.Write(msg)
+	}
+}
+
+func (al *AsyncLogger) Levels() []logrus.Level {
+	return al.logLevels
 }
 
 var Logger = logrus.New()
@@ -87,8 +125,18 @@ func setLevelOutput(level logrus.Level, filename string, filesize int) {
 		}
 	}
 
-	Logger.AddHook(&writerHook{
-		Writer:    hook,
-		LogLevels: levels,
-	})
+	al := &AsyncLogger{
+		ch:        make(chan []byte, 4096),
+		writer:    hook,
+		logLevels: levels,
+	}
+	go al.process()
+	Logger.AddHook(al)
+
+	/*
+		Logger.AddHook(&writerHook{
+			Writer:    hook,
+			LogLevels: levels,
+		})
+	*/
 }

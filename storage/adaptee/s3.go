@@ -31,7 +31,9 @@ func (o *S3) Init(
 	sk,
 	endpoint,
 	bucket string,
-	nodeType int32) (err error) {
+	nodeType int32,
+	reqTimeout,
+	maxConnection int32) (err error) {
 
 	Logger.WithContext(ctx).Debug(
 		"S3:Init start.",
@@ -39,7 +41,9 @@ func (o *S3) Init(
 		" sk: ", "***",
 		" endpoint: ", endpoint,
 		" bucket: ", bucket,
-		" nodeType: ", nodeType)
+		" nodeType: ", nodeType,
+		" reqTimeout: ", reqTimeout,
+		" maxConnection: ", maxConnection)
 
 	o.bucket = bucket
 
@@ -49,12 +53,16 @@ func (o *S3) Init(
 			ak,
 			sk,
 			endpoint,
-			obs.WithSignature(obs.SignatureObs))
+			obs.WithSignature(obs.SignatureObs),
+			obs.WithConnectTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)))
 	default:
 		o.obsClient, err = obs.New(
 			ak,
 			sk,
-			endpoint)
+			endpoint,
+			obs.WithConnectTimeout(int(reqTimeout)),
+			obs.WithMaxConnections(int(maxConnection)))
 	}
 	if nil != err {
 		Logger.WithContext(ctx).Error(
