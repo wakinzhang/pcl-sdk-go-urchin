@@ -361,55 +361,41 @@ func (o *SugonClient) Delete(
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
 	header.Add(SugonHttpHeaderToken, o.token)
 
-	err = RetryV1(
+	resp := new(SugonBaseResponse)
+	err, respBody := Do(
 		ctx,
-		Attempts,
-		Delay*time.Second,
-		func() error {
-			resp := new(SugonBaseResponse)
-			_err, respBody := Do(
-				ctx,
-				url+"?"+values.Encode(),
-				http.MethodPost,
-				header,
-				nil,
-				o.sugonClient)
-			if nil != _err {
-				Logger.WithContext(ctx).Error(
-					"http.Do failed.",
-					" err: ", _err)
-				return _err
-			}
-			Logger.WithContext(ctx).Debug(
-				"SugonClient:Delete response.",
-				" paths: ", paths,
-				" response: ", string(respBody))
-			_err = json.Unmarshal(respBody, resp)
-			if nil != _err {
-				Logger.WithContext(ctx).Error(
-					"json.Unmarshal failed.",
-					" err: ", _err)
-				return _err
-			}
-
-			if SugonSuccessCode != resp.Code &&
-				SugonErrFileNotExist != resp.Code {
-
-				Logger.WithContext(ctx).Error(
-					"SugonClient:Delete failed.",
-					" paths: ", paths,
-					" Message: ", resp.Msg)
-				return errors.New(resp.Msg)
-			}
-			return _err
-		})
-
+		url+"?"+values.Encode(),
+		http.MethodPost,
+		header,
+		nil,
+		o.sugonClient)
 	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"http.Do failed.",
+			" err: ", err)
+		return err
+	}
+	Logger.WithContext(ctx).Debug(
+		"SugonClient:Delete response.",
+		" paths: ", paths,
+		" response: ", string(respBody))
+
+	err = json.Unmarshal(respBody, resp)
+	if nil != err {
+		Logger.WithContext(ctx).Error(
+			"json.Unmarshal failed.",
+			" err: ", err)
+		return err
+	}
+
+	if SugonSuccessCode != resp.Code &&
+		SugonErrFileNotExist != resp.Code {
+
 		Logger.WithContext(ctx).Error(
 			"SugonClient:Delete failed.",
 			" paths: ", paths,
-			" err: ", err)
-		return err
+			" Message: ", resp.Msg)
+		return errors.New(resp.Msg)
 	}
 
 	Logger.WithContext(ctx).Debug(
@@ -1020,7 +1006,7 @@ func (o *SugonClient) DownloadChunks(
 			" contentRange: ", contentRange,
 			" response: ", string(respBodyBuf))
 
-		var resp *SugonBaseResponse
+		var resp = new(SugonBaseResponse)
 		err = json.Unmarshal(respBodyBuf, resp)
 		if nil != err {
 			Logger.WithContext(ctx).Error(

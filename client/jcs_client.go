@@ -498,7 +498,7 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 			" signedUrl: ", signedUrl,
 			" response: ", string(respBodyBuf))
 
-		var resp *JCSBaseResponse
+		var resp = new(JCSBaseResponse)
 		err = json.Unmarshal(respBodyBuf, resp)
 		if nil != err {
 			Logger.WithContext(ctx).Error(
@@ -2285,7 +2285,7 @@ func (o *JCSClient) DownloadPart(
 			" length: ", length,
 			" response: ", string(respBodyBuf))
 
-		var resp *JCSBaseResponse
+		var resp = new(JCSBaseResponse)
 		err = json.Unmarshal(respBodyBuf, resp)
 		if nil != err {
 			Logger.WithContext(ctx).Error(

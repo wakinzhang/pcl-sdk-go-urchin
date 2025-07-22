@@ -55,9 +55,7 @@ func LoadByProxy(
 	loadObjectReq := new(LoadObjectReq)
 	loadObjectReq.UserId = userId
 	loadObjectReq.ObjUuid = objUuid
-	if nil != sourceNodeName {
-		loadObjectReq.SourceNodeName = sourceNodeName
-	}
+	loadObjectReq.SourceNodeName = sourceNodeName
 	loadObjectReq.TargetNodeName = targetNodeName
 	loadObjectReq.CacheLocalPath = cachePath
 

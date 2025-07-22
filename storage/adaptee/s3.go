@@ -153,18 +153,13 @@ func (o *S3) Mkdir(
 		func() error {
 			_, _err := o.obsClient.PutObject(putObjectInput)
 			if nil != _err {
-				if obsError, ok := _err.(obs.ObsError); ok {
+				var obsError obs.ObsError
+				if errors.As(_err, &obsError) {
 					Logger.WithContext(ctx).Error(
 						"obsClient.PutObject failed.",
 						" objectKey: ", putObjectInput.Key,
 						" obsCode: ", obsError.Code,
 						" obsMessage: ", obsError.Message)
-					return _err
-				} else {
-					Logger.WithContext(ctx).Error(
-						"obsClient.PutObject failed.",
-						" objectKey: ", putObjectInput.Key,
-						" err: ", _err)
 					return _err
 				}
 			}
@@ -539,18 +534,13 @@ func (o *S3) uploadFile(
 			func() error {
 				_, _err := o.obsClient.UploadFile(input)
 				if nil != _err {
-					if obsError, ok := _err.(obs.ObsError); ok {
+					var obsError obs.ObsError
+					if errors.As(_err, &obsError) {
 						Logger.WithContext(ctx).Error(
 							"obsClient.UploadFile failed.",
 							" objectKey: ", input.Key,
 							" obsCode: ", obsError.Code,
 							" obsMessage: ", obsError.Message)
-						return _err
-					} else {
-						Logger.WithContext(ctx).Error(
-							"obsClient.UploadFile failed.",
-							" objectKey: ", input.Key,
-							" err: ", _err)
 						return _err
 					}
 				}
@@ -606,18 +596,13 @@ func (o *S3) uploadFile(
 				}
 				_, _err := o.obsClient.PutObject(input)
 				if nil != _err {
-					if obsError, ok := _err.(obs.ObsError); ok {
+					var obsError obs.ObsError
+					if errors.As(_err, &obsError) {
 						Logger.WithContext(ctx).Error(
 							"obsClient.PutObject failed.",
 							" objectKey: ", input.Key,
 							" obsCode: ", obsError.Code,
 							" obsMessage: ", obsError.Message)
-						return _err
-					} else {
-						Logger.WithContext(ctx).Error(
-							"obsClient.PutObject failed.",
-							" objectKey: ", input.Key,
-							" err: ", _err)
 						return _err
 					}
 				}
@@ -688,20 +673,14 @@ func (o *S3) Download(
 				output := new(obs.ListObjectsOutput)
 				output, _err := o.obsClient.ListObjects(inputList)
 				if nil != _err {
-					if obsError, ok := _err.(obs.ObsError); ok {
+					var obsError obs.ObsError
+					if errors.As(_err, &obsError) {
 						Logger.WithContext(ctx).Error(
 							"obsClient.ListObjects failed.",
 							" Prefix: ", inputList.Prefix,
 							" Marker: ", inputList.Marker,
 							" obsCode: ", obsError.Code,
 							" obsMessage: ", obsError.Message)
-						return _err, output
-					} else {
-						Logger.WithContext(ctx).Error(
-							"obsClient.ListObjects failed.",
-							" Prefix: ", inputList.Prefix,
-							" Marker: ", inputList.Marker,
-							" err: ", _err)
 						return _err, output
 					}
 				}
@@ -870,18 +849,13 @@ func (o *S3) downloadObjects(
 					func() error {
 						_, __err := o.obsClient.DownloadFile(input)
 						if nil != __err {
-							if obsError, ok := __err.(obs.ObsError); ok {
+							var obsError obs.ObsError
+							if errors.As(__err, &obsError) {
 								Logger.WithContext(ctx).Error(
 									"obsClient.DownloadFile failed.",
 									" objectKey: ", input.Key,
 									" obsCode: ", obsError.Code,
 									" obsMessage: ", obsError.Message)
-								return __err
-							} else {
-								Logger.WithContext(ctx).Error(
-									"obsClient.DownloadFile failed.",
-									" objectKey: ", input.Key,
-									" err: ", __err)
 								return __err
 							}
 						}
@@ -984,20 +958,14 @@ func (o *S3) Delete(
 				output := new(obs.ListObjectsOutput)
 				output, _err := o.obsClient.ListObjects(inputList)
 				if nil != _err {
-					if obsError, ok := _err.(obs.ObsError); ok {
+					var obsError obs.ObsError
+					if errors.As(_err, &obsError) {
 						Logger.WithContext(ctx).Error(
 							"obsClient.ListObjects failed.",
 							" Prefix: ", inputList.Prefix,
 							" Marker: ", inputList.Marker,
 							" obsCode: ", obsError.Code,
 							" obsMessage: ", obsError.Message)
-						return _err, output
-					} else {
-						Logger.WithContext(ctx).Error(
-							"obsClient.ListObjects failed.",
-							" Prefix: ", inputList.Prefix,
-							" Marker: ", inputList.Marker,
-							" err: ", _err)
 						return _err, output
 					}
 				}
@@ -1052,16 +1020,12 @@ func (o *S3) Delete(
 			func() error {
 				_, _err := o.obsClient.DeleteObjects(deleteObjectsInput)
 				if nil != _err {
-					if obsError, ok := _err.(obs.ObsError); ok {
+					var obsError obs.ObsError
+					if errors.As(_err, &obsError) {
 						Logger.WithContext(ctx).Error(
 							"obsClient.DeleteObjects failed.",
 							" obsCode: ", obsError.Code,
 							" obsMessage: ", obsError.Message)
-						return _err
-					} else {
-						Logger.WithContext(ctx).Error(
-							"obsClient.DeleteObjects failed.",
-							" err: ", _err)
 						return _err
 					}
 				}

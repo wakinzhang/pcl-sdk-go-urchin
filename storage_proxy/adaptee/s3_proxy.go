@@ -163,16 +163,12 @@ func (o *S3Proxy) NewFolderWithSignedUrl(
 		emptyFileWithSignedUrlHeader,
 		nil)
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) {
 			Logger.WithContext(ctx).Error(
 				"obsClient.PutObjectWithSignedUrl failed.",
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-			return err
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.PutObjectWithSignedUrl failed.",
-				" err: ", err)
 			return err
 		}
 	}
@@ -257,16 +253,12 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 			fd)
 	}
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) {
 			Logger.WithContext(ctx).Error(
 				"obsClient.PutObjectWithSignedUrl failed.",
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-			return err
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.PutObjectWithSignedUrl failed.",
-				" err: ", err)
 			return err
 		}
 	}
@@ -313,16 +305,12 @@ func (o *S3Proxy) InitiateMultipartUploadWithSignedUrl(
 		createInitiateMultipartUploadSignedUrlResp.SignedUrl,
 		initiateMultipartUploadWithSignedUrlHeader)
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) {
 			Logger.WithContext(ctx).Error(
 				"obsClient.InitiateMultipartUploadWithSignedUrl failed.",
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-			return output, err
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.InitiateMultipartUploadWithSignedUrl failed.",
-				" err: ", err)
 			return output, err
 		}
 	}
@@ -417,7 +405,8 @@ func (o *S3Proxy) UploadPartWithSignedUrl(
 		readerWrapper)
 
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok &&
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) &&
 			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
 			Logger.WithContext(ctx).Error(
@@ -428,14 +417,6 @@ func (o *S3Proxy) UploadPartWithSignedUrl(
 				" source: ", objectKey,
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.UploadPartWithSignedUrl failed.",
-				" uploadId: ", uploadId,
-				" partNumber: ", partNumber,
-				" taskId: ", taskId,
-				" source: ", objectKey,
-				" err: ", err)
 		}
 		return output, err
 	}
@@ -495,7 +476,8 @@ func (o *S3Proxy) ListPartsWithSignedUrl(
 		listPartsWithSignedUrlHeader)
 
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok &&
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) &&
 			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
 			Logger.WithContext(ctx).Error(
@@ -507,15 +489,6 @@ func (o *S3Proxy) ListPartsWithSignedUrl(
 				" maxParts: ", maxParts,
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.ListPartsWithSignedUrl failed.",
-				" uploadId: ", uploadId,
-				" taskId: ", taskId,
-				" source: ", objectKey,
-				" partNumberMarker: ", partNumberMarker,
-				" maxParts: ", maxParts,
-				" err: ", err)
 		}
 		return output, err
 	}
@@ -585,16 +558,12 @@ func (o *S3Proxy) CompleteMultipartUploadWithSignedUrl(
 		completeMultipartUploadWithSignedUrlHeader,
 		strings.NewReader(string(completeMultipartUploadPartXML)))
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) {
 			Logger.WithContext(ctx).Error(
 				"obsClient.CompleteMultipartUploadWithSignedUrl failed.",
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-			return output, err
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.CompleteMultipartUploadWithSignedUrl failed.",
-				" err: ", err)
 			return output, err
 		}
 	}
@@ -644,16 +613,12 @@ func (o *S3Proxy) AbortMultipartUploadWithSignedUrl(
 			createAbortMultipartUploadSignedUrlResp.SignedUrl,
 			abortMultipartUploadWithSignedUrlHeader)
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) {
 			Logger.WithContext(ctx).Error(
 				"obsClient.AbortMultipartUploadWithSignedUrl failed.",
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-			return err
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.AbortMultipartUploadWithSignedUrl failed.",
-				" err: ", err)
 			return err
 		}
 	}
@@ -701,18 +666,13 @@ func (o *S3Proxy) GetObjectInfoWithSignedUrl(
 		getObjectMetadataWithSignedUrlHeader)
 
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) {
 			Logger.WithContext(ctx).Error(
 				"obsClient.GetObjectMetadataWithSignedUrl failed.",
 				" signedUrl: ", createGetObjectMetadataSignedUrlResp.SignedUrl,
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-			return
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.GetObjectMetadataWithSignedUrl failed.",
-				" signedUrl: ", createGetObjectMetadataSignedUrlResp.SignedUrl,
-				" err: ", err)
 			return
 		}
 	}
@@ -760,16 +720,12 @@ func (o *S3Proxy) ListObjectsWithSignedUrl(
 			createListObjectsSignedUrlResp.SignedUrl,
 			listObjectsWithSignedUrlHeader)
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) {
 			Logger.WithContext(ctx).Error(
 				"obsClient.ListObjectsWithSignedUrl failed.",
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-			return listObjectsOutput, err
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.ListObjectsWithSignedUrl failed.",
-				" err: ", err)
 			return listObjectsOutput, err
 		}
 	}
@@ -823,7 +779,8 @@ func (o *S3Proxy) GetObjectWithSignedUrl(
 			getObjectWithSignedUrlHeader)
 
 	if nil != err {
-		if obsError, ok := err.(obs.ObsError); ok &&
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) &&
 			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
 			Logger.WithContext(ctx).Error(
@@ -835,15 +792,6 @@ func (o *S3Proxy) GetObjectWithSignedUrl(
 				" rangeEnd: ", rangeEnd,
 				" obsCode: ", obsError.Code,
 				" obsMessage: ", obsError.Message)
-		} else {
-			Logger.WithContext(ctx).Error(
-				"obsClient.GetObjectWithSignedUrl failed.",
-				" source: ", objectKey,
-				" taskId: ", taskId,
-				" partNumber: ", partNumber,
-				" rangeStart: ", rangeStart,
-				" rangeEnd: ", rangeEnd,
-				" err: ", err)
 		}
 		return output, err
 	}
@@ -2097,18 +2045,21 @@ func (task *UploadPartTask) Run(
 			" taskId: ", taskId,
 			" source: ", task.Key)
 		return uploadPartOutput
-	} else if obsError, ok := err.(obs.ObsError); ok &&
-		obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
+	} else {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) &&
+			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
-		atomic.CompareAndSwapInt32(task.abort, 0, 1)
-		Logger.WithContext(ctx).Error(
-			"obsClient.UploadPartWithSignedUrl failed.",
-			" uploadId: ", uploadId,
-			" partNumber: ", int32(task.PartNumber),
-			" taskId: ", taskId,
-			" source: ", task.Key,
-			" obsCode: ", obsError.Code,
-			" obsMessage: ", obsError.Message)
+			atomic.CompareAndSwapInt32(task.abort, 0, 1)
+			Logger.WithContext(ctx).Error(
+				"obsClient.UploadPartWithSignedUrl failed.",
+				" uploadId: ", uploadId,
+				" partNumber: ", int32(task.PartNumber),
+				" taskId: ", taskId,
+				" source: ", task.Key,
+				" obsCode: ", obsError.Code,
+				" obsMessage: ", obsError.Message)
+		}
 	}
 
 	Logger.WithContext(ctx).Error(
@@ -3364,16 +3315,19 @@ func (task *DownloadPartTask) Run(
 			" taskId: ", taskId,
 			" partNumber: ", task.partNumber)
 		return getObjectWithSignedUrlOutput
-	} else if obsError, ok := err.(obs.ObsError); ok &&
-		obsError.StatusCode >= 400 &&
-		obsError.StatusCode < 500 {
+	} else {
+		var obsError obs.ObsError
+		if errors.As(err, &obsError) &&
+			obsError.StatusCode >= 400 &&
+			obsError.StatusCode < 500 {
 
-		atomic.CompareAndSwapInt32(task.abort, 0, 1)
-		Logger.WithContext(ctx).Warn(
-			"4** error abort task.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" partNumber: ", task.partNumber)
+			atomic.CompareAndSwapInt32(task.abort, 0, 1)
+			Logger.WithContext(ctx).Warn(
+				"4** error abort task.",
+				" objectKey: ", objectKey,
+				" taskId: ", taskId,
+				" partNumber: ", task.partNumber)
+		}
 	}
 
 	Logger.WithContext(ctx).Error(
