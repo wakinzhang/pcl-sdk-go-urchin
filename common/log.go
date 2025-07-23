@@ -24,9 +24,9 @@ func (l *ContextLogger) WithContext(ctx context.Context) *zap.Logger {
 	return l.Logger
 }
 
-func SetLog(infoLogger, errorLogger *ContextLogger) {
-	InfoLogger = infoLogger
-	ErrorLogger = errorLogger
+func SetLog(infoLogger, errorLogger *zap.Logger) {
+	InfoLogger = &ContextLogger{infoLogger}
+	ErrorLogger = &ContextLogger{errorLogger}
 }
 
 func InitLog(infoLog, errorLog string, LogLevel int64) {
