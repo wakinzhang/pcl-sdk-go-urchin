@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"io"
 	"mime/multipart"
 	"net"
@@ -40,15 +41,13 @@ func (o *ScowClient) Init(
 	reqTimeout,
 	maxConnection int32) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Init start.",
-		" username: ", "***",
-		" password: ", "***",
-		" endpoint: ", endpoint,
-		" url: ", url,
-		" clusterId: ", clusterId,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endpoint", endpoint),
+		zap.String("url", url),
+		zap.String("clusterId", clusterId),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	o.username = username
 	o.password = password
@@ -81,22 +80,21 @@ func (o *ScowClient) Init(
 	o.scowClient.RetryWaitMax = 5 * time.Second
 	o.scowClient.HTTPClient.Timeout = timeout
 	o.scowClient.HTTPClient.Transport = transport
-	o.scowClient.Logger = Logger
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Init finish.")
 }
 
 func (o *ScowClient) refreshToken(
 	ctx context.Context) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:refreshToken start.")
 
 	if time.Now().Sub(o.tokenCreateTime).Hours() <
 		DefaultScowTokenExpireHours {
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"Scow token valid, no need to refresh.")
 		return err
 	}
@@ -107,17 +105,17 @@ func (o *ScowClient) refreshToken(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.url + ScowGetTokenInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:refreshToken request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -130,36 +128,37 @@ func (o *ScowClient) refreshToken(
 		reqBody,
 		o.scowClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	resp := new(ScowGetTokenResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
+			zap.Int32("respCode", resp.RespCode),
+			zap.String("respError", resp.RespError),
+			zap.String("respMessage", resp.RespMessage))
 		return errors.New(resp.RespError)
 	}
 
 	o.token = resp.RespBody.Token
 	o.tokenCreateTime = time.Now()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:refreshToken finish.")
 	return err
 }
@@ -168,15 +167,15 @@ func (o *ScowClient) CheckExist(
 	ctx context.Context,
 	path string) (err error, exist bool) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:CheckExist start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, exist
 	}
 
@@ -186,17 +185,17 @@ func (o *ScowClient) CheckExist(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, exist
 	}
 
 	url := o.endpoint + ScowCheckExistInterface + "?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:CheckExist request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
@@ -210,37 +209,37 @@ func (o *ScowClient) CheckExist(
 		nil,
 		o.scowClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, exist
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:CheckExist response.",
-		" path: ", path,
-		" response: ", string(respBody))
+		zap.String("path", path),
+		zap.String("response", string(respBody)))
 
 	resp := new(ScowCheckExistResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, exist
 	}
 
 	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient:CheckExist response failed.",
-			" path: ", path,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
+			zap.String("path", path),
+			zap.Int32("respCode", resp.RespCode),
+			zap.String("respError", resp.RespError),
+			zap.String("respMessage", resp.RespMessage))
 		return errors.New(resp.RespError), exist
 	}
 	exist = resp.RespBody.Data.Exists
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:CheckExist finish.")
 	return err, exist
 }
@@ -249,29 +248,29 @@ func (o *ScowClient) Mkdir(
 	ctx context.Context,
 	path string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Mkdir start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err, exist := o.CheckExist(ctx, path)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.CheckExist failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	if true == exist {
-		Logger.WithContext(ctx).Info(
+		InfoLogger.WithContext(ctx).Info(
 			"Path already exist, no need to mkdir.",
-			" path: ", path)
+			zap.String("path", path))
 		return err
 	}
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -281,18 +280,18 @@ func (o *ScowClient) Mkdir(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + ScowMkdirInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Mkdir request.",
-		" url: ", url,
-		" reqBody: ", string(reqBody))
+		zap.String("url", url),
+		zap.String("reqBody", string(reqBody)))
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
@@ -306,36 +305,36 @@ func (o *ScowClient) Mkdir(
 		reqBody,
 		o.scowClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Mkdir response.",
-		" path: ", path,
-		" response: ", string(respBody))
+		zap.String("path", path),
+		zap.String("response", string(respBody)))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient:Mkdir response failed.",
-			" path: ", path,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
+			zap.String("path", path),
+			zap.Int32("respCode", resp.RespCode),
+			zap.String("respError", resp.RespError),
+			zap.String("respMessage", resp.RespMessage))
 		return errors.New(resp.RespError)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Mkdir finish.")
 	return err
 }
@@ -345,30 +344,30 @@ func (o *ScowClient) Delete(
 	path,
 	target string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Delete start.",
-		" path: ", path,
-		" target: ", target)
+		zap.String("path", path),
+		zap.String("target", target))
 
 	err, exist := o.CheckExist(ctx, path)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.CheckExist failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	if false == exist {
-		Logger.WithContext(ctx).Info(
+		InfoLogger.WithContext(ctx).Info(
 			"Path already not exist, no need to delete.",
-			" path: ", path)
+			zap.String("path", path))
 		return err
 	}
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -379,18 +378,18 @@ func (o *ScowClient) Delete(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + ScowDeleteInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Delete request.",
-		" url: ", url,
-		" reqBody: ", string(reqBody))
+		zap.String("url", url),
+		zap.String("reqBody", string(reqBody)))
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
@@ -404,36 +403,36 @@ func (o *ScowClient) Delete(
 		reqBody,
 		o.scowClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Delete response.",
-		" path: ", path,
-		" response: ", string(respBody))
+		zap.String("path", path),
+		zap.String("response", string(respBody)))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient:Delete response failed.",
-			" path: ", path,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
+			zap.String("path", path),
+			zap.Int32("respCode", resp.RespCode),
+			zap.String("respError", resp.RespError),
+			zap.String("respMessage", resp.RespMessage))
 		return errors.New(resp.RespError)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Delete finish.")
 	return err
 }
@@ -444,30 +443,30 @@ func (o *ScowClient) Upload(
 	path string,
 	data io.Reader) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Upload start.",
-		" fileName: ", fileName,
-		" path: ", path)
+		zap.String("fileName", fileName),
+		zap.String("path", path))
 
 	err, exist := o.CheckExist(ctx, path)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.CheckExist failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	if true == exist {
-		Logger.WithContext(ctx).Info(
+		InfoLogger.WithContext(ctx).Info(
 			"Path already exist, no need to upload.",
-			" path: ", path)
+			zap.String("path", path))
 		return err
 	}
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -477,17 +476,17 @@ func (o *ScowClient) Upload(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + ScowUploadInterface + "?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Upload request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -495,24 +494,24 @@ func (o *ScowClient) Upload(
 		ScowMultiPartFormFiledFile,
 		fileName)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.Copy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	err = writer.Close()
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.Close failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -521,9 +520,9 @@ func (o *ScowClient) Upload(
 		url,
 		body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	reqHttp.Header.Set(ScowHttpHeaderAuth, o.token)
@@ -531,62 +530,62 @@ func (o *ScowClient) Upload(
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	response, err := o.scowClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Upload response.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" response: ", string(respBodyBuf))
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("response", string(respBodyBuf)))
 
 	resp := new(ScowBaseMessageResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if ScowSuccessMessage != resp.Message {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient:Upload response failed.",
-			" fileName: ", fileName,
-			" path: ", path,
-			" Message: ", resp.Message)
+			zap.String("fileName", fileName),
+			zap.String("path", path),
+			zap.String("message", resp.Message))
 		return errors.New(resp.Message)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:Upload finish.")
 	return err
 }
@@ -599,18 +598,18 @@ func (o *ScowClient) UploadChunks(
 	partNum int32,
 	data io.Reader) (err error, resp *ScowBaseMessageResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks start.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" md5: ", md5,
-		" partNum: ", partNum)
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("md5", md5),
+		zap.Int32("partNum", partNum))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -620,17 +619,17 @@ func (o *ScowClient) UploadChunks(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	url := o.endpoint + ScowUploadChunksInterface + "?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -638,16 +637,16 @@ func (o *ScowClient) UploadChunks(
 		ScowMultiPartFormFiledFile,
 		fileName)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.Copy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -656,15 +655,15 @@ func (o *ScowClient) UploadChunks(
 		ScowMultiPartFormFiledFileMd5Name,
 		fileMd5Name)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks request.",
-		" fileMd5Name: ", fileMd5Name)
+		zap.String("fileMd5Name", fileMd5Name))
 
 	err = writer.Close()
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.Close failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -673,9 +672,9 @@ func (o *ScowClient) UploadChunks(
 		url,
 		body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 	reqHttp.Header.Set(ScowHttpHeaderAuth, o.token)
@@ -683,67 +682,67 @@ func (o *ScowClient) UploadChunks(
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	resp = new(ScowBaseMessageResponse)
 	response, err := o.scowClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks response.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" md5: ", md5,
-		" partNum: ", partNum,
-		" response: ", string(respBodyBuf))
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("md5", md5),
+		zap.Int32("partNum", partNum),
+		zap.String("response", string(respBodyBuf)))
 
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if ScowSuccessMessage != resp.Message &&
 		ScowAlreadyExistsMessage != resp.Message {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient:UploadChunks response failed.",
-			" fileName: ", fileName,
-			" path: ", path,
-			" md5: ", md5,
-			" partNum: ", partNum,
-			" Message: ", resp.Message)
+			zap.String("fileName", fileName),
+			zap.String("path", path),
+			zap.String("md5", md5),
+			zap.Int32("partNum", partNum),
+			zap.String("message", resp.Message))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:UploadChunks finish.")
 	return nil, resp
 }
@@ -754,17 +753,17 @@ func (o *ScowClient) MergeChunks(
 	path,
 	md5 string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:MergeChunks start.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" md5: ", md5)
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("md5", md5))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -776,18 +775,18 @@ func (o *ScowClient) MergeChunks(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + ScowMergeChunksInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:MergeChunks request.",
-		" url: ", url,
-		" reqBody: ", string(reqBody))
+		zap.String("url", url),
+		zap.String("reqBody", string(reqBody)))
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
@@ -801,40 +800,40 @@ func (o *ScowClient) MergeChunks(
 		reqBody,
 		o.scowClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:MergeChunks response.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" md5: ", md5,
-		" response: ", string(respBody))
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("md5", md5),
+		zap.String("response", string(respBody)))
 
 	resp := new(ScowBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient:MergeChunks response failed.",
-			" fileName: ", fileName,
-			" path: ", path,
-			" md5: ", md5,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
+			zap.String("fileName", fileName),
+			zap.String("path", path),
+			zap.String("md5", md5),
+			zap.Int32("respCode", resp.RespCode),
+			zap.String("respError", resp.RespError),
+			zap.String("respMessage", resp.RespMessage))
 		return errors.New(resp.RespError)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:MergeChunks finish.")
 	return err
 }
@@ -843,15 +842,15 @@ func (o *ScowClient) List(
 	ctx context.Context,
 	path string) (err error, output *ScowListResponseBody) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:List start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -861,17 +860,17 @@ func (o *ScowClient) List(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	url := o.endpoint + ScowListInterface + "?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:List request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	header := make(http.Header)
 	header.Add(ScowHttpHeaderAuth, o.token)
@@ -885,39 +884,39 @@ func (o *ScowClient) List(
 		nil,
 		o.scowClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:List response.",
-		" path: ", path,
-		" response: ", string(respBody))
+		zap.String("path", path),
+		zap.String("response", string(respBody)))
 
 	resp := new(ScowListResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	if ScowSuccessCode != resp.RespCode {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient:List response failed.",
-			" path: ", path,
-			" RespCode: ", resp.RespCode,
-			" RespError: ", resp.RespError,
-			" RespMessage: ", resp.RespMessage)
+			zap.String("path", path),
+			zap.Int32("respCode", resp.RespCode),
+			zap.String("respError", resp.RespError),
+			zap.String("respMessage", resp.RespMessage))
 		return errors.New(resp.RespError), output
 	}
 
 	output = new(ScowListResponseBody)
 	output = resp.RespBody
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:List finish.")
 	return err, output
 }
@@ -927,16 +926,16 @@ func (o *ScowClient) DownloadChunks(
 	path,
 	contentRange string) (err error, output *ScowDownloadPartOutput) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:DownloadChunks start.",
-		" path: ", path,
-		" contentRange: ", contentRange)
+		zap.String("path", path),
+		zap.String("contentRange", contentRange))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -947,18 +946,18 @@ func (o *ScowClient) DownloadChunks(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	url := o.endpoint + ScowDownloadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:DownloadChunks request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -970,9 +969,9 @@ func (o *ScowClient) DownloadChunks(
 		url+"?"+values.Encode(),
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -980,26 +979,26 @@ func (o *ScowClient) DownloadChunks(
 
 	response, err := o.scowClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	if 200 > response.StatusCode ||
 		300 <= response.StatusCode {
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowClient.DownloadChunks response failed.",
-			" StatusCode: ", response.StatusCode,
-			" Status: ", response.Status)
+			zap.Int("statusCode", response.StatusCode),
+			zap.String("status", response.Status))
 		return errors.New("DownloadChunks failed"), output
 	}
 
 	output = new(ScowDownloadPartOutput)
 	output.Body = response.Body
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowClient:DownloadChunks finish.")
 	return err, output
 }

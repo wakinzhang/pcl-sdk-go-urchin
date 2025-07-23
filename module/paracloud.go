@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	"go.uber.org/zap"
 	"io"
 	"os"
 )
@@ -92,44 +93,40 @@ func (dfc *PCDownloadCheckpoint) IsValid(
 	input *PCDownloadFileInput,
 	object *PCObject) bool {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"PCDownloadCheckpoint:IsValid start.",
-		" dfc.DownloadFile: ", dfc.DownloadFile,
-		" input.DownloadFile: ", input.DownloadFile,
-		" dfc.ObjectInfo.Size: ", dfc.ObjectInfo.Size,
-		" object.Size: ", object.ObjectFileInfo.Size(),
-		" dfc.TempFileInfo.Size: ", dfc.TempFileInfo.Size)
+		zap.String("dfcDownloadFile", dfc.DownloadFile),
+		zap.String("inputDownloadFile", input.DownloadFile),
+		zap.Int64("dfcObjectInfoSize", dfc.ObjectInfo.Size),
+		zap.Int64("objectSize", object.ObjectFileInfo.Size()),
+		zap.Int64("dfcTempFileInfoSize: ", dfc.TempFileInfo.Size))
 
 	if dfc.DownloadFile != input.DownloadFile {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" downloadFile was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid. downloadFile was changed." +
+				" clear the record.")
 		return false
 	}
 	if dfc.ObjectInfo.Size != object.ObjectFileInfo.Size() {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" the object info was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid. the object info was changed." +
+				" clear the record.")
 		return false
 	}
 	if dfc.TempFileInfo.Size != object.ObjectFileInfo.Size() {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" size was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid. size was changed." +
+				" clear the record.")
 		return false
 	}
 	stat, err := os.Stat(dfc.TempFileInfo.TempFileUrl)
 	if nil != err || stat.Size() != dfc.ObjectInfo.Size {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" the temp download file was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid." +
+				" the temp download file was changed. clear the record.")
 		return false
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"PCDownloadCheckpoint:IsValid finish.")
 	return true
 }

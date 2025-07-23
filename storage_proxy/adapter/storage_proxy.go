@@ -6,6 +6,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adaptee"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -37,8 +38,9 @@ func NewStorageProxy(
 	ctx context.Context,
 	nodeType int32) (err error, storage StorageProxy) {
 
-	Logger.WithContext(ctx).Debug(
-		"NewStorageProxy start. nodeType: ", nodeType)
+	InfoLogger.WithContext(ctx).Debug(
+		"NewStorageProxy start.",
+		zap.Int32("nodeType", nodeType))
 	if StorageCategoryEObs == nodeType ||
 		StorageCategoryEMinio == nodeType {
 		var s3Proxy S3Proxy
@@ -48,16 +50,16 @@ func NewStorageProxy(
 			DefaultS3ReqTimeout,
 			DefaultS3MaxConnection)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage S3Proxy finish.")
 		return nil, &s3Proxy
 	} else if StorageCategoryEIpfs == nodeType {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage IPFSProxy finish.")
 		return nil, new(IPFSProxy)
 	} else if StorageCategoryEJcs == nodeType {
@@ -67,16 +69,16 @@ func NewStorageProxy(
 			DefaultJCSReqTimeout,
 			DefaultJCSMaxConnection)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage JCSProxy finish.")
 		return nil, &jcsProxy
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"invalid storage node type.")
 		return errors.New("invalid storage node type"), storage
 	}

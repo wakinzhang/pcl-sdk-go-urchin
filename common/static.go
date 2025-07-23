@@ -1,15 +1,18 @@
 package common
 
-import "github.com/sirupsen/logrus"
+import (
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+)
 
-var LogLevelMap = map[int64]logrus.Level{
-	0: logrus.PanicLevel,
-	1: logrus.FatalLevel,
-	2: logrus.ErrorLevel,
-	3: logrus.WarnLevel,
-	4: logrus.InfoLevel,
-	5: logrus.DebugLevel,
-	6: logrus.TraceLevel}
+var LogLevelMap = map[int64]zapcore.Level{
+	-1: zap.DebugLevel,
+	0:  zap.InfoLevel,
+	1:  zap.WarnLevel,
+	2:  zap.ErrorLevel,
+	3:  zap.DPanicLevel,
+	4:  zap.PanicLevel,
+	5:  zap.FatalLevel}
 
 const (
 	DefaultUrchinClientUserId = "test"

@@ -11,6 +11,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"io"
 	"os"
@@ -36,10 +37,10 @@ func (o *JCSProxy) Init(
 	reqTimeout,
 	maxConnection int) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:Init start.",
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.Int("reqTimeout", reqTimeout),
+		zap.Int("maxConnection", maxConnection))
 
 	o.jcsProxyClient = new(JCSProxyClient)
 	o.jcsProxyClient.Init(ctx, reqTimeout, maxConnection)
@@ -53,7 +54,7 @@ func (o *JCSProxy) Init(
 		DefaultJCSRateLimit,
 		DefaultJCSRateBurst)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:Init finish.")
 	return nil
 }
@@ -62,19 +63,19 @@ func (o *JCSProxy) SetConcurrency(
 	ctx context.Context,
 	config *StorageNodeConcurrencyConfig) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:SetConcurrency start.",
-		" UploadFileTaskNum: ", config.UploadFileTaskNum,
-		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
-		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
-		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+		zap.Int32("UploadFileTaskNum", config.UploadFileTaskNum),
+		zap.Int32("UploadMultiTaskNum", config.UploadMultiTaskNum),
+		zap.Int32("DownloadFileTaskNum", config.DownloadFileTaskNum),
+		zap.Int32("DownloadMultiTaskNum", config.DownloadMultiTaskNum))
 
 	o.jcsUploadFileTaskNum = int(config.UploadFileTaskNum)
 	o.jcsUploadMultiTaskNum = int(config.UploadMultiTaskNum)
 	o.jcsDownloadFileTaskNum = int(config.DownloadFileTaskNum)
 	o.jcsDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:SetConcurrency finish.")
 	return nil
 }
@@ -83,12 +84,12 @@ func (o *JCSProxy) SetRate(
 	ctx context.Context,
 	rateLimiter *rate.Limiter) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:SetRate start.")
 
 	o.jcsRateLimiter = rateLimiter
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:SetRate finish.")
 	return nil
 }
@@ -104,10 +105,10 @@ func (o *JCSProxy) NewFolderWithSignedUrl(
 		objectPath = objectPath + "/"
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:NewFolderWithSignedUrl start.",
-		" objectPath: ", objectPath,
-		" taskId: ", taskId)
+		zap.String("objectPath", objectPath),
+		zap.Int32("taskId", taskId))
 
 	createJCSPreSignedObjectUploadReq :=
 		new(CreateJCSPreSignedObjectUploadReq)
@@ -119,10 +120,10 @@ func (o *JCSProxy) NewFolderWithSignedUrl(
 			ctx,
 			createJCSPreSignedObjectUploadReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateJCSPreSignedObjectUpload"+
 				" failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -131,13 +132,14 @@ func (o *JCSProxy) NewFolderWithSignedUrl(
 		createJCSPreSignedObjectUploadResp.SignedUrl,
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsProxyClient.UploadFileWithSignedUrl failed.",
-			" signedUrl: ", createJCSPreSignedObjectUploadResp.SignedUrl,
-			" err: ", err)
+			zap.String("signedUrl",
+				createJCSPreSignedObjectUploadResp.SignedUrl),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:NewFolderWithSignedUrl finish.")
 
 	return err
@@ -149,11 +151,11 @@ func (o *JCSProxy) UploadFileWithSignedUrl(
 	objectPath string,
 	taskId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:UploadFileWithSignedUrl start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" taskId: ", taskId)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Int32("taskId", taskId))
 
 	createJCSPreSignedObjectUploadReq :=
 		new(CreateJCSPreSignedObjectUploadReq)
@@ -165,28 +167,28 @@ func (o *JCSProxy) UploadFileWithSignedUrl(
 			ctx,
 			createJCSPreSignedObjectUploadReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateJCSPreSignedObjectUpload"+
 				" failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
+				zap.String("sourceFile", sourceFile),
+				zap.Error(errMsg))
 		}
 	}()
 
@@ -195,14 +197,15 @@ func (o *JCSProxy) UploadFileWithSignedUrl(
 		createJCSPreSignedObjectUploadResp.SignedUrl,
 		fd)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsProxyClient.UploadFileWithSignedUrl failed.",
-			" sourceFile: ", sourceFile,
-			" signedUrl: ", createJCSPreSignedObjectUploadResp.SignedUrl,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("signedUrl",
+				createJCSPreSignedObjectUploadResp.SignedUrl),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:UploadFileWithSignedUrl finish.")
 
 	return err
@@ -213,10 +216,10 @@ func (o *JCSProxy) NewMultipartUploadWithSignedUrl(
 	objectPath string,
 	taskId int32) (output *JCSNewMultiPartUploadResponse, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:NewMultipartUploadWithSignedUrl start.",
-		" objectPath: ", objectPath,
-		" taskId: ", taskId)
+		zap.String("objectPath", objectPath),
+		zap.Int32("taskId", taskId))
 
 	createJCSPreSignedObjectNewMultipartUploadReq :=
 		new(CreateJCSPreSignedObjectNewMultipartUploadReq)
@@ -228,10 +231,10 @@ func (o *JCSProxy) NewMultipartUploadWithSignedUrl(
 			ctx,
 			createJCSPreSignedObjectNewMultipartUploadReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateJCSPreSignedObjectNewMultipartUpload"+
 				" failed.",
-			" err: ", err)
+			zap.Error(err))
 		return output, err
 	}
 
@@ -240,14 +243,14 @@ func (o *JCSProxy) NewMultipartUploadWithSignedUrl(
 		ctx,
 		createJCSPreSignedObjectNewMultipartUploadResp.SignedUrl)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsProxyClient.NewMultiPartUploadWithSignedUrl failed.",
-			" signedUrl: ",
-			createJCSPreSignedObjectNewMultipartUploadResp.SignedUrl,
-			" err: ", err)
+			zap.String("signedUrl",
+				createJCSPreSignedObjectNewMultipartUploadResp.SignedUrl),
+			zap.Error(err))
 		return output, err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:NewMultipartUploadWithSignedUrl finish.")
 
 	return output, err
@@ -259,10 +262,10 @@ func (o *JCSProxy) CompleteMultipartUploadWithSignedUrl(
 	taskId int32,
 	indexes []int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:CompleteMultipartUploadWithSignedUrl start.",
-		" objectId: ", objectId,
-		" taskId: ", taskId)
+		zap.Int32("objectId", objectId),
+		zap.Int32("taskId", taskId))
 
 	// 合并段
 	createJCSPreSignedObjectCompleteMultipartUploadReq :=
@@ -276,10 +279,10 @@ func (o *JCSProxy) CompleteMultipartUploadWithSignedUrl(
 			ctx,
 			createJCSPreSignedObjectCompleteMultipartUploadReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient:CreateCompleteMultipartUploadSignedUrl"+
 				" failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -287,16 +290,16 @@ func (o *JCSProxy) CompleteMultipartUploadWithSignedUrl(
 		ctx,
 		createCompleteMultipartUploadSignedUrlResp.SignedUrl)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsProxyClient.CompleteMultipartUploadWithSignedUrl"+
 				" failed.",
-			" signedUrl: ",
-			createCompleteMultipartUploadSignedUrlResp.SignedUrl,
-			" err: ", err)
+			zap.String("signedUrl",
+				createCompleteMultipartUploadSignedUrlResp.SignedUrl),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy.CompleteMultipartUploadWithSignedUrl finish.")
 	return nil
 }
@@ -308,10 +311,10 @@ func (o *JCSProxy) ListObjectsWithSignedUrl(
 	listObjectsData *JCSListData,
 	err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:ListObjectsWithSignedUrl start.",
-		" taskId: ", taskId,
-		" continuationToken: ", continuationToken)
+		zap.Int32("taskId", taskId),
+		zap.String("continuationToken", continuationToken))
 
 	createJCSPreSignedObjectListReq := new(CreateJCSPreSignedObjectListReq)
 	createJCSPreSignedObjectListReq.TaskId = taskId
@@ -324,9 +327,9 @@ func (o *JCSProxy) ListObjectsWithSignedUrl(
 			ctx,
 			createJCSPreSignedObjectListReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateJCSPreSignedObjectList failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
@@ -335,16 +338,17 @@ func (o *JCSProxy) ListObjectsWithSignedUrl(
 			ctx,
 			createListObjectsSignedUrlResp.SignedUrl)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsProxyClient.ListWithSignedUrl failed.",
-			" signedUrl: ", createListObjectsSignedUrlResp.SignedUrl,
-			" err: ", err)
+			zap.String("signedUrl",
+				createListObjectsSignedUrlResp.SignedUrl),
+			zap.Error(err))
 		return listObjectsData, err
 	}
 	listObjectsData = new(JCSListData)
 	listObjectsData = listObjectsResponse.Data
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:ListObjectsWithSignedUrl finish.")
 	return listObjectsData, nil
 }
@@ -354,25 +358,25 @@ func (o *JCSProxy) loadCheckpointFile(
 	checkpointFile string,
 	result interface{}) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:loadCheckpointFile start.",
-		" checkpointFile: ", checkpointFile)
+		zap.String("checkpointFile", checkpointFile))
 
 	ret, err := os.ReadFile(checkpointFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" checkpointFile: ", checkpointFile,
-			" err: ", err)
+			zap.String("checkpointFile", checkpointFile),
+			zap.Error(err))
 		return err
 	}
 	if len(ret) == 0 {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
-			" checkpointFile: ", checkpointFile)
+			zap.String("checkpointFile", checkpointFile))
 		return errors.New("checkpointFile empty")
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
@@ -382,10 +386,10 @@ func (o *JCSProxy) sliceObject(
 	objectSize, partSize int64,
 	dfc *JCSDownloadCheckpoint) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:sliceObject start.",
-		" objectSize: ", objectSize,
-		" partSize: ", partSize)
+		zap.Int64("objectSize", objectSize),
+		zap.Int64("partSize", partSize))
 
 	cnt := objectSize / partSize
 	if objectSize%partSize > 0 {
@@ -411,7 +415,7 @@ func (o *JCSProxy) sliceObject(
 			dfc.DownloadParts[cnt-1].Length = value
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:sliceObject finish.")
 }
 
@@ -420,39 +424,39 @@ func (o *JCSProxy) updateCheckpointFile(
 	fc interface{},
 	checkpointFilePath string) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:updateCheckpointFile start.",
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	result, err := xml.Marshal(fc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"xml.Marshal failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	err = os.WriteFile(checkpointFilePath, result, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.WriteFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
 	defer func() {
 		errMsg := file.Close()
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", errMsg)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_ = file.Sync()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:updateCheckpointFile finish.")
 	return err
 }
@@ -464,29 +468,29 @@ func (o *JCSProxy) Upload(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:Upload start.",
-		" userId: ", userId,
-		" sourcePath: ", sourcePath,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("sourcePath", sourcePath),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, taskId, needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy.uploadFolder failed.",
-				" sourcePath: ", sourcePath,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -498,17 +502,17 @@ func (o *JCSProxy) Upload(
 			taskId,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy.uploadFile failed.",
-				" sourcePath: ", sourcePath,
-				" objectPath: ", objectPath,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("objectPath", objectPath),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:Upload finish.")
 	return nil
 }
@@ -519,11 +523,11 @@ func (o *JCSProxy) uploadFolder(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadFolder start.",
-		" sourcePath: ", sourcePath,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -533,18 +537,18 @@ func (o *JCSProxy) uploadFolder(
 			"_" +
 			strconv.FormatInt(int64(taskId), 10) +
 			UploadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
-		" uploadFolderRecord: ", uploadFolderRecord)
+		zap.String("uploadFolderRecord", uploadFolderRecord))
 
 	if needPure {
 		err = os.Remove(uploadFolderRecord)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -556,19 +560,19 @@ func (o *JCSProxy) uploadFolder(
 				fileMap[strings.TrimSuffix(line, "\r")] = 0
 			}
 		} else if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.ReadFile failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 	}
 
 	pool, err := ants.NewPool(o.jcsUploadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -580,61 +584,66 @@ func (o *JCSProxy) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.jcsRateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"JCSProxy:uploadFileResume failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
 				objectKey, _err := filepath.Rel(sourcePath, filePath)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
-						" sourcePath: ", sourcePath,
-						" filePath: ", filePath,
-						" objectKey: ", objectKey,
-						" err: ", _err)
+						zap.String("sourcePath", sourcePath),
+						zap.String("filePath", filePath),
+						zap.String("objectKey", objectKey),
+						zap.Error(_err))
 					return
 				}
 				if strings.HasSuffix(objectKey, UploadFileRecordSuffix) {
-					Logger.WithContext(ctx).Info(
+					InfoLogger.WithContext(ctx).Info(
 						"upload record file.",
-						" objectKey: ", objectKey)
+						zap.String("objectKey", objectKey))
 					return
 				}
 				if _, exists := fileMap[objectKey]; exists {
-					Logger.WithContext(ctx).Info(
-						"already finish. objectKey: ", objectKey)
+					InfoLogger.WithContext(ctx).Info(
+						"already finish.",
+						zap.String("objectKey", objectKey))
 					return
 				}
 				if fileInfo.IsDir() {
@@ -644,10 +653,10 @@ func (o *JCSProxy) uploadFolder(
 						taskId)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"JCSProxy:NewFolderWithSignedUrl failed.",
-							" objectKey: ", objectKey,
-							" err: ", _err)
+							zap.String("objectKey", objectKey),
+							zap.Error(_err))
 						return
 					}
 				} else {
@@ -659,11 +668,11 @@ func (o *JCSProxy) uploadFolder(
 						needPure)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"JCSProxy:uploadFile failed.",
-							" filePath: ", filePath,
-							" objectKey: ", objectKey,
-							" err: ", _err)
+							zap.String("filePath", filePath),
+							zap.String("objectKey", objectKey),
+							zap.Error(_err))
 						return
 					}
 				}
@@ -674,36 +683,38 @@ func (o *JCSProxy) uploadFolder(
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", _err)
+						zap.String("uploadFolderRecord",
+							uploadFolderRecord),
+						zap.Error(_err))
 					return
 				}
 				defer func() {
 					errMsg := f.Close()
 					if errMsg != nil {
-						Logger.WithContext(ctx).Warn(
+						ErrorLogger.WithContext(ctx).Warn(
 							"close file failed.",
-							" err: ", errMsg)
+							zap.Error(errMsg))
 					}
 				}()
 				_, _err = f.Write([]byte(objectKey + "\n"))
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"write file failed.",
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" objectKey: ", objectKey,
-						" err: ", _err)
+						zap.String("uploadFolderRecord",
+							uploadFolderRecord),
+						zap.String("objectKey", objectKey),
+						zap.Error(_err))
 					return
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -711,30 +722,30 @@ func (o *JCSProxy) uploadFolder(
 	wg.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("uploadFolder not all success")
 	} else {
 		_err := os.Remove(uploadFolderRecord)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", _err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(_err))
 			}
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadFolder finish.")
 	return nil
 }
@@ -746,19 +757,19 @@ func (o *JCSProxy) uploadFile(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadFile start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	sourceFileStat, err := os.Stat(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
@@ -770,13 +781,13 @@ func (o *JCSProxy) uploadFile(
 			taskId,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:uploadFileResume failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", objectPath,
-				" taskId: ", taskId,
-				" needPure: ", needPure,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectPath", objectPath),
+				zap.Int32("taskId", taskId),
+				zap.Bool("needPure", needPure),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -786,17 +797,17 @@ func (o *JCSProxy) uploadFile(
 			objectPath,
 			taskId)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:UploadFileWithSignedUrl failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", objectPath,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectPath", objectPath),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadFile finish.")
 	return err
 }
@@ -808,12 +819,12 @@ func (o *JCSProxy) uploadFileResume(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadFileResume start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	uploadFileInput := new(JCSUploadFileInput)
 	uploadFileInput.ObjectPath = objectPath
@@ -836,10 +847,11 @@ func (o *JCSProxy) uploadFileResume(
 		err = os.Remove(uploadFileInput.CheckpointFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" CheckpointFile: ", uploadFileInput.CheckpointFile,
-					" err: ", err)
+					zap.String("CheckpointFile",
+						uploadFileInput.CheckpointFile),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -852,16 +864,16 @@ func (o *JCSProxy) uploadFileResume(
 		taskId,
 		uploadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:resumeUpload failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", objectPath,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("objectPath", objectPath),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadFileResume finish.")
 	return err
 }
@@ -873,24 +885,24 @@ func (o *JCSProxy) resumeUpload(
 	taskId int32,
 	input *JCSUploadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:resumeUpload start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" taskId: ", taskId)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Int32("taskId", taskId))
 
 	uploadFileStat, err := os.Stat(input.UploadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" uploadFile: ", input.UploadFile,
-			" err: ", err)
+			zap.String("uploadFile", input.UploadFile),
+			zap.Error(err))
 		return err
 	}
 	if uploadFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadFile can not be a folder.",
-			" uploadFile: ", input.UploadFile)
+			zap.String("uploadFile", input.UploadFile))
 		return errors.New("uploadFile can not be a folder")
 	}
 
@@ -906,11 +918,11 @@ func (o *JCSProxy) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:getUploadCheckpointFile failed.",
-				" objectPath: ", objectPath,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("objectPath", objectPath),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -923,21 +935,21 @@ func (o *JCSProxy) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:prepareUpload failed.",
-				" objectPath: ", objectPath,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("objectPath", objectPath),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"JCSProxy:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -950,11 +962,11 @@ func (o *JCSProxy) resumeUpload(
 		ufc,
 		input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:uploadPartConcurrent failed.",
-			" sourceFile: ", sourceFile,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 
@@ -965,16 +977,16 @@ func (o *JCSProxy) resumeUpload(
 		enableCheckpoint,
 		checkpointFilePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:completeParts failed.",
-			" objectId: ", ufc.ObjectId,
-			" taskId: ", taskId,
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.Int32("objectId", ufc.ObjectId),
+			zap.Int32("taskId", taskId),
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:resumeUpload finish.")
 	return err
 }
@@ -986,17 +998,17 @@ func (o *JCSProxy) uploadPartConcurrent(
 	ufc *JCSUploadCheckpoint,
 	input *JCSUploadFileInput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadPartConcurrent start.",
-		" sourceFile: ", sourceFile,
-		" taskId: ", taskId)
+		zap.String("sourceFile", sourceFile),
+		zap.Int32("taskId", taskId))
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1020,16 +1032,20 @@ func (o *JCSProxy) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.jcsRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1048,26 +1064,26 @@ func (o *JCSProxy) uploadPartConcurrent(
 			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"JCSProxy:handleUploadTaskResult failed.",
-					" partNumber: ", task.PartNumber,
-					" checkpointFile: ", input.CheckpointFile,
-					" err: ", _err)
+					zap.Int32("partNumber", task.PartNumber),
+					zap.String("checkpointFile", input.CheckpointFile),
+					zap.Error(_err))
 				uploadPartError.Store(_err)
 			}
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"JCSProxy:handleUploadTaskResult finish.")
 			return
 		})
 	}
 	wg.Wait()
 	if err, ok := uploadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadPartError load failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:uploadPartConcurrent finish.")
 	return nil
 }
@@ -1078,54 +1094,55 @@ func (o *JCSProxy) getUploadCheckpointFile(
 	uploadFileStat os.FileInfo,
 	input *JCSUploadFileInput) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:getUploadCheckpointFile start.")
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpoint file can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !ufc.IsValid(ctx, input.UploadFile, uploadFileStat) {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"JCSProxy:loadCheckpointFile finish.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:getUploadCheckpointFile finish.")
 	return true, nil
 }
@@ -1138,21 +1155,21 @@ func (o *JCSProxy) prepareUpload(
 	uploadFileStat os.FileInfo,
 	input *JCSUploadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:prepareUpload start.",
-		" objectPath: ", objectPath,
-		" taskId: ", taskId)
+		zap.String("objectPath", objectPath),
+		zap.Int32("taskId", taskId))
 
 	newMultipartUploadOutput, err := o.NewMultipartUploadWithSignedUrl(
 		ctx,
 		objectPath,
 		taskId)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:NewMultipartUploadWithSignedUrl failed.",
-			" objectPath: ", objectPath,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("objectPath", objectPath),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 
@@ -1165,12 +1182,12 @@ func (o *JCSProxy) prepareUpload(
 
 	err = o.sliceFile(ctx, input.PartSize, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:sliceFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:prepareUpload finish.")
 	return err
 }
@@ -1180,10 +1197,10 @@ func (o *JCSProxy) sliceFile(
 	partSize int64,
 	ufc *JCSUploadCheckpoint) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:sliceFile start.",
-		" partSize: ", partSize,
-		" fileSize: ", ufc.FileInfo.Size)
+		zap.Int64("partSize", partSize),
+		zap.Int64("fileSize", ufc.FileInfo.Size))
 	fileSize := ufc.FileInfo.Size
 	cnt := fileSize / partSize
 	if cnt >= 10000 {
@@ -1198,10 +1215,10 @@ func (o *JCSProxy) sliceFile(
 	}
 
 	if partSize > DefaultJCSMaxPartSize {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"upload file part too large.",
-			" partSize: ", partSize,
-			" maxPartSize: ", DefaultJCSMaxPartSize)
+			zap.Int64("partSize", partSize),
+			zap.Int64("maxPartSize", DefaultJCSMaxPartSize))
 		return fmt.Errorf("upload file part too large")
 	}
 
@@ -1224,7 +1241,7 @@ func (o *JCSProxy) sliceFile(
 		}
 		ufc.UploadParts = uploadParts
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:sliceFile finish.")
 	return nil
 }
@@ -1238,10 +1255,10 @@ func (o *JCSProxy) handleUploadTaskResult(
 	checkpointFilePath string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:handleUploadTaskResult start.",
-		" checkpointFilePath: ", checkpointFilePath,
-		" partNum: ", partNum)
+		zap.String("checkpointFilePath", checkpointFilePath),
+		zap.Int32("partNum", partNum))
 
 	if _, ok := result.(*JCSBaseResponse); ok {
 		lock.Lock()
@@ -1251,24 +1268,24 @@ func (o *JCSProxy) handleUploadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"JCSProxy:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" partNum: ", partNum,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Int32("partNum", partNum),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"upload task result failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" partNum: ", partNum,
-				" err: ", _err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Int32("partNum", partNum),
+				zap.Error(_err))
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:handleUploadTaskResult finish.")
 	return
 }
@@ -1280,11 +1297,11 @@ func (o *JCSProxy) completeParts(
 	enableCheckpoint bool,
 	checkpointFilePath string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:completeParts start.",
-		" objectId: ", ufc.ObjectId,
-		" taskId: ", taskId,
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.Int32("objectId", ufc.ObjectId),
+		zap.Int32("taskId", taskId),
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	parts := make([]int32, 0, len(ufc.UploadParts))
 	for _, uploadPart := range ufc.UploadParts {
@@ -1300,22 +1317,23 @@ func (o *JCSProxy) completeParts(
 			_err := os.Remove(checkpointFilePath)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" checkpointFilePath: ", checkpointFilePath,
-						" err: ", _err)
+						zap.String("checkpointFilePath",
+							checkpointFilePath),
+						zap.Error(_err))
 				}
 			}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"JCSProxy:CompleteMultipartUploadWithSignedUrl finish.")
 		return err
 	}
-	Logger.WithContext(ctx).Error(
+	ErrorLogger.WithContext(ctx).Error(
 		"JCSProxy.CompleteMultipartUpload failed.",
-		" objectId: ", ufc.ObjectId,
-		" taskId: ", taskId,
-		" err: ", err)
+		zap.Int32("objectId", ufc.ObjectId),
+		zap.Int32("taskId", taskId),
+		zap.Error(err))
 	return err
 }
 
@@ -1335,32 +1353,32 @@ func (task *JCSProxyUploadPartTask) Run(
 	sourceFile string,
 	taskId int32) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyUploadPartTask:Run start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber,
-		" taskId: ", taskId)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", task.ObjectPath),
+		zap.Int32("partNumber", task.PartNumber),
+		zap.Int32("taskId", taskId))
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int32("partNumber", task.PartNumber),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", task.ObjectPath,
-				" partNumber: ", task.PartNumber,
-				" err: ", errMsg)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectPath", task.ObjectPath),
+				zap.Int32("partNumber", task.PartNumber),
+				zap.Error(errMsg))
 		}
 	}()
 
@@ -1370,10 +1388,10 @@ func (task *JCSProxyUploadPartTask) Run(
 	readerWrapper.TotalCount = task.PartSize
 	readerWrapper.Mark = task.Offset
 	if _, err = fd.Seek(task.Offset, io.SeekStart); nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"fd.Seek failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
@@ -1388,13 +1406,13 @@ func (task *JCSProxyUploadPartTask) Run(
 			ctx,
 			createJCSPreSignedObjectUploadPartReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateJCSPreSignedObjectUploadPart failed.",
-			" objectId: ", task.ObjectId,
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.Int32("objectId", task.ObjectId),
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int32("partNumber", task.PartNumber),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 
@@ -1404,21 +1422,22 @@ func (task *JCSProxyUploadPartTask) Run(
 		readerWrapper)
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JcsProxyClient.UploadPartWithSignedUrl failed.",
-			" signedUrl: ", createUploadPartSignedUrlResp.SignedUrl,
-			" objectId: ", task.ObjectId,
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("signedUrl",
+				createUploadPartSignedUrlResp.SignedUrl),
+			zap.Int32("objectId", task.ObjectId),
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int32("partNumber", task.PartNumber),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyUploadPartTask:Run finish.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber)
+		zap.String("objectPath", task.ObjectPath),
+		zap.Int32("partNumber", task.PartNumber))
 	return uploadPartOutput
 }
 
@@ -1433,12 +1452,12 @@ func (o *JCSProxy) Download(
 		targetPath = targetPath + "/"
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:Download start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" taskId: ", taskId,
-		" bucketName: ", bucketName)
+		zap.String("userId", userId),
+		zap.String("targetPath", targetPath),
+		zap.Int32("taskId", taskId),
+		zap.String("bucketName", bucketName))
 
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.UserId = userId
@@ -1448,26 +1467,27 @@ func (o *JCSProxy) Download(
 
 	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.GetTask failed.",
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		Logger.WithContext(ctx).Error(
-			"task not exist. taskId: ", taskId)
+		ErrorLogger.WithContext(ctx).Error(
+			"task not exist.",
+			zap.Int32("taskId", taskId))
 		return errors.New("task not exist")
 	}
 	task := getTaskResp.Data.List[0].Task
 	downloadObjectTaskParams := new(DownloadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), downloadObjectTaskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"DownloadObjectTaskParams Unmarshal failed.",
-			" taskId: ", taskId,
-			" params: ", task.Params,
-			" err: ", err)
+			zap.Int32("taskId", taskId),
+			zap.String("params", task.Params),
+			zap.Error(err))
 		return err
 	}
 
@@ -1485,10 +1505,10 @@ func (o *JCSProxy) Download(
 			taskId,
 			continuationToken)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:ListObjectsWithSignedUrl start.",
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 		err = o.downloadObjects(
@@ -1499,14 +1519,14 @@ func (o *JCSProxy) Download(
 			listObjectsData,
 			downloadFolderRecord)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:downloadObjects failed.",
-				" userId: ", userId,
-				" tmpTargetPath: ", tmpTargetPath,
-				" taskId: ", taskId,
-				" bucketName: ", bucketName,
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("userId", userId),
+				zap.String("tmpTargetPath", tmpTargetPath),
+				zap.Int32("taskId", taskId),
+				zap.String("bucketName", bucketName),
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 		if listObjectsData.IsTruncated {
@@ -1520,25 +1540,25 @@ func (o *JCSProxy) Download(
 	toPath := targetPath + uuid + fmt.Sprintf("_%d", taskId)
 	err = os.Rename(fromPath, toPath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" fromPath: ", fromPath,
-			" postPath: ", toPath,
-			" err: ", err)
+			zap.String("fromPath", fromPath),
+			zap.String("toPath", toPath),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Remove(downloadFolderRecord)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:Download finish.")
 	return nil
 }
@@ -1551,12 +1571,12 @@ func (o *JCSProxy) downloadObjects(
 	listObjectsData *JCSListData,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:downloadObjects start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" taskId: ", taskId,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("userId", userId),
+		zap.String("targetPath", targetPath),
+		zap.Int32("taskId", taskId),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -1568,10 +1588,10 @@ func (o *JCSProxy) downloadObjects(
 			fileMap[strings.TrimSuffix(line, "\r")] = 0
 		}
 	} else if !os.IsNotExist(err) {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
@@ -1579,47 +1599,51 @@ func (o *JCSProxy) downloadObjects(
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(o.jcsDownloadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool for download Object failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
 	for index, object := range listObjectsData.Objects {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"object content.",
-			" index: ", index,
-			" ObjectID: ", object.ObjectID,
-			" PackageID: ", object.PackageID,
-			" Path: ", object.Path,
-			" size: ", object.Size)
+			zap.Int("index", index),
+			zap.Int32("objectID", object.ObjectID),
+			zap.Int32("packageID", object.PackageID),
+			zap.String("path", object.Path),
+			zap.String("size", object.Size))
 		itemObject := object
 		if _, exists := fileMap[itemObject.Path]; exists {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"file already success.",
-				" Path: ", itemObject.Path)
+				zap.String("path", itemObject.Path))
 			continue
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.jcsRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
 				if _err := recover(); nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", _err)
+						zap.Any("error", _err))
 					isAllSuccess = false
 				}
 			}()
@@ -1631,10 +1655,10 @@ func (o *JCSProxy) downloadObjects(
 				_err := os.MkdirAll(itemPath, os.ModePerm)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.MkdirAll failed.",
-						" itemPath: ", itemPath,
-						" err: ", _err)
+						zap.String("itemPath", itemPath),
+						zap.Error(_err))
 					return
 				}
 			} else {
@@ -1646,12 +1670,12 @@ func (o *JCSProxy) downloadObjects(
 					taskId)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"JCSProxy:downloadPartWithSignedUrl failed.",
-						" objectPath: ", itemObject.Path,
-						" targetFile: ", targetFile,
-						" taskId: ", taskId,
-						" err: ", _err)
+						zap.String("objectPath", itemObject.Path),
+						zap.String("targetFile", targetFile),
+						zap.Int32("taskId", taskId),
+						zap.Error(_err))
 					return
 				}
 			}
@@ -1662,47 +1686,50 @@ func (o *JCSProxy) downloadObjects(
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.Error(_err))
 				return
 			}
 			defer func() {
 				errMsg := f.Close()
 				if errMsg != nil {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" downloadFolderRecord: ", downloadFolderRecord,
-						" err: ", errMsg)
+						zap.String("downloadFolderRecord",
+							downloadFolderRecord),
+						zap.Error(errMsg))
 				}
 			}()
 			_, _err = f.Write([]byte(itemObject.Path + "\n"))
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectKey: ", itemObject.Path,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.String("objectKey", itemObject.Path),
+					zap.Error(_err))
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:downloadObjects not all success.")
 		return errors.New("downloadObjects not all success")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:downloadObjects finish.")
 	return nil
 }
@@ -1713,13 +1740,13 @@ func (o *JCSProxy) downloadPartWithSignedUrl(
 	targetFile string,
 	taskId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:downloadPartWithSignedUrl start.",
-		" ObjectID: ", object.ObjectID,
-		" PackageID: ", object.PackageID,
-		" Path: ", object.Path,
-		" targetFile: ", targetFile,
-		" taskId: ", taskId)
+		zap.Int32("objectID", object.ObjectID),
+		zap.Int32("packageID", object.PackageID),
+		zap.String("path", object.Path),
+		zap.String("targetFile", targetFile),
+		zap.Int32("taskId", taskId))
 
 	downloadFileInput := new(JCSDownloadFileInput)
 	downloadFileInput.Path = object.Path
@@ -1736,13 +1763,13 @@ func (o *JCSProxy) downloadPartWithSignedUrl(
 		object,
 		downloadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:resumeDownload failed.",
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:downloadPartWithSignedUrl finish.")
 	return
 }
@@ -1753,9 +1780,9 @@ func (o *JCSProxy) resumeDownload(
 	object *JCSObject,
 	input *JCSDownloadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:resumeDownload start.",
-		" taskId: ", taskId)
+		zap.Int32("taskId", taskId))
 
 	partSize := input.PartSize
 	dfc := &JCSDownloadCheckpoint{}
@@ -1770,10 +1797,10 @@ func (o *JCSProxy) resumeDownload(
 			input,
 			object)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:getDownloadCheckpointFile failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -1793,28 +1820,29 @@ func (o *JCSProxy) resumeDownload(
 			dfc.TempFileInfo.TempFileUrl,
 			dfc.TempFileInfo.Size)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy:prepareTempFile failed.",
-				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-				" Size: ", dfc.TempFileInfo.Size,
-				" err: ", err)
+				zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+				zap.Int64("Size", dfc.TempFileInfo.Size),
+				zap.Error(err))
 			return err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"JCSProxy:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
 				if _errMsg != nil {
 					if !os.IsNotExist(_errMsg) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.Remove failed.",
-							" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-							" err: ", _errMsg)
+							zap.String("TempFileUrl",
+								dfc.TempFileInfo.TempFileUrl),
+							zap.Error(_errMsg))
 					}
 				}
 				return err
@@ -1830,34 +1858,34 @@ func (o *JCSProxy) resumeDownload(
 		enableCheckpoint,
 		downloadFileError)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:handleDownloadFileResult failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Rename(dfc.TempFileInfo.TempFileUrl, input.DownloadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" DownloadFile: ", input.DownloadFile,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.String("DownloadFile", input.DownloadFile),
+			zap.Error(err))
 		return err
 	}
 	if enableCheckpoint {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:resumeDownload finish.")
 	return nil
 }
@@ -1868,16 +1896,16 @@ func (o *JCSProxy) downloadFileConcurrent(
 	input *JCSDownloadFileInput,
 	dfc *JCSDownloadCheckpoint) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:downloadFileConcurrent start.",
-		" taskId: ", taskId)
+		zap.Int32("taskId", taskId))
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1900,25 +1928,29 @@ func (o *JCSProxy) downloadFileConcurrent(
 			TempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask params.",
-			" ObjectId: ", dfc.ObjectId,
-			" Offset: ", downloadPart.Offset,
-			" Length: ", downloadPart.Length,
-			" PartNumber: ", downloadPart.PartNumber,
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" EnableCheckpoint: ", input.EnableCheckpoint)
+			zap.Int32("objectId", dfc.ObjectId),
+			zap.Int64("offset", downloadPart.Offset),
+			zap.Int64("length", downloadPart.Length),
+			zap.Int64("partNumber", downloadPart.PartNumber),
+			zap.String("tempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Bool("enableCheckpoint", input.EnableCheckpoint))
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.jcsRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1936,10 +1968,11 @@ func (o *JCSProxy) downloadFileConcurrent(
 						dfc,
 						input.CheckpointFile)
 					if nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"JCSProxy:updateCheckpointFile failed.",
-							" checkpointFile: ", input.CheckpointFile,
-							" err: ", _err)
+							zap.String("checkpointFile",
+								input.CheckpointFile),
+							zap.Error(_err))
 						downloadPartError.Store(_err)
 					}
 				}
@@ -1957,31 +1990,31 @@ func (o *JCSProxy) downloadFileConcurrent(
 				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"JCSProxy:handleDownloadTaskResult failed.",
-						" partNumber: ", task.PartNumber,
-						" checkpointFile: ", input.CheckpointFile,
-						" err: ", _err)
+						zap.Int64("partNumber", task.PartNumber),
+						zap.String("checkpointFile", input.CheckpointFile),
+						zap.Error(_err))
 					downloadPartError.Store(_err)
 				}
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if err, ok := downloadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"downloadPartError failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:downloadFileConcurrent finish.")
 	return nil
 }
@@ -1992,65 +2025,67 @@ func (o *JCSProxy) getDownloadCheckpointFile(
 	input *JCSDownloadFileInput,
 	object *JCSObject) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:getDownloadCheckpointFile start.",
-		" checkpointFile: ", input.CheckpointFile)
+		zap.String("checkpointFile", input.CheckpointFile))
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpointFilePath can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxy:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !dfc.IsValid(ctx, input, object) {
 		if dfc.TempFileInfo.TempFileUrl != "" {
 			_err := os.Remove(dfc.TempFileInfo.TempFileUrl)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-						" err: ", _err)
+						zap.String("TempFileUrl",
+							dfc.TempFileInfo.TempFileUrl),
+						zap.Error(_err))
 				}
 			}
 		}
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"no need to check point.")
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"need to check point.")
 	return true, nil
 }
@@ -2060,35 +2095,37 @@ func (o *JCSProxy) prepareTempFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:prepareTempFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	parentDir := filepath.Dir(tempFileURL)
 	stat, err := os.Stat(parentDir)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" parentDir: ", parentDir,
-				" err: ", err)
+				zap.String("parentDir", parentDir),
+				zap.Error(err))
 			return err
 		}
-		Logger.WithContext(ctx).Debug(
-			"parentDir: ", parentDir, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"parentDir not exist.",
+			zap.String("parentDir", parentDir))
 
 		_err := os.MkdirAll(parentDir, os.ModePerm)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" parentDir: ", parentDir,
-				" err: ", _err)
+				zap.String("parentDir", parentDir),
+				zap.Error(_err))
 			return _err
 		}
 	} else if !stat.IsDir() {
-		Logger.WithContext(ctx).Error(
-			"same file exists. parentDir: ", parentDir)
+		ErrorLogger.WithContext(ctx).Error(
+			"same file exists.",
+			zap.String("parentDir", parentDir))
 		return fmt.Errorf(
 			"cannot create folder: %s due to a same file exists",
 			parentDir)
@@ -2096,10 +2133,10 @@ func (o *JCSProxy) prepareTempFile(
 
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"JCSProxy:createFile finish.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize))
 		return nil
 	}
 	fd, err := os.OpenFile(
@@ -2107,32 +2144,32 @@ func (o *JCSProxy) prepareTempFile(
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	if fileSize > 0 {
 		_, err = fd.WriteAt([]byte("a"), fileSize-1)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"write file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", err)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:prepareTempFile finish.")
 	return nil
 }
@@ -2142,41 +2179,41 @@ func (o *JCSProxy) createFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:createFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	fd, err := syscall.Open(
 		tempFileURL,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Open failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := syscall.Close(fd)
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"syscall.Close failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	err = syscall.Ftruncate(fd, fileSize)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Ftruncate failed.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:createFile finish.")
 	return nil
 }
@@ -2190,10 +2227,10 @@ func (o *JCSProxy) handleDownloadTaskResult(
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:handleDownloadTaskResult start.",
-		" partNum: ", partNum,
-		" checkpointFile: ", checkpointFile)
+		zap.Int64("partNum", partNum),
+		zap.String("checkpointFile", checkpointFile))
 
 	if _, ok := result.(*JCSDownloadPartOutput); ok {
 		lock.Lock()
@@ -2203,10 +2240,10 @@ func (o *JCSProxy) handleDownloadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"JCSProxy:updateCheckpointFile failed.",
-					" checkpointFile: ", checkpointFile,
-					" err: ", _err)
+					zap.String("checkpointFile", checkpointFile),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
@@ -2214,7 +2251,7 @@ func (o *JCSProxy) handleDownloadTaskResult(
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:handleDownloadTaskResult finish.")
 	return
 }
@@ -2225,30 +2262,30 @@ func (o *JCSProxy) handleDownloadFileResult(
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:handleDownloadFileResult start.",
-		" tempFileURL: ", tempFileURL)
+		zap.String("tempFileURL", tempFileURL))
 
 	if downloadFileError != nil {
 		if !enableCheckpoint {
 			_err := os.Remove(tempFileURL)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" tempFileURL: ", tempFileURL,
-						" err: ", _err)
+						zap.String("tempFileURL", tempFileURL),
+						zap.Error(_err))
 				}
 			}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"JCSProxy.handleDownloadFileResult finish.",
-			" tempFileURL: ", tempFileURL,
-			" downloadFileError: ", downloadFileError)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(downloadFileError))
 		return downloadFileError
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy.handleDownloadFileResult finish.")
 	return nil
 }
@@ -2259,35 +2296,35 @@ func (o *JCSProxy) UpdateDownloadFile(
 	offset int64,
 	downloadPartOutput *JCSDownloadPartOutput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:UpdateDownloadFile start.",
-		" filePath: ", filePath,
-		" offset: ", offset)
+		zap.String("filePath", filePath),
+		zap.Int64("offset", offset))
 
 	fd, err := os.OpenFile(filePath, os.O_WRONLY, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" filePath: ", filePath,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" filePath: ", filePath,
-				" err: ", errMsg)
+				zap.String("filePath", filePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_, err = fd.Seek(offset, 0)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"seek file failed.",
-			" filePath: ", filePath,
-			" offset: ", offset,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Int64("offset", offset),
+			zap.Error(err))
 		return err
 	}
 	fileWriter := bufio.NewWriterSize(fd, 65536)
@@ -2299,18 +2336,18 @@ func (o *JCSProxy) UpdateDownloadFile(
 		if readCount > 0 {
 			writeCount, writeError := fileWriter.Write(part[0:readCount])
 			if writeError != nil {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" filePath: ", filePath,
-					" err: ", writeError)
+					zap.String("filePath", filePath),
+					zap.Error(writeError))
 				return writeError
 			}
 			if writeCount != readCount {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					" write file failed.",
-					" filePath: ", filePath,
-					" readCount: ", readCount,
-					" writeCount: ", writeCount)
+					zap.String("filePath", filePath),
+					zap.Int("readCount", readCount),
+					zap.Int("writeCount", writeCount))
 				return fmt.Errorf("failed to write to file."+
 					" filePath: %s, expect: %d, actual: %d",
 					filePath, readCount, writeCount)
@@ -2319,9 +2356,9 @@ func (o *JCSProxy) UpdateDownloadFile(
 		}
 		if readErr != nil {
 			if readErr != io.EOF {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"read response body failed.",
-					" err: ", readErr)
+					zap.Error(readErr))
 				return readErr
 			}
 			break
@@ -2329,15 +2366,15 @@ func (o *JCSProxy) UpdateDownloadFile(
 	}
 	err = fileWriter.Flush()
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"flush file failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxy:UpdateDownloadFile finish.",
-		" readTotal: ", readTotal)
+		zap.Int("readTotal", readTotal))
 	return nil
 }
 
@@ -2356,11 +2393,11 @@ func (task *JCSProxyDownloadPartTask) Run(
 	ctx context.Context,
 	taskId int32) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyDownloadPartTask:Run start.",
-		" taskId: ", taskId,
-		" objectId: ", task.ObjectId,
-		" partNumber: ", task.PartNumber)
+		zap.Int32("taskId", taskId),
+		zap.Int32("objectId", task.ObjectId),
+		zap.Int64("partNumber", task.PartNumber))
 
 	createJCSPreSignedObjectDownloadReq :=
 		new(CreateJCSPreSignedObjectDownloadReq)
@@ -2375,11 +2412,11 @@ func (task *JCSProxyDownloadPartTask) Run(
 			ctx,
 			createJCSPreSignedObjectDownloadReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateGetObjectSignedUrl failed.",
-			" objectId: ", task.ObjectId,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
+			zap.Int32("objectId", task.ObjectId),
+			zap.Int64("partNumber", task.PartNumber),
+			zap.Error(err))
 		return err
 	}
 
@@ -2389,17 +2426,17 @@ func (task *JCSProxyDownloadPartTask) Run(
 			createJCSPreSignedObjectDownloadResp.SignedUrl)
 
 	if nil == err {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"JcsProxyClient.DownloadPartWithSignedUrl finish.",
-			" objectId: ", task.ObjectId,
-			" partNumber: ", task.PartNumber)
+			zap.Int32("objectId", task.ObjectId),
+			zap.Int64("partNumber", task.PartNumber))
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"close response body failed.",
-					" objectId: ", task.ObjectId,
-					" partNumber: ", task.PartNumber)
+					zap.Int32("objectId", task.ObjectId),
+					zap.Int64("partNumber", task.PartNumber))
 			}
 		}()
 		_err := task.JcsProxy.UpdateDownloadFile(
@@ -2409,30 +2446,31 @@ func (task *JCSProxyDownloadPartTask) Run(
 			downloadPartOutput)
 		if nil != _err {
 			if !task.EnableCheckpoint {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
-					" objectId: ", task.ObjectId,
-					" partNumber: ", task.PartNumber)
+					zap.Int32("objectId", task.ObjectId),
+					zap.Int64("partNumber", task.PartNumber))
 			}
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCSProxy.updateDownloadFile failed.",
-				" objectId: ", task.ObjectId,
-				" partNumber: ", task.PartNumber,
-				" err: ", _err)
+				zap.Int32("objectId", task.ObjectId),
+				zap.Int64("partNumber", task.PartNumber),
+				zap.Error(_err))
 			return _err
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask.Run finish.",
-			" objectId: ", task.ObjectId,
-			" partNumber: ", task.PartNumber)
+			zap.Int32("objectId", task.ObjectId),
+			zap.Int64("partNumber", task.PartNumber))
 		return downloadPartOutput
 	}
 
-	Logger.WithContext(ctx).Error(
+	ErrorLogger.WithContext(ctx).Error(
 		"JCSProxyDownloadPartTask:Run failed.",
-		" signedUrl: ", createJCSPreSignedObjectDownloadResp.SignedUrl,
-		" objectId: ", task.ObjectId,
-		" partNumber: ", task.PartNumber,
-		" err: ", err)
+		zap.String("signedUrl",
+			createJCSPreSignedObjectDownloadResp.SignedUrl),
+		zap.Int32("objectId", task.ObjectId),
+		zap.Int64("partNumber", task.PartNumber),
+		zap.Error(err))
 	return err
 }

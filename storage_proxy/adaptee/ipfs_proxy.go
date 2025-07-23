@@ -8,6 +8,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"os"
 	"path/filepath"
@@ -21,17 +22,17 @@ func (o *IPFSProxy) SetConcurrency(
 	ctx context.Context,
 	config *StorageNodeConcurrencyConfig) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:SetConcurrency start.",
-		" UploadFileTaskNum: ", config.UploadFileTaskNum,
-		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
-		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
-		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+		zap.Int32("UploadFileTaskNum", config.UploadFileTaskNum),
+		zap.Int32("UploadMultiTaskNum", config.UploadMultiTaskNum),
+		zap.Int32("DownloadFileTaskNum", config.DownloadFileTaskNum),
+		zap.Int32("DownloadMultiTaskNum", config.DownloadMultiTaskNum))
 
-	Logger.WithContext(ctx).Error(
+	ErrorLogger.WithContext(ctx).Error(
 		"IPFSProxy not support concurrency config.")
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:SetConcurrency finish.")
 	return nil
 }
@@ -40,13 +41,13 @@ func (o *IPFSProxy) SetRate(
 	ctx context.Context,
 	rateLimiter *rate.Limiter) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:SetRate start.")
 
-	Logger.WithContext(ctx).Error(
+	ErrorLogger.WithContext(ctx).Error(
 		"IPFSProxy not support rate config.")
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:SetRate finish.")
 	return nil
 }
@@ -58,12 +59,12 @@ func (o *IPFSProxy) Upload(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:Upload start.",
-		" userId: ", userId,
-		" sourcePath: ", sourcePath,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("sourcePath", sourcePath),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.UserId = userId
@@ -73,15 +74,15 @@ func (o *IPFSProxy) Upload(
 
 	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.GetTask failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"task not exist.",
-			" taskId: ", taskId)
+			zap.Int32("taskId", taskId))
 		return errors.New("task not exist")
 	}
 	if TaskTypeUpload == getTaskResp.Data.List[0].Task.Type ||
@@ -92,9 +93,9 @@ func (o *IPFSProxy) Upload(
 			sourcePath,
 			getTaskResp.Data.List[0].Task)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"IPFSProxy:uploadObject failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	} else if TaskTypeUploadFile == getTaskResp.Data.List[0].Task.Type {
@@ -103,19 +104,19 @@ func (o *IPFSProxy) Upload(
 			sourcePath,
 			getTaskResp.Data.List[0].Task)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"IPFSProxy:uploadFile failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"task type invalid.",
-			" taskId: ", taskId)
+			zap.Int32("taskId", taskId))
 		return errors.New("task type invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:Upload finish.")
 	return err
 }
@@ -126,20 +127,20 @@ func (o *IPFSProxy) uploadObject(
 	sourcePath string,
 	task *TaskData) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:uploadObject start.",
-		" userId: ", userId,
-		" sourcePath: ", sourcePath)
+		zap.String("userId", userId),
+		zap.String("sourcePath", sourcePath))
 
 	var objUuid, nodeName string
 	if TaskTypeUpload == task.Type {
 		uploadObjectTaskParams := new(UploadObjectTaskParams)
 		err = json.Unmarshal([]byte(task.Params), uploadObjectTaskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"UploadObjectTaskParams Unmarshal failed.",
-				" params: ", task.Params,
-				" err: ", err)
+				zap.String("params", task.Params),
+				zap.Error(err))
 			return err
 		}
 		objUuid = uploadObjectTaskParams.Uuid
@@ -148,19 +149,19 @@ func (o *IPFSProxy) uploadObject(
 		loadObjectTaskParams := new(LoadObjectTaskParams)
 		err = json.Unmarshal([]byte(task.Params), loadObjectTaskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"LoadObjectTaskParams Unmarshal failed.",
-				" params: ", task.Params,
-				" err: ", err)
+				zap.String("params", task.Params),
+				zap.Error(err))
 			return err
 		}
 		objUuid = loadObjectTaskParams.Request.ObjUuid
 		nodeName = loadObjectTaskParams.Request.TargetNodeName
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"task type invalid.",
-			" taskId: ", task.Id,
-			" taskType: ", task.Type)
+			zap.Int32("taskId", task.Id),
+			zap.Int32("taskType", task.Type))
 		return errors.New("task type invalid")
 	}
 
@@ -169,9 +170,9 @@ func (o *IPFSProxy) uploadObject(
 
 	err, getIpfsTokenResp := UClient.GetIpfsToken(ctx, getIpfsTokenReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"GetIpfsToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	ipfsClient := ipfs_api.NewClient(
@@ -180,50 +181,50 @@ func (o *IPFSProxy) uploadObject(
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 
 	ch := make(chan XIpfsUpload)
 	go func() {
 		if stat.IsDir() {
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"IPFSProxy:AddDir start.",
-				" sourcePath: ", sourcePath)
+				zap.String("sourcePath", sourcePath))
 			cid, _err := ipfsClient.AddDir(context.Background(), sourcePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"IPFSProxy:AddDir failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", _err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(_err))
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"IPFSProxy:AddDir finish.",
-				" sourcePath: ", sourcePath)
+				zap.String("sourcePath", sourcePath))
 			ch <- XIpfsUpload{
 				CId:    cid,
 				Result: ChanResultSuccess}
 		} else {
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"IPFSProxy:Add start.",
-				" sourcePath: ", sourcePath)
+				zap.String("sourcePath", sourcePath))
 			cid, _err := ipfsClient.Add(context.Background(), sourcePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"IPFSProxy:Add failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", _err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(_err))
 				ch <- XIpfsUpload{
 					Result: ChanResultFailed}
 			}
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"IPFSProxy:Add finish.",
-				" sourcePath: ", sourcePath)
+				zap.String("sourcePath", sourcePath))
 			ch <- XIpfsUpload{
 				CId:    cid,
 				Result: ChanResultSuccess}
@@ -236,9 +237,9 @@ func (o *IPFSProxy) uploadObject(
 			break
 		}
 		if ChanResultFailed == uploadResult.Result {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"IPFSProxy:uploadObject failed.",
-				" sourcePath: ", sourcePath)
+				zap.String("sourcePath", sourcePath))
 			return errors.New("IPFSProxy:Upload failed")
 		}
 		cid = uploadResult.CId
@@ -258,12 +259,12 @@ func (o *IPFSProxy) uploadObject(
 
 	err, _ = UClient.PutObjectDeployment(ctx, putObjectDeploymentReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"PutObjectDeployment failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:uploadObject finish.")
 	return nil
 }
@@ -273,21 +274,21 @@ func (o *IPFSProxy) uploadFile(
 	sourcePath string,
 	task *TaskData) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:uploadFile start.",
-		" sourcePath: ", sourcePath)
+		zap.String("sourcePath", sourcePath))
 
 	taskParams := new(UploadFileTaskParams)
 	err = json.Unmarshal([]byte(task.Params), taskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UploadFileTaskParams Unmarshal failed.",
-			" param: ", task.Params,
-			" err: ", err)
+			zap.String("params", task.Params),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:uploadFile finish.")
 	return nil
 }
@@ -303,18 +304,18 @@ func (o *IPFSProxy) Download(
 		targetPath = targetPath + "/"
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:Download start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" taskId: ", taskId,
-		" bucketName: ", bucketName)
+		zap.String("userId", userId),
+		zap.String("targetPath", targetPath),
+		zap.Int32("taskId", taskId),
+		zap.String("bucketName", bucketName))
 
 	err = os.MkdirAll(targetPath, os.ModePerm)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.MkdirAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -326,14 +327,15 @@ func (o *IPFSProxy) Download(
 
 	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.GetTask failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		Logger.WithContext(ctx).Error(
-			"task invalid. taskId: ", taskId)
+		ErrorLogger.WithContext(ctx).Error(
+			"task invalid.",
+			zap.Int32("taskId", taskId))
 		return errors.New("task invalid")
 	}
 	var nodeName, hash, prePath, postPath string
@@ -343,10 +345,10 @@ func (o *IPFSProxy) Download(
 			[]byte(getTaskResp.Data.List[0].Task.Params),
 			taskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"DownloadObjectTaskParams Unmarshal failed.",
-				" params: ", getTaskResp.Data.List[0].Task.Params,
-				" err: ", err)
+				zap.String("params", getTaskResp.Data.List[0].Task.Params),
+				zap.Error(err))
 			return err
 		}
 		nodeName = taskParams.NodeName
@@ -359,10 +361,10 @@ func (o *IPFSProxy) Download(
 			[]byte(getTaskResp.Data.List[0].Task.Params),
 			taskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"DownloadFileTaskParams Unmarshal failed.",
-				" params: ", getTaskResp.Data.List[0].Task.Params,
-				" err: ", err)
+				zap.String("params", getTaskResp.Data.List[0].Task.Params),
+				zap.Error(err))
 			return err
 		}
 		nodeName = taskParams.NodeName
@@ -376,10 +378,10 @@ func (o *IPFSProxy) Download(
 			[]byte(getTaskResp.Data.List[0].Task.Params),
 			taskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"LoadObjectTaskParams Unmarshal failed.",
-				" params: ", getTaskResp.Data.List[0].Task.Params,
-				" err: ", err)
+				zap.String("params", getTaskResp.Data.List[0].Task.Params),
+				zap.Error(err))
 			return err
 		}
 		nodeName = taskParams.SourceNodeName
@@ -387,8 +389,9 @@ func (o *IPFSProxy) Download(
 		prePath = targetPath + hash
 		postPath = targetPath + taskParams.Request.ObjUuid
 	} else {
-		Logger.WithContext(ctx).Error(
-			"task type invalid. taskId: ", taskId)
+		ErrorLogger.WithContext(ctx).Error(
+			"task type invalid.",
+			zap.Int32("taskId", taskId))
 		return errors.New("task type invalid")
 	}
 
@@ -397,9 +400,9 @@ func (o *IPFSProxy) Download(
 
 	err, getIpfsTokenResp := UClient.GetIpfsToken(ctx, getIpfsTokenReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.GetIpfsToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	ipfsClient := ipfs_api.NewClient(
@@ -407,24 +410,24 @@ func (o *IPFSProxy) Download(
 		getIpfsTokenResp.Token)
 	ch := make(chan XIpfsDownload)
 	go func() {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"IPFSProxy:Get start.",
-			" hash: ", hash,
-			" targetPath: ", targetPath)
+			zap.String("hash", hash),
+			zap.String("targetPath", targetPath))
 		_err := ipfsClient.Get(hash, targetPath)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"IPFSProxy:Get failed.",
-				" hash: ", hash,
-				" targetPath: ", targetPath,
-				" err: ", _err)
+				zap.String("hash", hash),
+				zap.String("targetPath", targetPath),
+				zap.Error(_err))
 			ch <- XIpfsDownload{
 				Result: ChanResultFailed}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"IPFSProxy:Get finish.",
-			" hash: ", hash,
-			" targetPath: ", targetPath)
+			zap.String("hash", hash),
+			zap.String("targetPath", targetPath))
 		ch <- XIpfsDownload{
 			Result: ChanResultSuccess}
 	}()
@@ -435,25 +438,25 @@ func (o *IPFSProxy) Download(
 			break
 		}
 		if ChanResultFailed == downloadResult.Result {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"IPFSProxy:Download failed.",
-				" targetPath: ", targetPath,
-				" taskId: ", taskId)
+				zap.String("targetPath", targetPath),
+				zap.Int32("taskId", taskId))
 			return errors.New("IPFSProxy:Download failed")
 		}
 		close(ch)
 	}
 	err = os.Rename(prePath, postPath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" prePath: ", prePath,
-			" postPath: ", postPath,
-			" err: ", err)
+			zap.String("prePath", prePath),
+			zap.String("postPath", postPath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSProxy:Download finish.")
 	return nil
 }

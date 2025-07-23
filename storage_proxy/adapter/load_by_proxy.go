@@ -8,6 +8,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"os"
 )
 
@@ -32,15 +33,15 @@ func LoadByProxy(
 		cachePath = cachePath + "/"
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"LoadByProxy start.",
-		" userId: ", userId,
-		" token: ", "***",
-		" objUuid: ", objUuid,
-		" sourceNodeName: ", *sourceNodeName,
-		" targetNodeName: ", targetNodeName,
-		" cachePath: ", cachePath,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("token", "***"),
+		zap.String("objUuid", objUuid),
+		zap.String("sourceNodeName", *sourceNodeName),
+		zap.String("targetNodeName", targetNodeName),
+		zap.String("cachePath", cachePath),
+		zap.Bool("needPure", needPure))
 
 	loadObjectResp = new(LoadObjectResp)
 
@@ -61,9 +62,9 @@ func LoadByProxy(
 
 	err, loadObjectResp = UClient.LoadObject(ctx, loadObjectReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.LoadObject failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, loadObjectResp
 	}
 
@@ -82,12 +83,12 @@ func LoadByProxy(
 		loadObjectResp.TargetNodeType,
 		needPure)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessLoadByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, loadObjectResp
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"LoadByProxy finish.")
 	return err, loadObjectResp
 }
@@ -103,16 +104,16 @@ func ProcessLoadByProxy(
 	targetNodeType int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ProcessLoadByProxy start.",
-		" userId: ", userId,
-		" cachePath: ", cachePath,
-		" objUuid: ", objUuid,
-		" sourceBucketName: ", sourceBucketName,
-		" taskId: ", taskId,
-		" sourceNodeType: ", sourceNodeType,
-		" targetNodeType: ", targetNodeType,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("cachePath", cachePath),
+		zap.String("objUuid", objUuid),
+		zap.String("sourceBucketName", sourceBucketName),
+		zap.Int32("taskId", taskId),
+		zap.Int32("sourceNodeType", sourceNodeType),
+		zap.Int32("targetNodeType", targetNodeType),
+		zap.Bool("needPure", needPure))
 
 	loadDownloadFinishFile := cachePath +
 		objUuid +
@@ -135,32 +136,34 @@ func ProcessLoadByProxy(
 		}
 		_err, _ := UClient.FinishTask(ctx, finishTaskReq)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"UrchinClient.FinishTask failed.",
-				" err: ", _err)
+				zap.Error(_err))
 			return
 		}
 		if TaskFResultESuccess == finishTaskReq.Result {
 			_err = os.RemoveAll(loadCachePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" loadCachePath: ", loadCachePath,
-					" err: ", _err)
+					zap.String("loadCachePath", loadCachePath),
+					zap.Error(_err))
 			}
 			_err = os.Remove(loadDownloadFinishFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" loadDownloadFinishFile: ", loadDownloadFinishFile,
-					" err: ", _err)
+					zap.String("loadDownloadFinishFile",
+						loadDownloadFinishFile),
+					zap.Error(_err))
 			}
 			_err = os.Remove(loadUploadFinishFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" loadUploadFinishFile: ", loadUploadFinishFile,
-					" err: ", _err)
+					zap.String("loadUploadFinishFile",
+						loadUploadFinishFile),
+					zap.Error(_err))
 			}
 		}
 	}()
@@ -168,29 +171,31 @@ func ProcessLoadByProxy(
 	if needPure {
 		err = os.RemoveAll(loadCachePath)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" loadCachePath: ", loadCachePath,
-				" err: ", err)
+				zap.String("loadCachePath", loadCachePath),
+				zap.Error(err))
 			return err
 		}
 		err = os.Remove(loadDownloadFinishFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" loadDownloadFinishFile: ", loadDownloadFinishFile,
-					" err: ", err)
+					zap.String("loadDownloadFinishFile",
+						loadDownloadFinishFile),
+					zap.Error(err))
 				return err
 			}
 		}
 		err = os.Remove(loadUploadFinishFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" loadUploadFinishFile: ", loadUploadFinishFile,
-					" err: ", err)
+					zap.String("loadUploadFinishFile",
+						loadUploadFinishFile),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -201,9 +206,9 @@ func ProcessLoadByProxy(
 		if os.IsNotExist(err) {
 			err, sourceStorage := NewStorageProxy(ctx, sourceNodeType)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"source NewStorageProxy failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			err = sourceStorage.Download(
@@ -214,24 +219,26 @@ func ProcessLoadByProxy(
 				sourceBucketName)
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sourceStorage.Download failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			_, err = os.Create(loadDownloadFinishFile)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Create failed.",
-					" loadDownloadFinishFile: ", loadDownloadFinishFile,
-					" err: ", err)
+					zap.String("loadDownloadFinishFile",
+						loadDownloadFinishFile),
+					zap.Error(err))
 				return err
 			}
 		} else {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" loadDownloadFinishFile: ", loadDownloadFinishFile,
-				" err: ", err)
+				zap.String("loadDownloadFinishFile",
+					loadDownloadFinishFile),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -241,9 +248,9 @@ func ProcessLoadByProxy(
 		if os.IsNotExist(err) {
 			err, targetStorage := NewStorageProxy(ctx, targetNodeType)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"target NewStorageProxy failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			err = targetStorage.Upload(
@@ -253,28 +260,30 @@ func ProcessLoadByProxy(
 				taskId,
 				needPure)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"targetStorage.Upload failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			_, err = os.Create(loadUploadFinishFile)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Create failed.",
-					" loadUploadFinishFile: ", loadUploadFinishFile,
-					" err: ", err)
+					zap.String("loadUploadFinishFile",
+						loadUploadFinishFile),
+					zap.Error(err))
 				return err
 			}
 		} else {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" loadUploadFinishFile: ", loadUploadFinishFile,
-				" err: ", err)
+				zap.String("loadUploadFinishFile",
+					loadUploadFinishFile),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ProcessLoadByProxy finish.")
 	return nil
 }

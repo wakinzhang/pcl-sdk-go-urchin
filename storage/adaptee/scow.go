@@ -12,6 +12,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"io"
 	"os"
@@ -42,15 +43,13 @@ func (o *Scow) Init(
 	reqTimeout,
 	maxConnection int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Init start.",
-		" username: ", "***",
-		" password: ", "***",
-		" endpoint: ", endpoint,
-		" url: ", url,
-		" clusterId: ", clusterId,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endpoint", endpoint),
+		zap.String("url", url),
+		zap.String("clusterId", clusterId),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	o.sClient = new(ScowClient)
 	o.sClient.Init(
@@ -72,7 +71,7 @@ func (o *Scow) Init(
 		DefaultScowRateLimit,
 		DefaultScowRateBurst)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Init finish.")
 	return nil
 }
@@ -81,19 +80,19 @@ func (o *Scow) SetConcurrency(
 	ctx context.Context,
 	config *StorageNodeConcurrencyConfig) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:SetConcurrency start.",
-		" UploadFileTaskNum: ", config.UploadFileTaskNum,
-		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
-		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
-		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+		zap.Int32("UploadFileTaskNum", config.UploadFileTaskNum),
+		zap.Int32("UploadMultiTaskNum", config.UploadMultiTaskNum),
+		zap.Int32("DownloadFileTaskNum", config.DownloadFileTaskNum),
+		zap.Int32("DownloadMultiTaskNum", config.DownloadMultiTaskNum))
 
 	o.sUploadFileTaskNum = int(config.UploadFileTaskNum)
 	o.sUploadMultiTaskNum = int(config.UploadMultiTaskNum)
 	o.sDownloadFileTaskNum = int(config.DownloadFileTaskNum)
 	o.sDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:SetConcurrency finish.")
 	return nil
 }
@@ -102,12 +101,12 @@ func (o *Scow) SetRate(
 	ctx context.Context,
 	rateLimiter *rate.Limiter) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:SetRate start.")
 
 	o.sRateLimiter = rateLimiter
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:SetRate finish.")
 	return nil
 }
@@ -120,14 +119,14 @@ func (o *Scow) Mkdir(
 	if scowMkdirInput, ok := input.(ScowMkdirInput); ok {
 		path = scowMkdirInput.Path
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Mkdir start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = RetryV1(
 		ctx,
@@ -136,22 +135,22 @@ func (o *Scow) Mkdir(
 		func() error {
 			_err := o.sClient.Mkdir(ctx, path)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sClient.Mkdir failed.",
-					" path: ", path,
-					" err: ", _err)
+					zap.String("path", path),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow.Mkdir failed.",
-			" path: ", path,
-			" err: ", err)
+			zap.String("path", path),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Mkdir finish.")
 	return nil
 }
@@ -161,25 +160,25 @@ func (o *Scow) loadCheckpointFile(
 	checkpointFile string,
 	result interface{}) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:loadCheckpointFile start.",
-		" checkpointFile: ", checkpointFile)
+		zap.String("checkpointFile", checkpointFile))
 
 	ret, err := os.ReadFile(checkpointFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" checkpointFile: ", checkpointFile,
-			" err: ", err)
+			zap.String("checkpointFile", checkpointFile),
+			zap.Error(err))
 		return err
 	}
 	if len(ret) == 0 {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
-			" checkpointFile: ", checkpointFile)
+			zap.String("checkpointFile", checkpointFile))
 		return errors.New("checkpointFile empty")
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
@@ -189,10 +188,10 @@ func (o *Scow) sliceObject(
 	objectSize, partSize int64,
 	dfc *ScowDownloadCheckpoint) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:sliceObject start.",
-		" objectSize: ", objectSize,
-		" partSize: ", partSize)
+		zap.Int64("objectSize", objectSize),
+		zap.Int64("partSize", partSize))
 
 	cnt := objectSize / partSize
 	if objectSize%partSize > 0 {
@@ -218,7 +217,7 @@ func (o *Scow) sliceObject(
 			dfc.DownloadParts[cnt-1].Length = value
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:sliceObject finish.")
 }
 
@@ -227,39 +226,39 @@ func (o *Scow) updateCheckpointFile(
 	fc interface{},
 	checkpointFilePath string) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:updateCheckpointFile start.",
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	result, err := xml.Marshal(fc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"xml.Marshal failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	err = os.WriteFile(checkpointFilePath, result, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.WriteFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
 	defer func() {
 		errMsg := file.Close()
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", errMsg)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_ = file.Sync()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:updateCheckpointFile finish.")
 	return err
 }
@@ -275,16 +274,16 @@ func (o *Scow) Upload(
 		targetPath = scowUploadInput.TargetPath
 		needPure = scowUploadInput.NeedPure
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Upload start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	err = RetryV1(
 		ctx,
@@ -293,37 +292,37 @@ func (o *Scow) Upload(
 		func() error {
 			_err := o.sClient.Mkdir(ctx, targetPath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sClient.Mkdir failed.",
-					" targetPath: ", targetPath,
-					" err: ", _err)
+					zap.String("targetPath", targetPath),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"sClient.Mkdir failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return err
 	}
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 
 	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow.uploadFolder failed.",
-				" sourcePath: ", sourcePath,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -334,15 +333,15 @@ func (o *Scow) Upload(
 			objectPath,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow.uploadFile failed.",
-				" sourcePath: ", sourcePath,
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Upload finish.")
 	return nil
 }
@@ -353,29 +352,29 @@ func (o *Scow) uploadFolder(
 	targetPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFolder start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
 		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
-		" uploadFolderRecord: ", uploadFolderRecord)
+		zap.String("uploadFolderRecord", uploadFolderRecord))
 
 	if needPure {
 		err = os.Remove(uploadFolderRecord)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -387,10 +386,10 @@ func (o *Scow) uploadFolder(
 				fileMap[strings.TrimSuffix(line, "\r")] = 0
 			}
 		} else if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.ReadFile failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -399,18 +398,18 @@ func (o *Scow) uploadFolder(
 	scowMkdirInput.Path = targetPath
 	err = o.Mkdir(ctx, scowMkdirInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow.Mkdir failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return err
 	}
 
 	pool, err := ants.NewPool(o.sUploadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -422,38 +421,42 @@ func (o *Scow) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.sRateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					dirWaitGroup.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Scow:uploadFileResume failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
@@ -464,36 +467,37 @@ func (o *Scow) uploadFolder(
 						filePath)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"filepath.Rel failed.",
-							" sourcePath: ", sourcePath,
-							" filePath: ", filePath,
-							" relPath: ", relPath,
-							" err: ", _err)
+							zap.String("sourcePath", sourcePath),
+							zap.String("filePath", filePath),
+							zap.String("relPath", relPath),
+							zap.Error(_err))
 						return
 					}
 					objectPath := targetPath + relPath
 					if _, exists := fileMap[objectPath]; exists {
-						Logger.WithContext(ctx).Info(
-							"already finish. objectPath: ", objectPath)
+						InfoLogger.WithContext(ctx).Info(
+							"already finish.",
+							zap.String("objectPath", objectPath))
 						return
 					}
-					Logger.WithContext(ctx).Debug(
+					InfoLogger.WithContext(ctx).Debug(
 						"file is dir.",
-						" fileName: ", fileInfo.Name(),
-						" filePath: ", filePath,
-						" relPath: ", relPath,
-						" objectPath: ", objectPath)
+						zap.String("fileName", fileInfo.Name()),
+						zap.String("filePath", filePath),
+						zap.String("relPath", relPath),
+						zap.String("objectPath", objectPath))
 
 					input := ScowMkdirInput{}
 					input.Path = objectPath
 					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Scow.Mkdir failed.",
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 
@@ -504,37 +508,39 @@ func (o *Scow) uploadFolder(
 						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.OpenFile failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.Error(_err))
 						return
 					}
 					defer func() {
 						errMsg := f.Close()
 						if errMsg != nil {
-							Logger.WithContext(ctx).Warn(
+							ErrorLogger.WithContext(ctx).Warn(
 								"close file failed.",
-								" err: ", errMsg)
+								zap.Error(errMsg))
 						}
 					}()
 					_, _err = f.Write([]byte(objectPath + "\n"))
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"write file failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -542,16 +548,16 @@ func (o *Scow) uploadFolder(
 	dirWaitGroup.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("uploadFolder not all success")
 	}
 
@@ -561,38 +567,42 @@ func (o *Scow) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.sRateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					fileWaitGroup.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Scow:uploadFileResume failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
@@ -603,24 +613,25 @@ func (o *Scow) uploadFolder(
 						filePath)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"filepath.Rel failed.",
-							" sourcePath: ", sourcePath,
-							" filePath: ", filePath,
-							" relPath: ", relPath,
-							" err: ", _err)
+							zap.String("sourcePath", sourcePath),
+							zap.String("filePath", filePath),
+							zap.String("relPath", relPath),
+							zap.Error(_err))
 						return
 					}
 					objectPath := targetPath + relPath
 					if strings.HasSuffix(objectPath, UploadFileRecordSuffix) {
-						Logger.WithContext(ctx).Info(
+						InfoLogger.WithContext(ctx).Info(
 							"upload record file.",
-							" objectPath: ", objectPath)
+							zap.String("objectPath", objectPath))
 						return
 					}
 					if _, exists := fileMap[objectPath]; exists {
-						Logger.WithContext(ctx).Info(
-							"already finish. objectPath: ", objectPath)
+						InfoLogger.WithContext(ctx).Info(
+							"already finish.",
+							zap.String("objectPath", objectPath))
 						return
 					}
 					_err = o.uploadFile(
@@ -630,11 +641,11 @@ func (o *Scow) uploadFolder(
 						needPure)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Scow:uploadFile failed.",
-							" filePath: ", filePath,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("filePath", filePath),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 					fileMutex.Lock()
@@ -644,37 +655,39 @@ func (o *Scow) uploadFolder(
 						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.OpenFile failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.Error(_err))
 						return
 					}
 					defer func() {
 						errMsg := f.Close()
 						if errMsg != nil {
-							Logger.WithContext(ctx).Warn(
+							ErrorLogger.WithContext(ctx).Warn(
 								"close file failed.",
-								" err: ", errMsg)
+								zap.Error(errMsg))
 						}
 					}()
 					_, _err = f.Write([]byte(objectPath + "\n"))
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"write file failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -682,30 +695,30 @@ func (o *Scow) uploadFolder(
 	fileWaitGroup.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("uploadFolder not all success")
 	}
 
 	_err := os.Remove(uploadFolderRecord)
 	if nil != _err {
 		if !os.IsNotExist(_err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", _err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(_err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFolder finish.")
 	return nil
 }
@@ -716,33 +729,33 @@ func (o *Scow) uploadFile(
 	objectPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFile start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Bool("needPure", needPure))
 
 	sourceFileStat, err := os.Stat(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
 	if DefaultScowUploadMultiSize < sourceFileStat.Size() {
 		err, exist := o.sClient.CheckExist(ctx, objectPath)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"sClient.CheckExist failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		if true == exist {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"Path already exist, no need to upload.",
-				" objectPath: ", objectPath)
+				zap.String("objectPath", objectPath))
 			return err
 		}
 		err = o.uploadFileResume(
@@ -751,12 +764,12 @@ func (o *Scow) uploadFile(
 			objectPath,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow:uploadFileResume failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", objectPath,
-				" needPure: ", needPure,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectPath", objectPath),
+				zap.Bool("needPure", needPure),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -765,16 +778,16 @@ func (o *Scow) uploadFile(
 			sourceFile,
 			objectPath)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow:uploadFileStream failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFile finish.")
 	return err
 }
@@ -784,10 +797,10 @@ func (o *Scow) uploadFileStream(
 	sourceFile,
 	objectPath string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFileStream start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath))
 
 	err = RetryV1(
 		ctx,
@@ -796,19 +809,19 @@ func (o *Scow) uploadFileStream(
 		func() error {
 			fd, _err := os.Open(sourceFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Open failed.",
-					" sourceFile: ", sourceFile,
-					" err: ", _err)
+					zap.String("sourceFile", sourceFile),
+					zap.Error(_err))
 				return _err
 			}
 			defer func() {
 				errMsg := fd.Close()
 				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" sourceFile: ", sourceFile,
-						" err: ", errMsg)
+						zap.String("sourceFile", sourceFile),
+						zap.Error(errMsg))
 				}
 			}()
 
@@ -818,24 +831,24 @@ func (o *Scow) uploadFileStream(
 				objectPath,
 				fd)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sClient.Upload failed.",
-					" sourceFile: ", sourceFile,
-					" objectPath: ", objectPath,
-					" err: ", _err)
+					zap.String("sourceFile", sourceFile),
+					zap.String("objectPath", objectPath),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow.uploadFileStream failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", objectPath,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("objectPath", objectPath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFileStream finish.")
 	return err
 }
@@ -846,11 +859,11 @@ func (o *Scow) uploadFileResume(
 	objectPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFileResume start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Bool("needPure", needPure))
 
 	uploadFileInput := new(ScowUploadFileInput)
 	uploadFileInput.ObjectPath = objectPath
@@ -869,27 +882,27 @@ func (o *Scow) uploadFileResume(
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
+				zap.String("sourceFile", sourceFile),
+				zap.Error(errMsg))
 		}
 	}()
 	hash := md5.New()
 	if _, err = io.Copy(hash, fd); nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.Copy failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 	md5Value := hex.EncodeToString(hash.Sum(nil))
@@ -899,10 +912,11 @@ func (o *Scow) uploadFileResume(
 		err = os.Remove(uploadFileInput.CheckpointFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" CheckpointFile: ", uploadFileInput.CheckpointFile,
-					" err: ", err)
+					zap.String("CheckpointFile",
+						uploadFileInput.CheckpointFile),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -914,15 +928,15 @@ func (o *Scow) uploadFileResume(
 		objectPath,
 		uploadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:resumeUpload failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", objectPath,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("objectPath", objectPath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadFileResume finish.")
 	return err
 }
@@ -933,23 +947,23 @@ func (o *Scow) resumeUpload(
 	objectPath string,
 	input *ScowUploadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:resumeUpload start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath))
 
 	uploadFileStat, err := os.Stat(input.UploadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" uploadFile: ", input.UploadFile,
-			" err: ", err)
+			zap.String("uploadFile", input.UploadFile),
+			zap.Error(err))
 		return err
 	}
 	if uploadFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadFile can not be a folder.",
-			" uploadFile: ", input.UploadFile)
+			zap.String("uploadFile", input.UploadFile))
 		return errors.New("uploadFile can not be a folder")
 	}
 
@@ -965,10 +979,10 @@ func (o *Scow) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow:getUploadCheckpointFile failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -980,20 +994,20 @@ func (o *Scow) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow:prepareUpload failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Scow:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -1005,10 +1019,10 @@ func (o *Scow) resumeUpload(
 		ufc,
 		input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:uploadPartConcurrent failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
@@ -1018,14 +1032,14 @@ func (o *Scow) resumeUpload(
 		enableCheckpoint,
 		checkpointFilePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:completeParts failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:resumeUpload finish.")
 	return err
 }
@@ -1036,16 +1050,16 @@ func (o *Scow) uploadPartConcurrent(
 	ufc *ScowUploadCheckpoint,
 	input *ScowUploadFileInput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadPartConcurrent start.",
-		" sourceFile: ", sourceFile)
+		zap.String("sourceFile", sourceFile))
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1071,16 +1085,20 @@ func (o *Scow) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.sRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1099,26 +1117,26 @@ func (o *Scow) uploadPartConcurrent(
 			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Scow:handleUploadTaskResult failed.",
-					" partNumber: ", task.PartNumber,
-					" checkpointFile: ", input.CheckpointFile,
-					" err: ", _err)
+					zap.Int32("partNumber", task.PartNumber),
+					zap.String("checkpointFile", input.CheckpointFile),
+					zap.Error(_err))
 				uploadPartError.Store(_err)
 			}
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"Scow:handleUploadTaskResult finish.")
 			return
 		})
 	}
 	wg.Wait()
 	if err, ok := uploadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadPartError load failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:uploadPartConcurrent finish.")
 	return nil
 }
@@ -1129,54 +1147,55 @@ func (o *Scow) getUploadCheckpointFile(
 	uploadFileStat os.FileInfo,
 	input *ScowUploadFileInput) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:getUploadCheckpointFile start.")
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpoint file can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !ufc.IsValid(ctx, input.UploadFile, uploadFileStat) {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"Scow:loadCheckpointFile finish.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:getUploadCheckpointFile finish.")
 	return true, nil
 }
@@ -1188,9 +1207,9 @@ func (o *Scow) prepareUpload(
 	uploadFileStat os.FileInfo,
 	input *ScowUploadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:prepareUpload start.",
-		" objectPath: ", objectPath)
+		zap.String("objectPath", objectPath))
 
 	ufc.ObjectPath = objectPath
 	ufc.UploadFile = input.UploadFile
@@ -1200,12 +1219,12 @@ func (o *Scow) prepareUpload(
 
 	err = o.sliceFile(ctx, input.PartSize, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:sliceFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:prepareUpload finish.")
 	return err
 }
@@ -1215,10 +1234,10 @@ func (o *Scow) sliceFile(
 	partSize int64,
 	ufc *ScowUploadCheckpoint) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:sliceFile start.",
-		" partSize: ", partSize,
-		" fileSize: ", ufc.FileInfo.Size)
+		zap.Int64("partSize", partSize),
+		zap.Int64("fileSize", ufc.FileInfo.Size))
 	fileSize := ufc.FileInfo.Size
 	cnt := fileSize / partSize
 	if cnt >= 10000 {
@@ -1233,10 +1252,10 @@ func (o *Scow) sliceFile(
 	}
 
 	if partSize > DefaultScowMaxPartSize {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"upload file part too large.",
-			" partSize: ", partSize,
-			" maxPartSize: ", DefaultScowMaxPartSize)
+			zap.Int64("partSize", partSize),
+			zap.Int("maxPartSize", DefaultScowMaxPartSize))
 		return fmt.Errorf("upload file part too large")
 	}
 
@@ -1259,7 +1278,7 @@ func (o *Scow) sliceFile(
 		}
 		ufc.UploadParts = uploadParts
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:sliceFile finish.")
 	return nil
 }
@@ -1273,10 +1292,10 @@ func (o *Scow) handleUploadTaskResult(
 	checkpointFilePath string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:handleUploadTaskResult start.",
-		" checkpointFilePath: ", checkpointFilePath,
-		" partNum: ", partNum)
+		zap.String("checkpointFilePath", checkpointFilePath),
+		zap.Int32("partNum", partNum))
 
 	if _, ok := result.(*ScowBaseMessageResponse); ok {
 		lock.Lock()
@@ -1286,24 +1305,24 @@ func (o *Scow) handleUploadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Scow:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" partNum: ", partNum,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Int32("partNum", partNum),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"upload task result failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" partNum: ", partNum,
-				" err: ", _err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Int32("partNum", partNum),
+				zap.Error(_err))
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:handleUploadTaskResult finish.")
 	return
 }
@@ -1314,13 +1333,13 @@ func (o *Scow) completeParts(
 	enableCheckpoint bool,
 	checkpointFilePath string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:completeParts start.",
-		" enableCheckpoint: ", enableCheckpoint,
-		" checkpointFilePath: ", checkpointFilePath,
-		" FileName: ", input.FileName,
-		" ObjectPath: ", input.ObjectPath,
-		" Md5: ", input.Md5)
+		zap.Bool("enableCheckpoint", enableCheckpoint),
+		zap.String("checkpointFilePath", checkpointFilePath),
+		zap.String("fileName", input.FileName),
+		zap.String("objectPath: ", input.ObjectPath),
+		zap.String("md5", input.Md5))
 
 	err = RetryV1(
 		ctx,
@@ -1333,22 +1352,22 @@ func (o *Scow) completeParts(
 				filepath.Dir(input.ObjectPath),
 				input.Md5)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sClient.MergeChunks failed.",
-					" FileName: ", input.FileName,
-					" Path: ", filepath.Dir(input.ObjectPath),
-					" Md5: ", input.Md5,
-					" err: ", _err)
+					zap.String("fileName", input.FileName),
+					zap.String("path", filepath.Dir(input.ObjectPath)),
+					zap.String("md5", input.Md5),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow.completeParts failed.",
-			" FileName: ", input.FileName,
-			" Path: ", filepath.Dir(input.ObjectPath),
-			" Md5: ", input.Md5,
-			" err: ", err)
+			zap.String("fileName", input.FileName),
+			zap.String("path", filepath.Dir(input.ObjectPath)),
+			zap.String("md5", input.Md5),
+			zap.Error(err))
 		return err
 	}
 
@@ -1356,14 +1375,14 @@ func (o *Scow) completeParts(
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:completeParts finish.")
 	return err
 }
@@ -1385,11 +1404,11 @@ func (task *ScowUploadPartTask) Run(
 	ctx context.Context,
 	sourceFile string) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowUploadPartTask:Run start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", task.ObjectPath),
+		zap.Int32("partNumber", task.PartNumber))
 
 	err, resp := RetryV4(
 		ctx,
@@ -1398,21 +1417,21 @@ func (task *ScowUploadPartTask) Run(
 		func() (error, interface{}) {
 			fd, _err := os.Open(sourceFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Open failed.",
-					" sourceFile: ", sourceFile,
-					" err: ", _err)
+					zap.String("sourceFile", sourceFile),
+					zap.Error(_err))
 				return _err, nil
 			}
 			defer func() {
 				errMsg := fd.Close()
 				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" sourceFile: ", sourceFile,
-						" objectPath: ", task.ObjectPath,
-						" partNumber: ", task.PartNumber,
-						" err: ", errMsg)
+						zap.String("sourceFile", sourceFile),
+						zap.String("objectPath", task.ObjectPath),
+						zap.Int32("partNumber", task.PartNumber),
+						zap.Error(errMsg))
 				}
 			}()
 
@@ -1422,12 +1441,12 @@ func (task *ScowUploadPartTask) Run(
 			readerWrapper.TotalCount = task.PartSize
 			readerWrapper.Mark = task.Offset
 			if _, _err = fd.Seek(task.Offset, io.SeekStart); nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"fd.Seek failed.",
-					" sourceFile: ", sourceFile,
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber,
-					" err: ", _err)
+					zap.String("sourceFile", sourceFile),
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int32("partNumber", task.PartNumber),
+					zap.Error(_err))
 				return _err, nil
 			}
 			_err, respTmp := task.SClient.UploadChunks(
@@ -1438,32 +1457,32 @@ func (task *ScowUploadPartTask) Run(
 				task.PartNumber,
 				readerWrapper)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"SClient.UploadChunks failed.",
-					" task.FileName: ", task.FileName,
-					" task.ObjectPath: ", task.ObjectPath,
-					" task.Md5: ", task.Md5,
-					" task.PartNumber: ", task.PartNumber,
-					" err: ", _err)
+					zap.String("fileName", task.FileName),
+					zap.String("objectPath", task.ObjectPath),
+					zap.String("md5", task.Md5),
+					zap.Int32("partNumber", task.PartNumber),
+					zap.Error(_err))
 				return _err, nil
 			}
 			return _err, respTmp
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowUploadPartTask.Run failed.",
-			" task.FileName: ", task.FileName,
-			" task.ObjectPath: ", task.ObjectPath,
-			" task.Md5: ", task.Md5,
-			" task.PartNumber: ", task.PartNumber,
-			" err: ", err)
+			zap.String("fileName", task.FileName),
+			zap.String("objectPath", task.ObjectPath),
+			zap.String("md5", task.Md5),
+			zap.Int32("partNumber", task.PartNumber),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowUploadPartTask:Run finish.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber)
+		zap.String("objectPath", task.ObjectPath),
+		zap.Int32("partNumber", task.PartNumber))
 	return resp
 }
 
@@ -1476,30 +1495,30 @@ func (o *Scow) Download(
 		sourcePath = scowDownloadInput.SourcePath
 		targetPath = scowDownloadInput.TargetPath
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Download start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath))
 
 	err = os.MkdirAll(targetPath, os.ModePerm)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return
 	}
 
 	downloadFolderRecord :=
 		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	err = o.downloadBatch(
 		ctx,
@@ -1507,26 +1526,26 @@ func (o *Scow) Download(
 		targetPath,
 		downloadFolderRecord)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:downloadBatch failed.",
-			" sourcePath: ", sourcePath,
-			" targetPath: ", targetPath,
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.String("targetPath", targetPath),
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Remove(downloadFolderRecord)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Download finish.")
 	return nil
 }
@@ -1537,11 +1556,11 @@ func (o *Scow) downloadBatch(
 	targetPath,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadBatch start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	err, scowListResponseBodyTmp := RetryV4(
 		ctx,
@@ -1551,18 +1570,18 @@ func (o *Scow) downloadBatch(
 			output := new(ScowListResponseBody)
 			_err, output := o.sClient.List(ctx, sourcePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sClient:List start.",
-					" sourcePath: ", sourcePath,
-					" err: ", _err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(_err))
 			}
 			return _err, output
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"sClient:List start.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	scowListResponseBody := new(ScowListResponseBody)
@@ -1570,7 +1589,7 @@ func (o *Scow) downloadBatch(
 	if scowListResponseBody, isValid =
 		scowListResponseBodyTmp.(*ScowListResponseBody); !isValid {
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response invalid.")
 		return errors.New("response invalid")
 	}
@@ -1592,10 +1611,10 @@ func (o *Scow) downloadBatch(
 			folder.PathExt
 		err = os.MkdirAll(itemPath, os.ModePerm)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" itemPath: ", itemPath,
-				" err: ", err)
+				zap.String("itemPath", itemPath),
+				zap.Error(err))
 			return
 		}
 	}
@@ -1607,12 +1626,12 @@ func (o *Scow) downloadBatch(
 		objects,
 		downloadFolderRecord)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:downloadObjects failed.",
-			" sourcePath: ", sourcePath,
-			" targetPath: ", targetPath,
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.String("targetPath", targetPath),
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 	for _, folder := range folders {
@@ -1626,18 +1645,18 @@ func (o *Scow) downloadBatch(
 			targetPath,
 			downloadFolderRecord)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow:downloadBatch failed.",
-				" sourcePath: ", folder.PathExt,
-				" targetPath: ", targetPath,
-				" err: ", err)
+				zap.String("sourcePath", folder.PathExt),
+				zap.String("targetPath", targetPath),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadBatch finish.",
-		" sourcePath: ", sourcePath)
+		zap.String("sourcePath", sourcePath))
 	return nil
 }
 
@@ -1648,11 +1667,11 @@ func (o *Scow) downloadObjects(
 	objects []*ScowObject,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadObjects start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -1664,10 +1683,10 @@ func (o *Scow) downloadObjects(
 			fileMap[strings.TrimSuffix(line, "\r")] = 0
 		}
 	} else if !os.IsNotExist(err) {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
@@ -1675,45 +1694,49 @@ func (o *Scow) downloadObjects(
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(o.sDownloadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool for download object failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
 	for index, object := range objects {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"object content.",
-			" index: ", index,
-			" Name: ", object.Name,
-			" size: ", object.Size)
+			zap.Int("index", index),
+			zap.String("name: ", object.Name),
+			zap.Int64("size", object.Size))
 		itemObject := object
 		if _, exists := fileMap[itemObject.PathExt]; exists {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"file already success.",
-				" objectPath: ", itemObject.PathExt)
+				zap.String("objectPath", itemObject.PathExt))
 			continue
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.sRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
 				if _err := recover(); nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", _err)
+						zap.Any("error", _err))
 					isAllSuccess = false
 				}
 			}()
@@ -1725,11 +1748,11 @@ func (o *Scow) downloadObjects(
 				targetFile)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Scow:downloadPart failed.",
-					" objectName: ", itemObject.Name,
-					" targetFile: ", targetFile,
-					" err: ", _err)
+					zap.String("objectName", itemObject.Name),
+					zap.String("targetFile", targetFile),
+					zap.Error(_err))
 				return
 			}
 			fileMutex.Lock()
@@ -1739,48 +1762,51 @@ func (o *Scow) downloadObjects(
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.Error(_err))
 				return
 			}
 			defer func() {
 				errMsg := f.Close()
 				if errMsg != nil {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" downloadFolderRecord: ", downloadFolderRecord,
-						" err: ", errMsg)
+						zap.String("downloadFolderRecord",
+							downloadFolderRecord),
+						zap.Error(errMsg))
 				}
 			}()
 			_, _err = f.Write([]byte(itemObject.PathExt + "\n"))
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectPath: ", itemObject.PathExt,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.String("objectPath", itemObject.PathExt),
+					zap.Error(_err))
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:downloadObjects not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("downloadObjects not all success")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadObjects finish.")
 	return nil
 }
@@ -1790,10 +1816,10 @@ func (o *Scow) downloadPart(
 	object *ScowObject,
 	targetFile string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadPart start.",
-		" Name: ", object.Name,
-		" targetFile: ", targetFile)
+		zap.String("name: ", object.Name),
+		zap.String("targetFile", targetFile))
 
 	downloadFileInput := new(ScowDownloadFileInput)
 	downloadFileInput.DownloadFile = targetFile
@@ -1808,12 +1834,12 @@ func (o *Scow) downloadPart(
 		object,
 		downloadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:resumeDownload failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadPart finish.")
 	return
 }
@@ -1823,7 +1849,7 @@ func (o *Scow) resumeDownload(
 	object *ScowObject,
 	input *ScowDownloadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:resumeDownload start.")
 
 	partSize := input.PartSize
@@ -1839,10 +1865,10 @@ func (o *Scow) resumeDownload(
 			input,
 			object)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow:getDownloadCheckpointFile failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -1861,28 +1887,29 @@ func (o *Scow) resumeDownload(
 			dfc.TempFileInfo.TempFileUrl,
 			dfc.TempFileInfo.Size)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow:prepareTempFile failed.",
-				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-				" Size: ", dfc.TempFileInfo.Size,
-				" err: ", err)
+				zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+				zap.Int64("Size", dfc.TempFileInfo.Size),
+				zap.Error(err))
 			return err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Scow:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
 				if _errMsg != nil {
 					if !os.IsNotExist(_errMsg) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.Remove failed.",
-							" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-							" err: ", _errMsg)
+							zap.String("TempFileUrl",
+								dfc.TempFileInfo.TempFileUrl),
+							zap.Error(_errMsg))
 					}
 				}
 				return err
@@ -1898,34 +1925,34 @@ func (o *Scow) resumeDownload(
 		enableCheckpoint,
 		downloadFileError)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:handleDownloadFileResult failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Rename(dfc.TempFileInfo.TempFileUrl, input.DownloadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" DownloadFile: ", input.DownloadFile,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.String("DownloadFile", input.DownloadFile),
+			zap.Error(err))
 		return err
 	}
 	if enableCheckpoint {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:resumeDownload finish.")
 	return nil
 }
@@ -1935,15 +1962,15 @@ func (o *Scow) downloadFileConcurrent(
 	input *ScowDownloadFileInput,
 	dfc *ScowDownloadCheckpoint) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadFileConcurrent start.")
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1974,24 +2001,28 @@ func (o *Scow) downloadFileConcurrent(
 			TempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask params.",
-			" Offset: ", downloadPart.Offset,
-			" Length: ", downloadPart.Length,
-			" PartNumber: ", downloadPart.PartNumber,
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" EnableCheckpoint: ", input.EnableCheckpoint)
+			zap.Int64("Offset", downloadPart.Offset),
+			zap.Int64("Length", downloadPart.Length),
+			zap.Int64("PartNumber", downloadPart.PartNumber),
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Bool("EnableCheckpoint", input.EnableCheckpoint))
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.sRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -2009,10 +2040,11 @@ func (o *Scow) downloadFileConcurrent(
 						dfc,
 						input.CheckpointFile)
 					if nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Scow:updateCheckpointFile failed.",
-							" checkpointFile: ", input.CheckpointFile,
-							" err: ", _err)
+							zap.String("checkpointFile",
+								input.CheckpointFile),
+							zap.Error(_err))
 						downloadPartError.Store(_err)
 					}
 				}
@@ -2030,31 +2062,31 @@ func (o *Scow) downloadFileConcurrent(
 				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"Scow:handleDownloadTaskResult failed.",
-						" partNumber: ", task.PartNumber,
-						" checkpointFile: ", input.CheckpointFile,
-						" err: ", _err)
+						zap.Int64("partNumber", task.PartNumber),
+						zap.String("checkpointFile", input.CheckpointFile),
+						zap.Error(_err))
 					downloadPartError.Store(_err)
 				}
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if err, ok := downloadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"downloadPartError failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:downloadFileConcurrent finish.")
 	return nil
 }
@@ -2065,65 +2097,67 @@ func (o *Scow) getDownloadCheckpointFile(
 	input *ScowDownloadFileInput,
 	object *ScowObject) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:getDownloadCheckpointFile start.",
-		" checkpointFile: ", input.CheckpointFile)
+		zap.String("checkpointFile", input.CheckpointFile))
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpointFilePath can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !dfc.IsValid(ctx, input, object) {
 		if dfc.TempFileInfo.TempFileUrl != "" {
 			_err := os.Remove(dfc.TempFileInfo.TempFileUrl)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-						" err: ", _err)
+						zap.String("TempFileUrl",
+							dfc.TempFileInfo.TempFileUrl),
+						zap.Error(_err))
 				}
 			}
 		}
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"no need to check point.")
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"need to check point.")
 	return true, nil
 }
@@ -2133,35 +2167,37 @@ func (o *Scow) prepareTempFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:prepareTempFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	parentDir := filepath.Dir(tempFileURL)
 	stat, err := os.Stat(parentDir)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" parentDir: ", parentDir,
-				" err: ", err)
+				zap.String("parentDir", parentDir),
+				zap.Error(err))
 			return err
 		}
-		Logger.WithContext(ctx).Debug(
-			"parentDir: ", parentDir, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"parentDir not exist.",
+			zap.String("parentDir", parentDir))
 
 		_err := os.MkdirAll(parentDir, os.ModePerm)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" parentDir: ", parentDir,
-				" err: ", _err)
+				zap.String("parentDir", parentDir),
+				zap.Error(_err))
 			return _err
 		}
 	} else if !stat.IsDir() {
-		Logger.WithContext(ctx).Error(
-			"same file exists. parentDir: ", parentDir)
+		ErrorLogger.WithContext(ctx).Error(
+			"same file exists.",
+			zap.String("parentDir", parentDir))
 		return fmt.Errorf(
 			"cannot create folder: %s due to a same file exists",
 			parentDir)
@@ -2169,10 +2205,10 @@ func (o *Scow) prepareTempFile(
 
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"Scow:createFile finish.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize))
 		return nil
 	}
 	fd, err := os.OpenFile(
@@ -2180,32 +2216,32 @@ func (o *Scow) prepareTempFile(
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	if fileSize > 0 {
 		_, err = fd.WriteAt([]byte("a"), fileSize-1)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"write file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", err)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:prepareTempFile finish.")
 	return nil
 }
@@ -2215,41 +2251,41 @@ func (o *Scow) createFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:createFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	fd, err := syscall.Open(
 		tempFileURL,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Open failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := syscall.Close(fd)
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"syscall.Close failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	err = syscall.Ftruncate(fd, fileSize)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Ftruncate failed.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:createFile finish.")
 	return nil
 }
@@ -2263,10 +2299,10 @@ func (o *Scow) handleDownloadTaskResult(
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:handleDownloadTaskResult start.",
-		" partNum: ", partNum,
-		" checkpointFile: ", checkpointFile)
+		zap.Int64("partNum", partNum),
+		zap.String("checkpointFile", checkpointFile))
 
 	if _, ok := result.(*ScowDownloadPartOutput); ok {
 		lock.Lock()
@@ -2276,10 +2312,10 @@ func (o *Scow) handleDownloadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"Scow:updateCheckpointFile failed.",
-					" checkpointFile: ", checkpointFile,
-					" err: ", _err)
+					zap.String("checkpointFile", checkpointFile),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
@@ -2287,7 +2323,7 @@ func (o *Scow) handleDownloadTaskResult(
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:handleDownloadTaskResult finish.")
 	return
 }
@@ -2298,30 +2334,30 @@ func (o *Scow) handleDownloadFileResult(
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:handleDownloadFileResult start.",
-		" tempFileURL: ", tempFileURL)
+		zap.String("tempFileURL", tempFileURL))
 
 	if downloadFileError != nil {
 		if !enableCheckpoint {
 			_err := os.Remove(tempFileURL)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" tempFileURL: ", tempFileURL,
-						" err: ", _err)
+						zap.String("tempFileURL", tempFileURL),
+						zap.Error(_err))
 				}
 			}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"Scow.handleDownloadFileResult finish.",
-			" tempFileURL: ", tempFileURL,
-			" downloadFileError: ", downloadFileError)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(downloadFileError))
 		return downloadFileError
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow.handleDownloadFileResult finish.")
 	return nil
 }
@@ -2332,35 +2368,35 @@ func (o *Scow) UpdateDownloadFile(
 	offset int64,
 	downloadPartOutput *ScowDownloadPartOutput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:UpdateDownloadFile start.",
-		" filePath: ", filePath,
-		" offset: ", offset)
+		zap.String("filePath", filePath),
+		zap.Int64("offset", offset))
 
 	fd, err := os.OpenFile(filePath, os.O_WRONLY, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" filePath: ", filePath,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" filePath: ", filePath,
-				" err: ", errMsg)
+				zap.String("filePath", filePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_, err = fd.Seek(offset, 0)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"seek file failed.",
-			" filePath: ", filePath,
-			" offset: ", offset,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Int64("offset", offset),
+			zap.Error(err))
 		return err
 	}
 	fileWriter := bufio.NewWriterSize(fd, 65536)
@@ -2372,18 +2408,18 @@ func (o *Scow) UpdateDownloadFile(
 		if readCount > 0 {
 			writeCount, writeError := fileWriter.Write(part[0:readCount])
 			if writeError != nil {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" filePath: ", filePath,
-					" err: ", writeError)
+					zap.String("filePath", filePath),
+					zap.Error(writeError))
 				return writeError
 			}
 			if writeCount != readCount {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					" write file failed.",
-					" filePath: ", filePath,
-					" readCount: ", readCount,
-					" writeCount: ", writeCount)
+					zap.String("filePath", filePath),
+					zap.Int("readCount", readCount),
+					zap.Int("writeCount", writeCount))
 				return fmt.Errorf("failed to write to file."+
 					" filePath: %s, expect: %d, actual: %d",
 					filePath, readCount, writeCount)
@@ -2392,9 +2428,9 @@ func (o *Scow) UpdateDownloadFile(
 		}
 		if readErr != nil {
 			if readErr != io.EOF {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"read response body failed.",
-					" err: ", readErr)
+					zap.Error(readErr))
 				return readErr
 			}
 			break
@@ -2402,15 +2438,15 @@ func (o *Scow) UpdateDownloadFile(
 	}
 	err = fileWriter.Flush()
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"flush file failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:UpdateDownloadFile finish.",
-		" readTotal: ", readTotal)
+		zap.Int("readTotal", readTotal))
 	return nil
 }
 
@@ -2423,15 +2459,15 @@ func (o *Scow) Delete(
 		path = scowDeleteInput.Path
 		target = scowDeleteInput.Target
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Delete start.",
-		" path: ", path,
-		" target: ", target)
+		zap.String("path", path),
+		zap.String("target", target))
 
 	err = RetryV1(
 		ctx,
@@ -2440,24 +2476,24 @@ func (o *Scow) Delete(
 		func() error {
 			_err := o.sClient.Delete(ctx, path, target)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sClient.Delete failed.",
-					" path: ", path,
-					" target: ", target,
-					" err: ", _err)
+					zap.String("path", path),
+					zap.String("target", target),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Scow.Delete failed.",
-			" path: ", path,
-			" target: ", target,
-			" err: ", err)
+			zap.String("path", path),
+			zap.String("target", target),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Scow:Delete finish.")
 	return nil
 }
@@ -2478,10 +2514,10 @@ type ScowDownloadPartTask struct {
 func (task *ScowDownloadPartTask) Run(
 	ctx context.Context) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowDownloadPartTask:Run start.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber)
+		zap.String("objectPath", task.ObjectPath),
+		zap.Int64("partNumber", task.PartNumber))
 
 	err, downloadPartOutputTmp := RetryV4(
 		ctx,
@@ -2494,20 +2530,20 @@ func (task *ScowDownloadPartTask) Run(
 				task.ObjectPath,
 				task.Range)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"SClient:DownloadChunks failed.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber,
-					" err: ", _err)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber),
+					zap.Error(_err))
 			}
 			return _err, output
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ScowDownloadPartTask:Run failed.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber),
+			zap.Error(err))
 		return err
 	} else {
 		downloadPartOutput := new(ScowDownloadPartOutput)
@@ -2515,22 +2551,22 @@ func (task *ScowDownloadPartTask) Run(
 		if downloadPartOutput, isValid =
 			downloadPartOutputTmp.(*ScowDownloadPartOutput); !isValid {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response invalid.")
 			return errors.New("response invalid")
 		}
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"ScowDownloadPartTask.Run finish.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber))
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"close response body failed.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber))
 			}
 		}()
 		_err := task.S.UpdateDownloadFile(
@@ -2540,22 +2576,22 @@ func (task *ScowDownloadPartTask) Run(
 			downloadPartOutput)
 		if nil != _err {
 			if !task.EnableCheckpoint {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber))
 			}
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow.updateDownloadFile failed.",
-				" objectPath: ", task.ObjectPath,
-				" partNumber: ", task.PartNumber,
-				" err: ", _err)
+				zap.String("objectPath", task.ObjectPath),
+				zap.Int64("partNumber", task.PartNumber),
+				zap.Error(_err))
 			return _err
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask.Run finish.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber))
 		return downloadPartOutput
 	}
 }

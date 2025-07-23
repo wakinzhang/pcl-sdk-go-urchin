@@ -10,6 +10,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"io"
 	"os"
@@ -41,16 +42,14 @@ func (o *Sugon) Init(
 	reqTimeout,
 	maxConnection int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Init start.",
-		" user: ", "***",
-		" password: ", "***",
-		" endpoint: ", endpoint,
-		" url: ", url,
-		" orgId: ", orgId,
-		" clusterId: ", clusterId,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endpoint", endpoint),
+		zap.String("url", url),
+		zap.String("orgId", orgId),
+		zap.String("clusterId", clusterId),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	o.sugonClient = new(SugonClient)
 	o.sugonClient.Init(
@@ -73,7 +72,7 @@ func (o *Sugon) Init(
 		DefaultSugonRateLimit,
 		DefaultSugonRateBurst)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Init finish.")
 	return nil
 }
@@ -82,19 +81,19 @@ func (o *Sugon) SetConcurrency(
 	ctx context.Context,
 	config *StorageNodeConcurrencyConfig) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:SetConcurrency start.",
-		" UploadFileTaskNum: ", config.UploadFileTaskNum,
-		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
-		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
-		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+		zap.Int32("UploadFileTaskNum", config.UploadFileTaskNum),
+		zap.Int32("UploadMultiTaskNum", config.UploadMultiTaskNum),
+		zap.Int32("DownloadFileTaskNum", config.DownloadFileTaskNum),
+		zap.Int32("DownloadMultiTaskNum", config.DownloadMultiTaskNum))
 
 	o.sugonUploadFileTaskNum = int(config.UploadFileTaskNum)
 	o.sugonUploadMultiTaskNum = int(config.UploadMultiTaskNum)
 	o.sugonDownloadFileTaskNum = int(config.DownloadFileTaskNum)
 	o.sugonDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:SetConcurrency finish.")
 	return nil
 }
@@ -103,12 +102,12 @@ func (o *Sugon) SetRate(
 	ctx context.Context,
 	rateLimiter *rate.Limiter) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:SetRate start.")
 
 	o.sugonRateLimiter = rateLimiter
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:SetRate finish.")
 	return nil
 }
@@ -121,14 +120,14 @@ func (o *Sugon) Mkdir(
 	if sugonMkdirInput, ok := input.(SugonMkdirInput); ok {
 		path = sugonMkdirInput.Path
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Mkdir start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = RetryV1(
 		ctx,
@@ -137,22 +136,22 @@ func (o *Sugon) Mkdir(
 		func() error {
 			_err := o.sugonClient.Mkdir(ctx, path)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sugonClient.Mkdir failed.",
-					" path: ", path,
-					" err: ", _err)
+					zap.String("path", path),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon.Mkdir failed.",
-			" path: ", path,
-			" err: ", err)
+			zap.String("path", path),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Mkdir finish.")
 	return nil
 }
@@ -162,25 +161,25 @@ func (o *Sugon) loadCheckpointFile(
 	checkpointFile string,
 	result interface{}) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:loadCheckpointFile start.",
-		" checkpointFile: ", checkpointFile)
+		zap.String("checkpointFile", checkpointFile))
 
 	ret, err := os.ReadFile(checkpointFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" checkpointFile: ", checkpointFile,
-			" err: ", err)
+			zap.String("checkpointFile", checkpointFile),
+			zap.Error(err))
 		return err
 	}
 	if len(ret) == 0 {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
-			" checkpointFile: ", checkpointFile)
+			zap.String("checkpointFile", checkpointFile))
 		return errors.New("checkpointFile empty")
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
@@ -190,10 +189,10 @@ func (o *Sugon) sliceObject(
 	objectSize, partSize int64,
 	dfc *SugonDownloadCheckpoint) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:sliceObject start.",
-		" objectSize: ", objectSize,
-		" partSize: ", partSize)
+		zap.Int64("objectSize", objectSize),
+		zap.Int64("partSize", partSize))
 
 	cnt := objectSize / partSize
 	if objectSize%partSize > 0 {
@@ -219,7 +218,7 @@ func (o *Sugon) sliceObject(
 			dfc.DownloadParts[cnt-1].Length = value
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:sliceObject finish.")
 }
 
@@ -228,39 +227,39 @@ func (o *Sugon) updateCheckpointFile(
 	fc interface{},
 	checkpointFilePath string) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:updateCheckpointFile start.",
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	result, err := xml.Marshal(fc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"xml.Marshal failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	err = os.WriteFile(checkpointFilePath, result, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.WriteFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
 	defer func() {
 		errMsg := file.Close()
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", errMsg)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_ = file.Sync()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:updateCheckpointFile finish.")
 	return err
 }
@@ -276,33 +275,33 @@ func (o *Sugon) Upload(
 		targetPath = sugonUploadInput.TargetPath
 		needPure = sugonUploadInput.NeedPure
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Upload start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 
 	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon.uploadFolder failed.",
-				" sourcePath: ", sourcePath,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -313,15 +312,15 @@ func (o *Sugon) Upload(
 			objectPath,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon.uploadFile failed.",
-				" sourcePath: ", sourcePath,
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Upload finish.")
 	return nil
 }
@@ -332,29 +331,29 @@ func (o *Sugon) uploadFolder(
 	targetPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFolder start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
 		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
-		" uploadFolderRecord: ", uploadFolderRecord)
+		zap.String("uploadFolderRecord", uploadFolderRecord))
 
 	if needPure {
 		err = os.Remove(uploadFolderRecord)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -366,10 +365,10 @@ func (o *Sugon) uploadFolder(
 				fileMap[strings.TrimSuffix(line, "\r")] = 0
 			}
 		} else if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.ReadFile failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -378,18 +377,18 @@ func (o *Sugon) uploadFolder(
 	sugonMkdirInput.Path = targetPath
 	err = o.Mkdir(ctx, sugonMkdirInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon.Mkdir failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return err
 	}
 
 	pool, err := ants.NewPool(o.sugonUploadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -401,38 +400,42 @@ func (o *Sugon) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.sugonRateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					dirWaitGroup.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Sugon:uploadFileResume failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
@@ -443,18 +446,19 @@ func (o *Sugon) uploadFolder(
 						filePath)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"filepath.Rel failed.",
-							" sourcePath: ", sourcePath,
-							" filePath: ", filePath,
-							" relPath: ", relPath,
-							" err: ", _err)
+							zap.String("sourcePath", sourcePath),
+							zap.String("filePath", filePath),
+							zap.String("relPath", relPath),
+							zap.Error(_err))
 						return
 					}
 					objectPath := targetPath + relPath
 					if _, exists := fileMap[objectPath]; exists {
-						Logger.WithContext(ctx).Info(
-							"already finish. objectPath: ", objectPath)
+						InfoLogger.WithContext(ctx).Info(
+							"already finish.",
+							zap.String("objectPath", objectPath))
 						return
 					}
 
@@ -463,10 +467,10 @@ func (o *Sugon) uploadFolder(
 					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Sugon.Mkdir failed.",
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 					fileMutex.Lock()
@@ -476,37 +480,39 @@ func (o *Sugon) uploadFolder(
 						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.OpenFile failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.Error(_err))
 						return
 					}
 					defer func() {
 						errMsg := f.Close()
 						if errMsg != nil {
-							Logger.WithContext(ctx).Warn(
+							ErrorLogger.WithContext(ctx).Warn(
 								"close file failed.",
-								" err: ", errMsg)
+								zap.Error(errMsg))
 						}
 					}()
 					_, _err = f.Write([]byte(objectPath + "\n"))
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"write file failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -514,16 +520,16 @@ func (o *Sugon) uploadFolder(
 	dirWaitGroup.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("uploadFolder not all success")
 	}
 
@@ -533,38 +539,42 @@ func (o *Sugon) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.sugonRateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					fileWaitGroup.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Sugon:uploadFileResume failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
@@ -575,24 +585,25 @@ func (o *Sugon) uploadFolder(
 						filePath)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"filepath.Rel failed.",
-							" sourcePath: ", sourcePath,
-							" filePath: ", filePath,
-							" relPath: ", relPath,
-							" err: ", _err)
+							zap.String("sourcePath", sourcePath),
+							zap.String("filePath", filePath),
+							zap.String("relPath", relPath),
+							zap.Error(_err))
 						return
 					}
 					objectPath := targetPath + relPath
 					if strings.HasSuffix(objectPath, UploadFileRecordSuffix) {
-						Logger.WithContext(ctx).Info(
+						InfoLogger.WithContext(ctx).Info(
 							"upload record file.",
-							" objectPath: ", objectPath)
+							zap.String("objectPath", objectPath))
 						return
 					}
 					if _, exists := fileMap[objectPath]; exists {
-						Logger.WithContext(ctx).Info(
-							"already finish. objectPath: ", objectPath)
+						InfoLogger.WithContext(ctx).Info(
+							"already finish.",
+							zap.String("objectPath", objectPath))
 						return
 					}
 					_err = o.uploadFile(
@@ -602,11 +613,11 @@ func (o *Sugon) uploadFolder(
 						needPure)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Sugon:uploadFile failed.",
-							" filePath: ", filePath,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("filePath", filePath),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 					fileMutex.Lock()
@@ -616,37 +627,39 @@ func (o *Sugon) uploadFolder(
 						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.OpenFile failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.Error(_err))
 						return
 					}
 					defer func() {
 						errMsg := f.Close()
 						if errMsg != nil {
-							Logger.WithContext(ctx).Warn(
+							ErrorLogger.WithContext(ctx).Warn(
 								"close file failed.",
-								" err: ", errMsg)
+								zap.Error(errMsg))
 						}
 					}()
 					_, _err = f.Write([]byte(objectPath + "\n"))
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"write file failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -654,30 +667,30 @@ func (o *Sugon) uploadFolder(
 	fileWaitGroup.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("uploadFolder not all success")
 	}
 
 	_err := os.Remove(uploadFolderRecord)
 	if nil != _err {
 		if !os.IsNotExist(_err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", _err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(_err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFolder finish.")
 	return nil
 }
@@ -688,18 +701,18 @@ func (o *Sugon) uploadFile(
 	objectPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFile start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Bool("needPure", needPure))
 
 	sourceFileStat, err := os.Stat(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
@@ -710,12 +723,12 @@ func (o *Sugon) uploadFile(
 			objectPath,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon:uploadFileResume failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", objectPath,
-				" needPure: ", needPure,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectPath", objectPath),
+				zap.Bool("needPure", needPure),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -724,16 +737,16 @@ func (o *Sugon) uploadFile(
 			sourceFile,
 			objectPath)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon:uploadFileStream failed.",
-				" sourceFile: ", sourceFile,
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFile finish.")
 	return err
 }
@@ -743,10 +756,10 @@ func (o *Sugon) uploadFileStream(
 	sourceFile,
 	objectPath string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFileStream start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath))
 
 	err = RetryV1(
 		ctx,
@@ -755,19 +768,19 @@ func (o *Sugon) uploadFileStream(
 		func() error {
 			fd, _err := os.Open(sourceFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Open failed.",
-					" sourceFile: ", sourceFile,
-					" err: ", _err)
+					zap.String("sourceFile", sourceFile),
+					zap.Error(_err))
 				return _err
 			}
 			defer func() {
 				errMsg := fd.Close()
 				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" sourceFile: ", sourceFile,
-						" err: ", errMsg)
+						zap.String("sourceFile", sourceFile),
+						zap.Error(errMsg))
 				}
 			}()
 			fileName := filepath.Base(objectPath)
@@ -778,24 +791,24 @@ func (o *Sugon) uploadFileStream(
 				path,
 				fd)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sugonClient.Upload failed.",
-					" fileName: ", fileName,
-					" path: ", path,
-					" err: ", _err)
+					zap.String("fileName", fileName),
+					zap.String("path", path),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon.uploadFileStream failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", objectPath,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("objectPath", objectPath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFileStream finish.")
 	return err
 }
@@ -806,11 +819,11 @@ func (o *Sugon) uploadFileResume(
 	objectPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFileResume start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath),
+		zap.Bool("needPure", needPure))
 
 	uploadFileInput := new(SugonUploadFileInput)
 	uploadFileInput.ObjectPath = objectPath
@@ -832,10 +845,11 @@ func (o *Sugon) uploadFileResume(
 		err = os.Remove(uploadFileInput.CheckpointFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" CheckpointFile: ", uploadFileInput.CheckpointFile,
-					" err: ", err)
+					zap.String("CheckpointFile",
+						uploadFileInput.CheckpointFile),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -847,15 +861,15 @@ func (o *Sugon) uploadFileResume(
 		objectPath,
 		uploadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:resumeUpload failed.",
-			" sourceFile: ", sourceFile,
-			" objectPath: ", objectPath,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("objectPath", objectPath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadFileResume finish.")
 	return err
 }
@@ -866,23 +880,23 @@ func (o *Sugon) resumeUpload(
 	objectPath string,
 	input *SugonUploadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:resumeUpload start.",
-		" sourceFile: ", sourceFile,
-		" objectPath: ", objectPath)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectPath", objectPath))
 
 	uploadFileStat, err := os.Stat(input.UploadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" uploadFile: ", input.UploadFile,
-			" err: ", err)
+			zap.String("uploadFile", input.UploadFile),
+			zap.Error(err))
 		return err
 	}
 	if uploadFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadFile can not be a folder.",
-			" uploadFile: ", input.UploadFile)
+			zap.String("uploadFile", input.UploadFile))
 		return errors.New("uploadFile can not be a folder")
 	}
 
@@ -898,10 +912,10 @@ func (o *Sugon) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon:getUploadCheckpointFile failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -913,20 +927,20 @@ func (o *Sugon) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon:prepareUpload failed.",
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Sugon:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -938,10 +952,10 @@ func (o *Sugon) resumeUpload(
 		ufc,
 		input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:uploadPartConcurrent failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
@@ -951,14 +965,14 @@ func (o *Sugon) resumeUpload(
 		enableCheckpoint,
 		checkpointFilePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:completeParts failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:resumeUpload finish.")
 	return err
 }
@@ -969,16 +983,16 @@ func (o *Sugon) uploadPartConcurrent(
 	ufc *SugonUploadCheckpoint,
 	input *SugonUploadFileInput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadPartConcurrent start.",
-		" sourceFile: ", sourceFile)
+		zap.String("sourceFile", sourceFile))
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1006,16 +1020,20 @@ func (o *Sugon) uploadPartConcurrent(
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.sugonRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1034,26 +1052,26 @@ func (o *Sugon) uploadPartConcurrent(
 			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Sugon:handleUploadTaskResult failed.",
-					" ChunkNumber: ", task.ChunkNumber,
-					" checkpointFile: ", input.CheckpointFile,
-					" err: ", _err)
+					zap.Int32("chunkNumber", task.ChunkNumber),
+					zap.String("checkpointFile", input.CheckpointFile),
+					zap.Error(_err))
 				uploadPartError.Store(_err)
 			}
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"Sugon:handleUploadTaskResult finish.")
 			return
 		})
 	}
 	wg.Wait()
 	if err, ok := uploadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadPartError load failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:uploadPartConcurrent finish.")
 	return nil
 }
@@ -1064,54 +1082,55 @@ func (o *Sugon) getUploadCheckpointFile(
 	uploadFileStat os.FileInfo,
 	input *SugonUploadFileInput) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:getUploadCheckpointFile start.")
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpoint file can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !ufc.IsValid(ctx, input.UploadFile, uploadFileStat) {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"Sugon:loadCheckpointFile finish.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:getUploadCheckpointFile finish.")
 	return true, nil
 }
@@ -1123,9 +1142,9 @@ func (o *Sugon) prepareUpload(
 	uploadFileStat os.FileInfo,
 	input *SugonUploadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:prepareUpload start.",
-		" objectPath: ", objectPath)
+		zap.String("objectPath", objectPath))
 
 	ufc.ObjectPath = objectPath
 	ufc.UploadFile = input.UploadFile
@@ -1135,12 +1154,12 @@ func (o *Sugon) prepareUpload(
 
 	err = o.sliceFile(ctx, input.PartSize, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:sliceFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:prepareUpload finish.")
 	return err
 }
@@ -1150,10 +1169,10 @@ func (o *Sugon) sliceFile(
 	partSize int64,
 	ufc *SugonUploadCheckpoint) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:sliceFile start.",
-		" partSize: ", partSize,
-		" fileSize: ", ufc.FileInfo.Size)
+		zap.Int64("partSize", partSize),
+		zap.Int64("fileSize", ufc.FileInfo.Size))
 	fileSize := ufc.FileInfo.Size
 	cnt := fileSize / partSize
 	if cnt >= 10000 {
@@ -1168,10 +1187,10 @@ func (o *Sugon) sliceFile(
 	}
 
 	if partSize > DefaultSugonMaxPartSize {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"upload file part too large.",
-			" partSize: ", partSize,
-			" maxPartSize: ", DefaultSugonMaxPartSize)
+			zap.Int64("partSize", partSize),
+			zap.Int("maxPartSize", DefaultSugonMaxPartSize))
 		return fmt.Errorf("upload file part too large")
 	}
 
@@ -1196,7 +1215,7 @@ func (o *Sugon) sliceFile(
 	}
 	ufc.TotalParts = int32(len(ufc.UploadParts))
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:sliceFile finish.")
 	return nil
 }
@@ -1210,10 +1229,10 @@ func (o *Sugon) handleUploadTaskResult(
 	checkpointFilePath string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:handleUploadTaskResult start.",
-		" checkpointFilePath: ", checkpointFilePath,
-		" partNum: ", partNum)
+		zap.String("checkpointFilePath", checkpointFilePath),
+		zap.Int32("partNum", partNum))
 
 	if _, ok := result.(*SugonBaseResponse); ok {
 		lock.Lock()
@@ -1223,24 +1242,24 @@ func (o *Sugon) handleUploadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Sugon:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" partNum: ", partNum,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Int32("partNum", partNum),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"upload task result failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" partNum: ", partNum,
-				" err: ", _err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Int32("partNum", partNum),
+				zap.Error(_err))
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:handleUploadTaskResult finish.")
 	return
 }
@@ -1251,10 +1270,10 @@ func (o *Sugon) completeParts(
 	enableCheckpoint bool,
 	checkpointFilePath string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:completeParts start.",
-		" enableCheckpoint: ", enableCheckpoint,
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.Bool("enableCheckpoint", enableCheckpoint),
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	err = RetryV1(
 		ctx,
@@ -1267,22 +1286,22 @@ func (o *Sugon) completeParts(
 				filepath.Dir(input.ObjectPath),
 				input.RelativePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sugonClient.MergeChunks failed.",
-					" FileName: ", input.FileName,
-					" Path: ", filepath.Dir(input.ObjectPath),
-					" RelativePath: ", input.RelativePath,
-					" err: ", _err)
+					zap.String("fileName", input.FileName),
+					zap.String("path", filepath.Dir(input.ObjectPath)),
+					zap.String("relativePath", input.RelativePath),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon.completeParts failed.",
-			" FileName: ", input.FileName,
-			" Path: ", filepath.Dir(input.ObjectPath),
-			" RelativePath: ", input.RelativePath,
-			" err: ", err)
+			zap.String("fileName", input.FileName),
+			zap.String("path", filepath.Dir(input.ObjectPath)),
+			zap.String("relativePath", input.RelativePath),
+			zap.Error(err))
 		return err
 	}
 
@@ -1290,14 +1309,14 @@ func (o *Sugon) completeParts(
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:completeParts finish.")
 	return err
 }
@@ -1321,11 +1340,11 @@ func (task *SugonUploadPartTask) Run(
 	ctx context.Context,
 	sourceFile string) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonUploadPartTask:Run start.",
-		" sourceFile: ", sourceFile,
-		" path: ", task.Path,
-		" chunkNumber: ", task.ChunkNumber)
+		zap.String("sourceFile", sourceFile),
+		zap.String("path", task.Path),
+		zap.Int32("chunkNumber", task.ChunkNumber))
 
 	err, resp := RetryV4(
 		ctx,
@@ -1334,23 +1353,23 @@ func (task *SugonUploadPartTask) Run(
 		func() (error, interface{}) {
 			fd, _err := os.Open(sourceFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Open failed.",
-					" sourceFile: ", sourceFile,
-					" path: ", task.Path,
-					" chunkNumber: ", task.ChunkNumber,
-					" err: ", _err)
+					zap.String("sourceFile", sourceFile),
+					zap.String("path", task.Path),
+					zap.Int32("chunkNumber", task.ChunkNumber),
+					zap.Error(_err))
 				return _err, nil
 			}
 			defer func() {
 				errMsg := fd.Close()
 				if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" sourceFile: ", sourceFile,
-						" path: ", task.Path,
-						" chunkNumber: ", task.ChunkNumber,
-						" err: ", errMsg)
+						zap.String("sourceFile", sourceFile),
+						zap.String("path", task.Path),
+						zap.Int32("chunkNumber", task.ChunkNumber),
+						zap.Error(errMsg))
 				}
 			}()
 			readerWrapper := new(ReaderWrapper)
@@ -1359,12 +1378,12 @@ func (task *SugonUploadPartTask) Run(
 			readerWrapper.TotalCount = task.CurrentChunkSize
 			readerWrapper.Mark = task.Offset
 			if _, _err = fd.Seek(task.Offset, io.SeekStart); nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"fd.Seek failed.",
-					" sourceFile: ", sourceFile,
-					" path: ", task.Path,
-					" chunkNumber: ", task.ChunkNumber,
-					" err: ", _err)
+					zap.String("sourceFile", sourceFile),
+					zap.String("path", task.Path),
+					zap.Int32("chunkNumber", task.ChunkNumber),
+					zap.Error(_err))
 				return _err, nil
 			}
 			respTmp := new(SugonBaseResponse)
@@ -1381,35 +1400,35 @@ func (task *SugonUploadPartTask) Run(
 				task.CurrentChunkSize,
 				readerWrapper)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"SClient.UploadChunks failed.",
-					" task.File: ", task.File,
-					" task.FileName: ", task.FileName,
-					" task.Path: ", task.Path,
-					" task.RelativePath: ", task.RelativePath,
-					" task.ChunkNumber: ", task.ChunkNumber,
-					" task.TotalChunks: ", task.TotalChunks,
-					" task.TotalSize: ", task.TotalSize,
-					" task.ChunkSize: ", task.ChunkSize,
-					" task.CurrentChunkSize: ", task.CurrentChunkSize,
-					" err: ", _err)
+					zap.String("file", task.File),
+					zap.String("fileName", task.FileName),
+					zap.String("path", task.Path),
+					zap.String("relativePath", task.RelativePath),
+					zap.Int32("chunkNumber", task.ChunkNumber),
+					zap.Int32("totalChunks", task.TotalChunks),
+					zap.Int64("totalSize", task.TotalSize),
+					zap.Int64("chunkSize", task.ChunkSize),
+					zap.Int64("currentChunkSize", task.CurrentChunkSize),
+					zap.Error(_err))
 				return _err, nil
 			}
 			return _err, respTmp
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonUploadPartTask.Run failed.",
-			" path: ", task.Path,
-			" chunkNumber: ", task.ChunkNumber,
-			" err: ", err)
+			zap.String("path", task.Path),
+			zap.Int32("chunkNumber", task.ChunkNumber),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonUploadPartTask:Run finish.",
-		" path: ", task.Path,
-		" chunkNumber: ", task.ChunkNumber)
+		zap.String("path", task.Path),
+		zap.Int32("chunkNumber", task.ChunkNumber))
 	return resp
 }
 
@@ -1422,30 +1441,30 @@ func (o *Sugon) Download(
 		sourcePath = sugonDownloadInput.SourcePath
 		targetPath = sugonDownloadInput.TargetPath
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Download start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath))
 
 	err = os.MkdirAll(targetPath, os.ModePerm)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return
 	}
 
 	downloadFolderRecord :=
 		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	err = o.downloadBatch(
 		ctx,
@@ -1453,26 +1472,26 @@ func (o *Sugon) Download(
 		targetPath,
 		downloadFolderRecord)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:downloadBatch failed.",
-			" sourcePath: ", sourcePath,
-			" targetPath: ", targetPath,
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.String("targetPath", targetPath),
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Remove(downloadFolderRecord)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Download finish.")
 	return nil
 }
@@ -1483,11 +1502,11 @@ func (o *Sugon) downloadBatch(
 	targetPath,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadBatch start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	var start int32 = 0
 	var limit int32 = DefaultSugonListLimit
@@ -1504,22 +1523,22 @@ func (o *Sugon) downloadBatch(
 					start,
 					limit)
 				if nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"sugonClient:List start.",
-						" sourcePath: ", sourcePath,
-						" start: ", start,
-						" limit: ", limit,
-						" err: ", _err)
+						zap.String("sourcePath", sourcePath),
+						zap.Int32("start", start),
+						zap.Int32("limit", limit),
+						zap.Error(_err))
 				}
 				return _err, output
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"sugonClient:List failed.",
-				" sourcePath: ", sourcePath,
-				" start: ", start,
-				" limit: ", limit,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.Int32("start", start),
+				zap.Int32("limit", limit),
+				zap.Error(err))
 			return err
 		}
 
@@ -1528,7 +1547,7 @@ func (o *Sugon) downloadBatch(
 		if sugonListResponseData, isValid =
 			sugonListResponseDataTmp.(*SugonListResponseData); !isValid {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response invalid.")
 			return errors.New("response invalid")
 		}
@@ -1537,10 +1556,10 @@ func (o *Sugon) downloadBatch(
 			itemPath := strings.TrimSuffix(targetPath, "/") + folder.Path
 			err = os.MkdirAll(itemPath, os.ModePerm)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.MkdirAll failed.",
-					" itemPath: ", itemPath,
-					" err: ", err)
+					zap.String("itemPath", itemPath),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -1552,12 +1571,12 @@ func (o *Sugon) downloadBatch(
 			sugonListResponseData.FileList,
 			downloadFolderRecord)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon:downloadObjects failed.",
-				" sourcePath: ", sourcePath,
-				" targetPath: ", targetPath,
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("targetPath", targetPath),
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 
@@ -1572,12 +1591,13 @@ func (o *Sugon) downloadBatch(
 				targetPath,
 				downloadFolderRecord)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Sugon:downloadBatch failed.",
-					" sourcePath: ", folder.Path,
-					" targetPath: ", targetPath,
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", err)
+					zap.String("sourcePath", folder.Path),
+					zap.String("targetPath", targetPath),
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -1588,9 +1608,9 @@ func (o *Sugon) downloadBatch(
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadBatch finish.",
-		" sourcePath: ", sourcePath)
+		zap.String("sourcePath", sourcePath))
 	return nil
 }
 
@@ -1601,11 +1621,11 @@ func (o *Sugon) downloadObjects(
 	objects []*SugonFileInfo,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadObjects start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -1617,10 +1637,10 @@ func (o *Sugon) downloadObjects(
 			fileMap[strings.TrimSuffix(line, "\r")] = 0
 		}
 	} else if !os.IsNotExist(err) {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
@@ -1628,54 +1648,58 @@ func (o *Sugon) downloadObjects(
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(o.sugonDownloadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool for download object failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
 	for index, object := range objects {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"object content.",
-			" index: ", index,
-			" Path: ", object.Path,
-			" IsDirectory: ", object.IsDirectory)
+			zap.Int("index", index),
+			zap.String("path", object.Path),
+			zap.Bool("isDirectory", object.IsDirectory))
 
 		itemObject := object
 
 		if itemObject.IsDirectory {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"dir already process, pass.",
-				" Path: ", itemObject.Path)
+				zap.String("path", itemObject.Path))
 			continue
 		}
 
 		if _, exists := fileMap[itemObject.Path]; exists {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"file already success.",
-				" Path: ", itemObject.Path)
+				zap.String("path", itemObject.Path))
 			continue
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.sugonRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
 				if _err := recover(); nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", _err)
+						zap.Any("error", _err))
 					isAllSuccess = false
 				}
 			}()
@@ -1687,11 +1711,11 @@ func (o *Sugon) downloadObjects(
 				targetFile)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Sugon:downloadPart failed.",
-					" objectPath: ", itemObject.Path,
-					" targetFile: ", targetFile,
-					" err: ", _err)
+					zap.String("objectPath", itemObject.Path),
+					zap.String("targetFile", targetFile),
+					zap.Error(_err))
 				return
 			}
 			fileMutex.Lock()
@@ -1701,48 +1725,51 @@ func (o *Sugon) downloadObjects(
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.Error(_err))
 				return
 			}
 			defer func() {
 				errMsg := f.Close()
 				if errMsg != nil {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" downloadFolderRecord: ", downloadFolderRecord,
-						" err: ", errMsg)
+						zap.String("downloadFolderRecord",
+							downloadFolderRecord),
+						zap.Error(errMsg))
 				}
 			}()
 			_, _err = f.Write([]byte(itemObject.Path + "\n"))
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectPath: ", itemObject.Path,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.String("objectPath", itemObject.Path),
+					zap.Error(_err))
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:downloadObjects not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("downloadObjects not all success")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadObjects finish.")
 	return nil
 }
@@ -1752,10 +1779,10 @@ func (o *Sugon) downloadPart(
 	object *SugonFileInfo,
 	targetFile string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadPart start.",
-		" ObjectPath: ", object.Path,
-		" targetFile: ", targetFile)
+		zap.String("objectPath", object.Path),
+		zap.String("targetFile", targetFile))
 
 	downloadFileInput := new(SugonDownloadFileInput)
 	downloadFileInput.DownloadFile = targetFile
@@ -1770,12 +1797,12 @@ func (o *Sugon) downloadPart(
 		object,
 		downloadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:resumeDownload failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadPart finish.")
 	return
 }
@@ -1785,7 +1812,7 @@ func (o *Sugon) resumeDownload(
 	object *SugonFileInfo,
 	input *SugonDownloadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:resumeDownload start.")
 
 	partSize := input.PartSize
@@ -1801,10 +1828,10 @@ func (o *Sugon) resumeDownload(
 			input,
 			object)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon:getDownloadCheckpointFile failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -1823,28 +1850,29 @@ func (o *Sugon) resumeDownload(
 			dfc.TempFileInfo.TempFileUrl,
 			dfc.TempFileInfo.Size)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon:prepareTempFile failed.",
-				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-				" Size: ", dfc.TempFileInfo.Size,
-				" err: ", err)
+				zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+				zap.Int64("Size", dfc.TempFileInfo.Size),
+				zap.Error(err))
 			return err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"Sugon:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
 				if _errMsg != nil {
 					if !os.IsNotExist(_errMsg) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.Remove failed.",
-							" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-							" err: ", _errMsg)
+							zap.String("TempFileUrl",
+								dfc.TempFileInfo.TempFileUrl),
+							zap.Error(_errMsg))
 					}
 				}
 				return err
@@ -1860,34 +1888,34 @@ func (o *Sugon) resumeDownload(
 		enableCheckpoint,
 		downloadFileError)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:handleDownloadFileResult failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Rename(dfc.TempFileInfo.TempFileUrl, input.DownloadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" DownloadFile: ", input.DownloadFile,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.String("DownloadFile", input.DownloadFile),
+			zap.Error(err))
 		return err
 	}
 	if enableCheckpoint {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:resumeDownload finish.")
 	return nil
 }
@@ -1897,15 +1925,15 @@ func (o *Sugon) downloadFileConcurrent(
 	input *SugonDownloadFileInput,
 	dfc *SugonDownloadCheckpoint) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadFileConcurrent start.")
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1936,24 +1964,28 @@ func (o *Sugon) downloadFileConcurrent(
 			TempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask params.",
-			" Offset: ", downloadPart.Offset,
-			" Length: ", downloadPart.Length,
-			" PartNumber: ", downloadPart.PartNumber,
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" EnableCheckpoint: ", input.EnableCheckpoint)
+			zap.Int64("Offset", downloadPart.Offset),
+			zap.Int64("Length", downloadPart.Length),
+			zap.Int64("PartNumber", downloadPart.PartNumber),
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Bool("EnableCheckpoint", input.EnableCheckpoint))
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.sugonRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1971,10 +2003,11 @@ func (o *Sugon) downloadFileConcurrent(
 						dfc,
 						input.CheckpointFile)
 					if nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"Sugon:updateCheckpointFile failed.",
-							" checkpointFile: ", input.CheckpointFile,
-							" err: ", _err)
+							zap.String("checkpointFile",
+								input.CheckpointFile),
+							zap.Error(_err))
 						downloadPartError.Store(_err)
 					}
 				}
@@ -1992,31 +2025,31 @@ func (o *Sugon) downloadFileConcurrent(
 				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"Sugon:handleDownloadTaskResult failed.",
-						" partNumber: ", task.PartNumber,
-						" checkpointFile: ", input.CheckpointFile,
-						" err: ", _err)
+						zap.Int64("partNumber", task.PartNumber),
+						zap.String("checkpointFile", input.CheckpointFile),
+						zap.Error(_err))
 					downloadPartError.Store(_err)
 				}
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if err, ok := downloadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"downloadPartError failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:downloadFileConcurrent finish.")
 	return nil
 }
@@ -2027,65 +2060,67 @@ func (o *Sugon) getDownloadCheckpointFile(
 	input *SugonDownloadFileInput,
 	object *SugonFileInfo) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:getDownloadCheckpointFile start.",
-		" checkpointFile: ", input.CheckpointFile)
+		zap.String("checkpointFile", input.CheckpointFile))
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpointFilePath can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !dfc.IsValid(ctx, input, object) {
 		if dfc.TempFileInfo.TempFileUrl != "" {
 			_err := os.Remove(dfc.TempFileInfo.TempFileUrl)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-						" err: ", _err)
+						zap.String("TempFileUrl",
+							dfc.TempFileInfo.TempFileUrl),
+						zap.Error(_err))
 				}
 			}
 		}
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"no need to check point.")
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"need to check point.")
 	return true, nil
 }
@@ -2095,36 +2130,37 @@ func (o *Sugon) prepareTempFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:prepareTempFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	parentDir := filepath.Dir(tempFileURL)
 	stat, err := os.Stat(parentDir)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" parentDir: ", parentDir,
-				" err: ", err)
+				zap.String("parentDir", parentDir),
+				zap.Error(err))
 			return err
 		}
-		Logger.WithContext(ctx).Debug(
-			"parentDir: ", parentDir, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"parentDir not exist.",
+			zap.String("parentDir", parentDir))
 
 		_err := os.MkdirAll(parentDir, os.ModePerm)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" parentDir: ", parentDir,
-				" err: ", _err)
+				zap.String("parentDir", parentDir),
+				zap.Error(_err))
 			return _err
 		}
 	} else if !stat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"same file exists.",
-			" parentDir: ", parentDir)
+			zap.String("parentDir", parentDir))
 		return fmt.Errorf(
 			"cannot create folder: %s due to a same file exists",
 			parentDir)
@@ -2132,10 +2168,10 @@ func (o *Sugon) prepareTempFile(
 
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"Sugon:createFile finish.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize))
 		return nil
 	}
 	fd, err := os.OpenFile(
@@ -2143,32 +2179,32 @@ func (o *Sugon) prepareTempFile(
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	if fileSize > 0 {
 		_, err = fd.WriteAt([]byte("a"), fileSize-1)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"write file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", err)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:prepareTempFile finish.")
 	return nil
 }
@@ -2178,41 +2214,41 @@ func (o *Sugon) createFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:createFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	fd, err := syscall.Open(
 		tempFileURL,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Open failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := syscall.Close(fd)
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"syscall.Close failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	err = syscall.Ftruncate(fd, fileSize)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Ftruncate failed.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:createFile finish.")
 	return nil
 }
@@ -2226,10 +2262,10 @@ func (o *Sugon) handleDownloadTaskResult(
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:handleDownloadTaskResult start.",
-		" partNum: ", partNum,
-		" checkpointFile: ", checkpointFile)
+		zap.Int64("partNum", partNum),
+		zap.String("checkpointFile", checkpointFile))
 
 	if _, ok := result.(*SugonDownloadPartOutput); ok {
 		lock.Lock()
@@ -2239,10 +2275,10 @@ func (o *Sugon) handleDownloadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"Sugon:updateCheckpointFile failed.",
-					" checkpointFile: ", checkpointFile,
-					" err: ", _err)
+					zap.String("checkpointFile", checkpointFile),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
@@ -2250,7 +2286,7 @@ func (o *Sugon) handleDownloadTaskResult(
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:handleDownloadTaskResult finish.")
 	return
 }
@@ -2261,30 +2297,30 @@ func (o *Sugon) handleDownloadFileResult(
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:handleDownloadFileResult start.",
-		" tempFileURL: ", tempFileURL)
+		zap.String("tempFileURL", tempFileURL))
 
 	if downloadFileError != nil {
 		if !enableCheckpoint {
 			_err := os.Remove(tempFileURL)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" tempFileURL: ", tempFileURL,
-						" err: ", _err)
+						zap.String("tempFileURL", tempFileURL),
+						zap.Error(_err))
 				}
 			}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"Sugon.handleDownloadFileResult finish.",
-			" tempFileURL: ", tempFileURL,
-			" downloadFileError: ", downloadFileError)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(downloadFileError))
 		return downloadFileError
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon.handleDownloadFileResult finish.")
 	return nil
 }
@@ -2295,35 +2331,35 @@ func (o *Sugon) UpdateDownloadFile(
 	offset int64,
 	downloadPartOutput *SugonDownloadPartOutput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:UpdateDownloadFile start.",
-		" filePath: ", filePath,
-		" offset: ", offset)
+		zap.String("filePath", filePath),
+		zap.Int64("offset", offset))
 
 	fd, err := os.OpenFile(filePath, os.O_WRONLY, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" filePath: ", filePath,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" filePath: ", filePath,
-				" err: ", errMsg)
+				zap.String("filePath", filePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_, err = fd.Seek(offset, 0)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"seek file failed.",
-			" filePath: ", filePath,
-			" offset: ", offset,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Int64("offset", offset),
+			zap.Error(err))
 		return err
 	}
 	fileWriter := bufio.NewWriterSize(fd, 65536)
@@ -2335,18 +2371,18 @@ func (o *Sugon) UpdateDownloadFile(
 		if readCount > 0 {
 			writeCount, writeError := fileWriter.Write(part[0:readCount])
 			if writeError != nil {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" filePath: ", filePath,
-					" err: ", writeError)
+					zap.String("filePath", filePath),
+					zap.Error(writeError))
 				return writeError
 			}
 			if writeCount != readCount {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					" write file failed.",
-					" filePath: ", filePath,
-					" readCount: ", readCount,
-					" writeCount: ", writeCount)
+					zap.String("filePath", filePath),
+					zap.Int("readCount", readCount),
+					zap.Int("writeCount", writeCount))
 				return fmt.Errorf("failed to write to file."+
 					" filePath: %s, expect: %d, actual: %d",
 					filePath, readCount, writeCount)
@@ -2355,9 +2391,9 @@ func (o *Sugon) UpdateDownloadFile(
 		}
 		if readErr != nil {
 			if readErr != io.EOF {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"read response body failed.",
-					" err: ", readErr)
+					zap.Error(readErr))
 				return readErr
 			}
 			break
@@ -2365,14 +2401,15 @@ func (o *Sugon) UpdateDownloadFile(
 	}
 	err = fileWriter.Flush()
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"flush file failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"Sugon:UpdateDownloadFile finish. readTotal: ", readTotal)
+	InfoLogger.WithContext(ctx).Debug(
+		"Sugon:UpdateDownloadFile finish.",
+		zap.Int("readTotal", readTotal))
 	return nil
 }
 
@@ -2384,14 +2421,14 @@ func (o *Sugon) Delete(
 	if sugonDeleteInput, ok := input.(SugonDeleteInput); ok {
 		path = sugonDeleteInput.Path
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Delete start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = RetryV1(
 		ctx,
@@ -2400,22 +2437,22 @@ func (o *Sugon) Delete(
 		func() error {
 			_err := o.sugonClient.Delete(ctx, path)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"sugonClient.Delete failed.",
-					" path: ", path,
-					" err: ", _err)
+					zap.String("path", path),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Sugon.Delete failed.",
-			" path: ", path,
-			" err: ", err)
+			zap.String("path", path),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Sugon:Delete finish.")
 	return nil
 }
@@ -2436,10 +2473,10 @@ type SugonDownloadPartTask struct {
 func (task *SugonDownloadPartTask) Run(
 	ctx context.Context) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonDownloadPartTask:Run start.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber)
+		zap.String("objectPath", task.ObjectPath),
+		zap.Int64("partNumber", task.PartNumber))
 
 	err, downloadPartOutputTmp := RetryV4(
 		ctx,
@@ -2452,20 +2489,20 @@ func (task *SugonDownloadPartTask) Run(
 				task.ObjectPath,
 				task.Range)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"SClient:DownloadChunks failed.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber,
-					" err: ", _err)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber),
+					zap.Error(_err))
 			}
 			return _err, output
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonDownloadPartTask:Run failed.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber),
+			zap.Error(err))
 		return err
 	} else {
 		downloadPartOutput := new(SugonDownloadPartOutput)
@@ -2473,22 +2510,22 @@ func (task *SugonDownloadPartTask) Run(
 		if downloadPartOutput, isValid =
 			downloadPartOutputTmp.(*SugonDownloadPartOutput); !isValid {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response invalid.")
 			return errors.New("response invalid")
 		}
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"SugonDownloadPartTask.Run finish.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber))
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"close response body failed.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber))
 			}
 		}()
 		_err := task.S.UpdateDownloadFile(
@@ -2498,22 +2535,22 @@ func (task *SugonDownloadPartTask) Run(
 			downloadPartOutput)
 		if nil != _err {
 			if !task.EnableCheckpoint {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber))
 			}
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon.updateDownloadFile failed.",
-				" objectPath: ", task.ObjectPath,
-				" partNumber: ", task.PartNumber,
-				" err: ", _err)
+				zap.String("objectPath", task.ObjectPath),
+				zap.Int64("partNumber", task.PartNumber),
+				zap.Error(_err))
 			return _err
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask.Run finish.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber))
 		return downloadPartOutput
 	}
 }

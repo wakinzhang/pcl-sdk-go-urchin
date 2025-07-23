@@ -6,6 +6,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage/adaptee"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 )
 
@@ -41,8 +42,9 @@ func NewStorage(
 	storageNodeConfig *StorageNodeConfig) (
 	err error, storage Storage) {
 
-	Logger.WithContext(ctx).Debug(
-		"NewStorage start. nodeType: ", nodeType)
+	InfoLogger.WithContext(ctx).Debug(
+		"NewStorage start.",
+		zap.Int32("nodeType", nodeType))
 	switch nodeType {
 	case StorageCategoryEObs,
 		StorageCategoryEMinio,
@@ -59,12 +61,12 @@ func NewStorage(
 			storageNodeConfig.ReqTimeout,
 			storageNodeConfig.MaxConnection)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage S3 finish.")
 		return nil, &s3
 	case StorageCategoryEJcs:
@@ -83,12 +85,12 @@ func NewStorage(
 			storageNodeConfig.ReqTimeout,
 			storageNodeConfig.MaxConnection)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"JCS.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage JCS finish.")
 		return nil, &jcs
 	case StorageCategoryEStarLight:
@@ -102,12 +104,12 @@ func NewStorage(
 			storageNodeConfig.ReqTimeout,
 			storageNodeConfig.MaxConnection)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"StarLight.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage StarLight finish.")
 		return nil, &starLight
 	case StorageCategoryEParaCloud:
@@ -119,12 +121,12 @@ func NewStorage(
 			storageNodeConfig.Pass,
 			storageNodeConfig.Endpoint)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ParaCloud.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage ParaCloud finish.")
 		return nil, &paraCloud
 	case StorageCategoryEScow:
@@ -140,12 +142,12 @@ func NewStorage(
 			storageNodeConfig.ReqTimeout,
 			storageNodeConfig.MaxConnection)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Scow.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage Scow finish.")
 		return nil, &scow
 	case StorageCategoryESugon:
@@ -162,17 +164,17 @@ func NewStorage(
 			storageNodeConfig.ReqTimeout,
 			storageNodeConfig.MaxConnection)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"Sugon.Init failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, storage
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"NewStorage Sugon finish.")
 		return nil, &sugon
 	default:
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"invalid storage node type.")
 		return errors.New("invalid storage node type"), storage
 	}

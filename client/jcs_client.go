@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"io"
 	"mime/multipart"
 	"net"
@@ -33,10 +34,10 @@ func (o *JCSProxyClient) Init(
 	reqTimeout,
 	maxConnection int) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:Init start.",
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.Int("reqTimeout", reqTimeout),
+		zap.Int("maxConnection", maxConnection))
 
 	timeout := time.Duration(reqTimeout) * time.Second
 
@@ -63,9 +64,8 @@ func (o *JCSProxyClient) Init(
 	o.jcsClient.RetryWaitMax = 5 * time.Second
 	o.jcsClient.HTTPClient.Timeout = timeout
 	o.jcsClient.HTTPClient.Transport = transport
-	o.jcsClient.Logger = Logger
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:Init finish.")
 }
 
@@ -73,9 +73,9 @@ func (o *JCSProxyClient) ListWithSignedUrl(
 	ctx context.Context,
 	signedUrl string) (err error, resp *JCSListResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:ListWithSignedUrl start.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 
 	resp = new(JCSListResponse)
 
@@ -84,60 +84,60 @@ func (o *JCSProxyClient) ListWithSignedUrl(
 		signedUrl,
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	response, err := o.jcsClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"client.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBody, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:ListWithSignedUrl response.",
-		" signedUrl: ", signedUrl,
-		" response: ", string(respBody))
+		zap.String("signedUrl", signedUrl),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxyClient:ListWithSignedUrl response failed.",
-			" signedUrl: ", signedUrl,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.String("signedUrl", signedUrl),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:ListWithSignedUrl finish.")
 	return nil, resp
 }
@@ -147,18 +147,18 @@ func (o *JCSProxyClient) UploadFileWithSignedUrl(
 	signedUrl string,
 	data io.Reader) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:UploadFileWithSignedUrl start.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 
 	request, err := retryablehttp.NewRequest(
 		http.MethodPost,
 		signedUrl,
 		data)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -166,53 +166,53 @@ func (o *JCSProxyClient) UploadFileWithSignedUrl(
 
 	response, err := o.jcsClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"client.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBody, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:UploadFileWithSignedUrl response.",
-		" signedUrl: ", signedUrl,
-		" response: ", string(respBody))
+		zap.String("signedUrl", signedUrl),
+		zap.String("response", string(respBody)))
 
 	resp := new(JCSBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxyClient:UploadFileWithSignedUrl response failed.",
-			" signedUrl: ", signedUrl,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.String("signedUrl", signedUrl),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:UploadFileWithSignedUrl finish.")
 	return nil
 }
@@ -222,9 +222,9 @@ func (o *JCSProxyClient) NewMultiPartUploadWithSignedUrl(
 	signedUrl string) (err error,
 	resp *JCSNewMultiPartUploadResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:NewMultiPartUploadWithSignedUrl start.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 
 	resp = new(JCSNewMultiPartUploadResponse)
 
@@ -233,61 +233,61 @@ func (o *JCSProxyClient) NewMultiPartUploadWithSignedUrl(
 		signedUrl,
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	response, err := o.jcsClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"client.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBody, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:NewMultiPartUploadWithSignedUrl response.",
-		" signedUrl: ", signedUrl,
-		" response: ", string(respBody))
+		zap.String("signedUrl", signedUrl),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxyClient:NewMultiPartUploadWithSignedUrl response"+
 				" failed.",
-			" signedUrl: ", signedUrl,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.String("signedUrl", signedUrl),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:NewMultiPartUploadWithSignedUrl finish.")
 	return nil, resp
 }
@@ -297,9 +297,9 @@ func (o *JCSProxyClient) UploadPartWithSignedUrl(
 	signedUrl string,
 	data io.Reader) (err error, resp *JCSBaseResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:UploadPartWithSignedUrl start.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 
 	resp = new(JCSBaseResponse)
 
@@ -308,9 +308,9 @@ func (o *JCSProxyClient) UploadPartWithSignedUrl(
 		signedUrl,
 		data)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -318,52 +318,52 @@ func (o *JCSProxyClient) UploadPartWithSignedUrl(
 
 	response, err := o.jcsClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"client.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBody, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:UploadPartWithSignedUrl response.",
-		" signedUrl: ", signedUrl,
-		" response: ", string(respBody))
+		zap.String("signedUrl", signedUrl),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxyClient:UploadPartWithSignedUrl response failed.",
-			" signedUrl: ", signedUrl,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.String("signedUrl", signedUrl),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:UploadPartWithSignedUrl finish.")
 	return nil, resp
 }
@@ -373,9 +373,9 @@ func (o *JCSProxyClient) CompleteMultiPartUploadWithSignedUrl(
 	signedUrl string) (err error,
 	resp *JCSCompleteMultiPartUploadResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:CompleteMultiPartUploadWithSignedUrl start.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 
 	resp = new(JCSCompleteMultiPartUploadResponse)
 
@@ -384,62 +384,62 @@ func (o *JCSProxyClient) CompleteMultiPartUploadWithSignedUrl(
 		signedUrl,
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	response, err := o.jcsClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"client.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBody, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:CompleteMultiPartUploadWithSignedUrl"+
 			" response.",
-		" signedUrl: ", signedUrl,
-		" response: ", string(respBody))
+		zap.String("signedUrl", signedUrl),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxyClient:CompleteMultiPartUploadWithSignedUrl"+
 				" response failed.",
-			" signedUrl: ", signedUrl,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.String("signedUrl", signedUrl),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:CompleteMultiPartUploadWithSignedUrl finish.")
 	return nil, resp
 }
@@ -448,9 +448,9 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 	ctx context.Context,
 	signedUrl string) (err error, output *JCSDownloadPartOutput) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:DownloadPartWithSignedUrl start.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 
 	output = new(JCSDownloadPartOutput)
 
@@ -459,17 +459,17 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 		signedUrl,
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	response, err := o.jcsClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"client.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -479,39 +479,39 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 		defer func(body io.ReadCloser) {
 			_err := body.Close()
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"io.ReadCloser failed.",
-					" err: ", _err)
+					zap.Error(_err))
 			}
 		}(response.Body)
 
 		respBodyBuf, err := io.ReadAll(response.Body)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadAll failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"JCSProxyClient:DownloadPartWithSignedUrl response.",
-			" signedUrl: ", signedUrl,
-			" response: ", string(respBodyBuf))
+			zap.String("signedUrl", signedUrl),
+			zap.String("response", string(respBodyBuf)))
 
 		var resp = new(JCSBaseResponse)
 		err = json.Unmarshal(respBodyBuf, resp)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"json.Unmarshal failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSProxyClient:DownloadPartWithSignedUrl response failed.",
-			" signedUrl: ", signedUrl,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.String("signedUrl", signedUrl),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 
 		return errors.New(resp.Message), output
 	}
@@ -519,7 +519,7 @@ func (o *JCSProxyClient) DownloadPartWithSignedUrl(
 	output = new(JCSDownloadPartOutput)
 	output.Body = response.Body
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSProxyClient:DownloadPartWithSignedUrl finish.")
 	return nil, output
 }
@@ -549,18 +549,16 @@ func (o *JCSClient) Init(
 	reqTimeout,
 	maxConnection int32) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCSClient:Init start.",
-		" accessKey: ", "***",
-		" secretKey: ", "***",
-		" endPoint: ", endPoint,
-		" authService: ", authService,
-		" authRegion: ", authRegion,
-		" userID: ", userID,
-		" bucketID: ", bucketID,
-		" bucketName: ", bucketName,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endPoint", endPoint),
+		zap.String("authService", authService),
+		zap.String("authRegion", authRegion),
+		zap.Int32("userId", userID),
+		zap.Int32("bucketID", bucketID),
+		zap.String("bucketName", bucketName),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	o.accessKey = accessKey
 	o.secretKey = secretKey
@@ -596,9 +594,8 @@ func (o *JCSClient) Init(
 	o.jcsClient.RetryWaitMax = 5 * time.Second
 	o.jcsClient.HTTPClient.Timeout = timeout
 	o.jcsClient.HTTPClient.Transport = transport
-	o.jcsClient.Logger = Logger
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCS:Init finish.")
 }
 
@@ -606,7 +603,7 @@ func (o *JCSClient) sign(
 	ctx context.Context,
 	req *http.Request) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCSClient:sign start.")
 
 	prod := credentials.NewStaticCredentialsProvider(
@@ -616,9 +613,9 @@ func (o *JCSClient) sign(
 
 	cred, err := prod.Retrieve(context.TODO())
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"CredentialsProvider:Retrieve failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -626,16 +623,16 @@ func (o *JCSClient) sign(
 	if req.Body != nil {
 		data, err := io.ReadAll(req.Body)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"http.Request.Body ReadAll failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		_err := req.Body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"http.Request.Body.Close failed.",
-				" error:", _err)
+				zap.Error(_err))
 		}
 
 		req.Body = io.NopCloser(bytes.NewReader(data))
@@ -648,9 +645,9 @@ func (o *JCSClient) sign(
 		payloadHash = hex.EncodeToString(hash[:])
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"Signer:SignHTTP params."+
-			" payloadHash: ", payloadHash)
+	InfoLogger.WithContext(ctx).Debug(
+		"Signer:SignHTTP params.",
+		zap.String("payloadHash", payloadHash))
 	signer := signerV4.NewSigner()
 	err = signer.SignHTTP(
 		context.Background(),
@@ -661,13 +658,13 @@ func (o *JCSClient) sign(
 		o.authRegion,
 		time.Now())
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Signer.SignHTTP failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCSClient:sign finish.")
 	return nil
 }
@@ -676,7 +673,7 @@ func (o *JCSClient) signWithoutBody(
 	ctx context.Context,
 	req *http.Request) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCSClient:signWithoutBody start.")
 
 	prod := credentials.NewStaticCredentialsProvider(
@@ -686,9 +683,9 @@ func (o *JCSClient) signWithoutBody(
 
 	cred, err := prod.Retrieve(context.TODO())
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"CredentialsProvider:Retrieve failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -702,13 +699,13 @@ func (o *JCSClient) signWithoutBody(
 		o.authRegion,
 		time.Now())
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"Signer.SignHTTP failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCSClient:signWithoutBody finish.")
 	return nil
 }
@@ -718,7 +715,7 @@ func (o *JCSClient) preSign(
 	req *http.Request,
 	expiration int) (signedUrl string, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCSClient:preSign start.")
 
 	urlQuery := req.URL.Query()
@@ -732,9 +729,9 @@ func (o *JCSClient) preSign(
 
 	cred, err := prod.Retrieve(context.TODO())
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"CredentialsProvider:Retrieve failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
@@ -749,12 +746,12 @@ func (o *JCSClient) preSign(
 		o.authRegion,
 		time.Now())
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"signerV4:PreSignHTTP failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function JCSClient:preSign finish.")
 
 	return signedUrl, err
@@ -765,9 +762,9 @@ func (o *JCSClient) CreateBucket(
 	bucketName string) (
 	resp *JCSCreateBucketResponse, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreateBucket start.",
-		" bucketName: ", bucketName)
+		zap.String("bucketName", bucketName))
 
 	input := new(JCSCreateBucketReq)
 	input.UserID = o.userID
@@ -775,86 +772,86 @@ func (o *JCSClient) CreateBucket(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqUrl := o.endPoint + JCSCreateBucketInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreateBucket request.",
-		" reqUrl: ", reqUrl,
-		" reqBody: ", string(reqBody))
+		zap.String("reqUrl", reqUrl),
+		zap.String("reqBody", string(reqBody)))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreateBucket response.",
-		" bucketName: ", bucketName,
-		" response: ", string(respBodyBuf))
+		zap.String("bucketName", bucketName),
+		zap.String("response", string(respBodyBuf)))
 
 	resp = new(JCSCreateBucketResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreateBucket finish.")
 	return resp, err
 }
@@ -864,9 +861,9 @@ func (o *JCSClient) CreatePackage(
 	packageName string) (
 	resp *JCSCreatePackageResponse, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage start.",
-		" packageName: ", packageName)
+		zap.String("packageName", packageName))
 
 	input := new(JCSCreatePackageReq)
 	input.UserID = o.userID
@@ -875,86 +872,86 @@ func (o *JCSClient) CreatePackage(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqUrl := o.endPoint + JCSCreatePackageInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage request.",
-		" reqUrl: ", reqUrl,
-		" reqBody: ", string(reqBody))
+		zap.String("reqUrl", reqUrl),
+		zap.String("reqBody", string(reqBody)))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage response.",
-		" packageName: ", packageName,
-		" response: ", string(respBodyBuf))
+		zap.String("packageName", packageName),
+		zap.String("response", string(respBodyBuf)))
 
 	resp = new(JCSCreatePackageResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage finish.")
 	return resp, err
 }
@@ -964,9 +961,9 @@ func (o *JCSClient) GetPackage(
 	packageName string) (
 	resp *JCSGetPackageResponse, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:GetPackage start.",
-		" packageName: ", packageName)
+		zap.String("packageName", packageName))
 
 	input := new(JCSGetPackageReq)
 	input.UserID = o.userID
@@ -975,17 +972,17 @@ func (o *JCSClient) GetPackage(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqUrl := o.endPoint + JCSGetPackageInterface + "?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:GetPackage request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -995,68 +992,68 @@ func (o *JCSClient) GetPackage(
 		reqUrl,
 		nil)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:GetPackage response.",
-		" packageName: ", packageName,
-		" response: ", string(respBodyBuf))
+		zap.String("packageName", packageName),
+		zap.String("response", string(respBodyBuf)))
 
 	resp = new(JCSGetPackageResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:GetPackage finish.")
 	return resp, err
 }
@@ -1065,9 +1062,9 @@ func (o *JCSClient) DeletePackage(
 	ctx context.Context,
 	packageId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:DeletePackage start.",
-		" packageId: ", packageId)
+		zap.Int32("packageId", packageId))
 
 	input := new(JCSDeletePackageReq)
 	input.UserID = o.userID
@@ -1075,95 +1072,95 @@ func (o *JCSClient) DeletePackage(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	reqUrl := o.endPoint + JCSDeletePackageInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:DeletePackage request.",
-		" reqUrl: ", reqUrl,
-		" reqBody: ", string(reqBody))
+		zap.String("reqUrl", reqUrl),
+		zap.String("reqBody", string(reqBody)))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:DeletePackage response.",
-		" packageId: ", packageId,
-		" response: ", string(respBodyBuf))
+		zap.Int32("packageId", packageId),
+		zap.String("response", string(respBodyBuf)))
 
 	resp := new(JCSBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient:DeletePackage response failed.",
-			" packageId: ", packageId,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.Int32("packageId", packageId),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:DeletePackage finish.")
 	return err
 }
@@ -1178,15 +1175,15 @@ func (o *JCSClient) CreatePreSignedObjectListSignedUrl(
 	expires int) (
 	signedUrl string, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectListSignedUrl start.",
-		" packageID: ", packageID,
-		" path: ", path,
-		" isPrefix: ", isPrefix,
-		" noRecursive: ", noRecursive,
-		" maxKeys: ", maxKeys,
-		" continuationToken: ", continuationToken,
-		" expires: ", expires)
+		zap.Int32("packageID", packageID),
+		zap.String("path", path),
+		zap.Bool("isPrefix", isPrefix),
+		zap.Bool("noRecursive", noRecursive),
+		zap.Int32("maxKeys", maxKeys),
+		zap.String("continuationToken", continuationToken),
+		zap.Int("expires", expires))
 
 	input := JCSListReq{}
 	input.UserID = o.userID
@@ -1199,9 +1196,9 @@ func (o *JCSClient) CreatePreSignedObjectListSignedUrl(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
@@ -1209,32 +1206,32 @@ func (o *JCSClient) CreatePreSignedObjectListSignedUrl(
 		JCSPreSignedObjectListInterface +
 		"?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectListSignedUrl request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	req, err := http.NewRequest(
 		http.MethodGet,
 		reqUrl,
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
 	signedUrl, err = o.preSign(ctx, req, expires)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.PreSign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectListSignedUrl finish.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 	return signedUrl, err
 }
 
@@ -1245,11 +1242,11 @@ func (o *JCSClient) CreatePreSignedObjectUploadSignedUrl(
 	expires int) (
 	signedUrl string, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadSignedUrl start.",
-		" packageID: ", packageID,
-		" path: ", path,
-		" expires: ", expires)
+		zap.Int32("packageID", packageID),
+		zap.String("path", path),
+		zap.Int("expires", expires))
 
 	input := JCSCreatePreSignedObjectUploadSignedUrlReq{}
 	input.UserID = o.userID
@@ -1258,9 +1255,9 @@ func (o *JCSClient) CreatePreSignedObjectUploadSignedUrl(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
@@ -1268,32 +1265,32 @@ func (o *JCSClient) CreatePreSignedObjectUploadSignedUrl(
 		JCSPreSignedObjectUploadInterface +
 		"?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadSignedUrl request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	req, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
 	signedUrl, err = o.preSign(ctx, req, expires)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.PreSign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadSignedUrl finish.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 	return signedUrl, err
 }
 
@@ -1304,12 +1301,12 @@ func (o *JCSClient) CreatePreSignedObjectNewMultipartUploadSignedUrl(
 	expires int) (
 	signedUrl string, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectNewMultipartUploadSignedUrl"+
 			" start.",
-		" packageID: ", packageID,
-		" path: ", path,
-		" expires: ", expires)
+		zap.Int32("packageID", packageID),
+		zap.String("path", path),
+		zap.Int("expires", expires))
 
 	input := JCSNewMultiPartUploadReq{}
 	input.UserID = o.userID
@@ -1318,9 +1315,9 @@ func (o *JCSClient) CreatePreSignedObjectNewMultipartUploadSignedUrl(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
@@ -1328,34 +1325,34 @@ func (o *JCSClient) CreatePreSignedObjectNewMultipartUploadSignedUrl(
 		JCSPreSignedObjectNewMultipartUploadInterface +
 		"?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectNewMultipartUploadSignedUrl"+
 			" request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	req, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
 	signedUrl, err = o.preSign(ctx, req, expires)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.PreSign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectNewMultipartUploadSignedUrl"+
 			" finish.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 	return signedUrl, err
 }
 
@@ -1365,11 +1362,11 @@ func (o *JCSClient) CreatePreSignedObjectUploadPartSignedUrl(
 	expires int) (
 	signedUrl string, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadPartSignedUrl start.",
-		" objectID: ", objectID,
-		" index: ", index,
-		" expires: ", expires)
+		zap.Int32("objectID", objectID),
+		zap.Int32("index", index),
+		zap.Int("expires", expires))
 
 	input := JCSUploadPartReqInfo{}
 
@@ -1379,9 +1376,9 @@ func (o *JCSClient) CreatePreSignedObjectUploadPartSignedUrl(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
@@ -1389,32 +1386,32 @@ func (o *JCSClient) CreatePreSignedObjectUploadPartSignedUrl(
 		JCSPreSignedObjectUploadPartInterface +
 		"?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadPartSignedUrl request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	req, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
 	signedUrl, err = o.preSign(ctx, req, expires)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.PreSign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectUploadPartSignedUrl finish.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 	return signedUrl, err
 }
 
@@ -1425,11 +1422,11 @@ func (o *JCSClient) CreatePreSignedObjectCompleteMultipartUploadSignedUrl(
 	expires int) (
 	signedUrl string, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:"+
 			"CreatePreSignedObjectCompleteMultipartUploadSignedUrl start.",
-		" objectID: ", objectID,
-		" expires: ", expires)
+		zap.Int32("objectID", objectID),
+		zap.Int("expires", expires))
 
 	input := JCSCompleteMultiPartUploadReq{}
 	input.UserID = o.userID
@@ -1438,9 +1435,9 @@ func (o *JCSClient) CreatePreSignedObjectCompleteMultipartUploadSignedUrl(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
@@ -1448,34 +1445,34 @@ func (o *JCSClient) CreatePreSignedObjectCompleteMultipartUploadSignedUrl(
 		JCSPreSignedObjectCompleteMultipartUploadInterface +
 		"?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:"+
 			"CreatePreSignedObjectCompleteMultipartUploadSignedUrl request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	req, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(""))
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
 	signedUrl, err = o.preSign(ctx, req, expires)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.PreSign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:"+
 			"CreatePreSignedObjectCompleteMultipartUploadSignedUrl finish.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 	return signedUrl, err
 }
 
@@ -1487,12 +1484,12 @@ func (o *JCSClient) CreatePreSignedObjectDownloadSignedUrl(
 	expires int) (
 	signedUrl string, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectDownloadSignedUrl start.",
-		" objectID: ", objectID,
-		" offset: ", offset,
-		" length: ", length,
-		" expires: ", expires)
+		zap.Int32("objectID", objectID),
+		zap.Int64("offset", offset),
+		zap.Int64("length", length),
+		zap.Int("expires", expires))
 
 	input := JCSDownloadReq{}
 	input.UserID = o.userID
@@ -1502,9 +1499,9 @@ func (o *JCSClient) CreatePreSignedObjectDownloadSignedUrl(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
@@ -1512,32 +1509,32 @@ func (o *JCSClient) CreatePreSignedObjectDownloadSignedUrl(
 		JCSPreSignedObjectDownloadInterface +
 		"?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectDownloadSignedUrl request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	req, err := http.NewRequest(
 		http.MethodGet,
 		reqUrl,
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
 	signedUrl, err = o.preSign(ctx, req, expires)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.PreSign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return signedUrl, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePreSignedObjectDownloadSignedUrl finish.",
-		" signedUrl: ", signedUrl)
+		zap.String("signedUrl", signedUrl))
 	return signedUrl, err
 }
 
@@ -1550,14 +1547,14 @@ func (o *JCSClient) List(
 	continuationToken string) (
 	listObjectsData *JCSListData, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:List start.",
-		" packageID: ", packageID,
-		" path: ", path,
-		" isPrefix: ", isPrefix,
-		" noRecursive: ", noRecursive,
-		" maxKeys: ", maxKeys,
-		" continuationToken: ", continuationToken)
+		zap.Int32("packageID", packageID),
+		zap.String("path", path),
+		zap.Bool("isPrefix", isPrefix),
+		zap.Bool("noRecursive", noRecursive),
+		zap.Int32("maxKeys", maxKeys),
+		zap.String("continuationToken", continuationToken))
 
 	input := JCSListReq{}
 	input.UserID = o.userID
@@ -1570,16 +1567,16 @@ func (o *JCSClient) List(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
 	reqUrl := o.endPoint + JCSListInterface + "?" + values.Encode()
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:List request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -1589,9 +1586,9 @@ func (o *JCSClient) List(
 		reqUrl,
 		nil)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
@@ -1599,82 +1596,82 @@ func (o *JCSClient) List(
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBody, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:List response.",
-		" packageID: ", packageID,
-		" path: ", path,
-		" isPrefix: ", isPrefix,
-		" noRecursive: ", noRecursive,
-		" maxKeys: ", maxKeys,
-		" continuationToken: ", continuationToken,
-		" response: ", string(respBody))
+		zap.Int32("packageID", packageID),
+		zap.String("path", path),
+		zap.Bool("isPrefix", isPrefix),
+		zap.Bool("noRecursive", noRecursive),
+		zap.Int32("maxKeys", maxKeys),
+		zap.String("continuationToken", continuationToken),
+		zap.String("response", string(respBody)))
 
 	resp := new(JCSListResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsData, err
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient:List response failed.",
-			" packageID: ", packageID,
-			" path: ", path,
-			" isPrefix: ", isPrefix,
-			" noRecursive: ", noRecursive,
-			" maxKeys: ", maxKeys,
-			" continuationToken: ", continuationToken,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.Int32("packageID", packageID),
+			zap.String("path", path),
+			zap.Bool("isPrefix", isPrefix),
+			zap.Bool("noRecursive", noRecursive),
+			zap.Int32("maxKeys", maxKeys),
+			zap.String("continuationToken", continuationToken),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return listObjectsData, errors.New(resp.Message)
 	}
 
 	listObjectsData = new(JCSListData)
 	listObjectsData = resp.Data
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:List finish.")
 	return listObjectsData, err
 }
@@ -1685,10 +1682,10 @@ func (o *JCSClient) UploadFile(
 	path string,
 	data io.Reader) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadFile start.",
-		" packageId: ", packageId,
-		" path: ", path)
+		zap.Int32("packageId", packageId),
+		zap.String("path", path))
 
 	jCSUploadReqInfo := new(JCSUploadReqInfo)
 	jCSUploadReqInfo.UserID = o.userID
@@ -1696,18 +1693,18 @@ func (o *JCSClient) UploadFile(
 
 	info, err := json.Marshal(jCSUploadReqInfo)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	reqUrl := o.endPoint + JCSUploadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadFile request.",
-		" reqUrl: ", reqUrl,
-		" info: ", string(info))
+		zap.String("reqUrl", reqUrl),
+		zap.String("info", string(info)))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -1715,18 +1712,18 @@ func (o *JCSClient) UploadFile(
 		JCSMultiPartFormFiledFiles,
 		url.PathEscape(path))
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if nil != data {
 		_, err = io.Copy(part, data)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.Copy failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
@@ -1736,9 +1733,9 @@ func (o *JCSClient) UploadFile(
 
 	err = writer.Close()
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.Close failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -1747,80 +1744,80 @@ func (o *JCSClient) UploadFile(
 		reqUrl,
 		body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
 	err = o.signWithoutBody(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.signWithoutBody failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadFile response.",
-		" packageId: ", packageId,
-		" path: ", path,
-		" response: ", string(respBodyBuf))
+		zap.Int32("packageId", packageId),
+		zap.String("path", path),
+		zap.String("response", string(respBodyBuf)))
 
 	resp := new(JCSBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient:UploadFile response failed.",
-			" packageId: ", packageId,
-			" path: ", path,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.Int32("packageId", packageId),
+			zap.String("path", path),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadFile finish.")
 	return nil
 }
@@ -1831,10 +1828,10 @@ func (o *JCSClient) NewMultiPartUpload(
 	path string) (
 	resp *JCSNewMultiPartUploadResponse, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:NewMultiPartUpload start.",
-		" packageId: ", packageId,
-		" path: ", path)
+		zap.Int32("packageId", packageId),
+		zap.String("path", path))
 
 	input := new(JCSNewMultiPartUploadReq)
 	input.UserID = o.userID
@@ -1843,87 +1840,87 @@ func (o *JCSClient) NewMultiPartUpload(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqUrl := o.endPoint + JCSNewMultipartUploadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CreatePackage request.",
-		" reqUrl: ", reqUrl,
-		" reqBody: ", string(reqBody))
+		zap.String("reqUrl", reqUrl),
+		zap.String("reqBody", string(reqBody)))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:NewMultiPartUpload response.",
-		" packageId: ", packageId,
-		" path: ", path,
-		" response: ", string(respBodyBuf))
+		zap.Int32("packageId", packageId),
+		zap.String("path", path),
+		zap.String("response", string(respBodyBuf)))
 
 	resp = new(JCSNewMultiPartUploadResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return resp, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:NewMultiPartUpload finish.")
 	return resp, err
 }
@@ -1935,11 +1932,11 @@ func (o *JCSClient) UploadPart(
 	path string,
 	data io.Reader) (err error, resp *JCSBaseResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart start.",
-		" objectID: ", objectID,
-		" index: ", index,
-		" path: ", path)
+		zap.Int32("objectID", objectID),
+		zap.Int32("index", index),
+		zap.String("path", path))
 
 	jCSUploadPartReqInfo := new(JCSUploadPartReqInfo)
 	jCSUploadPartReqInfo.UserID = o.userID
@@ -1948,18 +1945,18 @@ func (o *JCSClient) UploadPart(
 
 	info, err := json.Marshal(jCSUploadPartReqInfo)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	reqUrl := o.endPoint + JCSUploadPartInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart request.",
-		" reqUrl: ", reqUrl,
-		" info: ", string(info))
+		zap.String("reqUrl", reqUrl),
+		zap.String("info", string(info)))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -1967,16 +1964,16 @@ func (o *JCSClient) UploadPart(
 		JCSMultiPartFormFiledFile,
 		url.PathEscape(path))
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.Copy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 	_ = writer.WriteField(
@@ -1985,9 +1982,9 @@ func (o *JCSClient) UploadPart(
 
 	err = writer.Close()
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.Close failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -1996,82 +1993,82 @@ func (o *JCSClient) UploadPart(
 		reqUrl,
 		body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 	reqHttp.Header.Set(HttpHeaderContentType, writer.FormDataContentType())
 
 	err = o.signWithoutBody(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.signWithoutBody failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart response.",
-		" objectID: ", objectID,
-		" index: ", index,
-		" path: ", path,
-		" response: ", string(respBodyBuf))
+		zap.Int32("objectID", objectID),
+		zap.Int32("index", index),
+		zap.String("path", path),
+		zap.String("response", string(respBodyBuf)))
 
 	resp = new(JCSBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient:UploadPart response failed.",
-			" objectID: ", objectID,
-			" index: ", index,
-			" path: ", path,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.Int32("objectID", objectID),
+			zap.Int32("index", index),
+			zap.String("path", path),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:UploadPart finish.")
 	return nil, resp
 }
@@ -2082,9 +2079,9 @@ func (o *JCSClient) CompleteMultiPartUpload(
 	indexes []int32) (
 	err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CompleteMultiPartUpload start.",
-		" objectID: ", objectID)
+		zap.Int32("objectID", objectID))
 
 	input := new(JCSCompleteMultiPartUploadReq)
 	input.UserID = o.userID
@@ -2093,95 +2090,95 @@ func (o *JCSClient) CompleteMultiPartUpload(
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	reqUrl := o.endPoint + JCSCompleteMultipartUploadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CompleteMultiPartUpload request.",
-		" reqUrl: ", reqUrl,
-		" reqBody: ", string(reqBody))
+		zap.String("reqUrl", reqUrl),
+		zap.String("reqBody", string(reqBody)))
 
 	reqHttp, err := http.NewRequest(
 		http.MethodPost,
 		reqUrl,
 		strings.NewReader(string(reqBody)))
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CompleteMultiPartUpload response.",
-		" objectID: ", objectID,
-		" response: ", string(respBodyBuf))
+		zap.Int32("objectID", objectID),
+		zap.String("response", string(respBodyBuf)))
 
 	resp := new(JCSCompleteMultiPartUploadResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if JCSSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient:CompleteMultiPartUpload response failed.",
-			" objectID: ", objectID,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.Int32("objectID", objectID),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 		return errors.New(resp.Message)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:CompleteMultiPartUpload finish.")
 	return err
 }
@@ -2192,11 +2189,11 @@ func (o *JCSClient) DownloadPart(
 	offset,
 	length int64) (err error, output *JCSDownloadPartOutput) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:DownloadPart start.",
-		" objectID: ", objectID,
-		" offset: ", offset,
-		" length: ", length)
+		zap.Int32("objectID", objectID),
+		zap.Int64("offset", offset),
+		zap.Int64("length", length))
 
 	input := new(JCSDownloadReq)
 	input.UserID = o.userID
@@ -2206,17 +2203,17 @@ func (o *JCSClient) DownloadPart(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	reqUrl := o.endPoint + JCSDownloadInterface + "?" + values.Encode()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:DownloadPart request.",
-		" reqUrl: ", reqUrl)
+		zap.String("reqUrl", reqUrl))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -2226,9 +2223,9 @@ func (o *JCSClient) DownloadPart(
 		reqUrl,
 		nil)
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -2236,25 +2233,25 @@ func (o *JCSClient) DownloadPart(
 
 	err = o.sign(ctx, reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient.sign failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	response, err := o.jcsClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"jcsClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -2264,43 +2261,43 @@ func (o *JCSClient) DownloadPart(
 		defer func(body io.ReadCloser) {
 			_err := body.Close()
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"io.ReadCloser failed.",
-					" err: ", _err)
+					zap.Error(_err))
 			}
 		}(response.Body)
 
 		respBodyBuf, err := io.ReadAll(response.Body)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadAll failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"JCSClient:DownloadPart response.",
-			" objectID: ", objectID,
-			" offset: ", offset,
-			" length: ", length,
-			" response: ", string(respBodyBuf))
+			zap.Int32("objectID", objectID),
+			zap.Int64("offset", offset),
+			zap.Int64("length", length),
+			zap.String("response", string(respBodyBuf)))
 
 		var resp = new(JCSBaseResponse)
 		err = json.Unmarshal(respBodyBuf, resp)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"json.Unmarshal failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"JCSClient:DownloadPart response failed.",
-			" objectID: ", objectID,
-			" offset: ", offset,
-			" length: ", length,
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message)
+			zap.Int32("objectID", objectID),
+			zap.Int64("offset", offset),
+			zap.Int64("length", length),
+			zap.String("errCode", resp.Code),
+			zap.String("errMessage", resp.Message))
 
 		return errors.New(resp.Message), output
 	}
@@ -2308,7 +2305,7 @@ func (o *JCSClient) DownloadPart(
 	output = new(JCSDownloadPartOutput)
 	output.Body = response.Body
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"JCSClient:DownloadPart finish.")
 	return err, output
 }

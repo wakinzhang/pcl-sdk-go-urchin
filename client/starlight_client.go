@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"io"
 	"net"
 	"net/http"
@@ -33,13 +34,11 @@ func (o *SLClient) Init(
 	reqTimeout,
 	maxConnection int32) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Init start.",
-		" username: ", "***",
-		" password: ", "***",
-		" endpoint: ", endpoint,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endpoint", endpoint),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	o.username = username
 	o.password = password
@@ -70,20 +69,19 @@ func (o *SLClient) Init(
 	o.slClient.RetryWaitMax = 5 * time.Second
 	o.slClient.HTTPClient.Timeout = timeout
 	o.slClient.HTTPClient.Transport = transport
-	o.slClient.Logger = Logger
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Init finish.")
 }
 
 func (o *SLClient) refreshToken(ctx context.Context) (err error) {
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:refreshToken start.")
 
 	if time.Now().Sub(o.tokenCreateTime).Hours() <
 		DefaultStarLightTokenExpireHours {
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"StarLight token valid, no need to refresh.")
 		return err
 	}
@@ -94,18 +92,18 @@ func (o *SLClient) refreshToken(ctx context.Context) (err error) {
 
 	reqBody, err := json.Marshal(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + StarLightGetTokenInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:refreshToken request.",
-		" url: ", url,
-		" reqBody: ", string(reqBody))
+		zap.String("url", url),
+		zap.String("reqBody", string(reqBody)))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -118,35 +116,36 @@ func (o *SLClient) refreshToken(ctx context.Context) (err error) {
 		reqBody,
 		o.slClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	resp := new(SLBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if SLSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
+			zap.Int32("code", resp.Code),
+			zap.String("info", resp.Info))
 		return errors.New(resp.Info)
 	}
 
 	o.token = resp.Spec
 	o.tokenCreateTime = time.Now()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:refreshToken finish.")
 	return err
 }
@@ -155,15 +154,15 @@ func (o *SLClient) Mkdir(
 	ctx context.Context,
 	target string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Mkdir start.",
-		" target: ", target)
+		zap.String("target", target))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -175,18 +174,18 @@ func (o *SLClient) Mkdir(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + StarLightStorageOperationInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Mkdir request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -200,35 +199,35 @@ func (o *SLClient) Mkdir(
 		nil,
 		o.slClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Mkdir response.",
-		" target: ", target,
-		" response: ", string(respBody))
+		zap.String("target", target),
+		zap.String("response", string(respBody)))
 
 	resp := new(SLBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if SLSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient:Mkdir response failed.",
-			" target: ", target,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
+			zap.String("target", target),
+			zap.Int32("code", resp.Code),
+			zap.String("info", resp.Info))
 		return errors.New(resp.Info)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Mkdir finish.")
 	return err
 }
@@ -237,15 +236,15 @@ func (o *SLClient) Rm(
 	ctx context.Context,
 	target string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Rm start.",
-		" target: ", target)
+		zap.String("target", target))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -257,18 +256,18 @@ func (o *SLClient) Rm(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + StarLightStorageOperationInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Rm request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -282,35 +281,35 @@ func (o *SLClient) Rm(
 		nil,
 		o.slClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Rm response.",
-		" target: ", target,
-		" response: ", string(respBody))
+		zap.String("target", target),
+		zap.String("response", string(respBody)))
 
 	resp := new(SLBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if SLSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient:Rm response failed.",
-			" target: ", target,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
+			zap.String("target", target),
+			zap.Int32("code", resp.Code),
+			zap.String("info", resp.Info))
 		return errors.New(resp.Info)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:Rm finish.")
 	return err
 }
@@ -321,16 +320,16 @@ func (o *SLClient) UploadChunks(
 	contentRange string,
 	data io.Reader) (err error, resp *SLUploadChunksResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks start.",
-		" file: ", file,
-		" contentRange: ", contentRange)
+		zap.String("file", file),
+		zap.String("contentRange", contentRange))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -340,18 +339,18 @@ func (o *SLClient) UploadChunks(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	url := o.endpoint + StarLightUploadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeText)
@@ -367,36 +366,36 @@ func (o *SLClient) UploadChunks(
 		data,
 		o.slClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks response.",
-		" file: ", file,
-		" contentRange: ", contentRange,
-		" response: ", string(respBody))
+		zap.String("file", file),
+		zap.String("contentRange", contentRange),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SLSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient:UploadChunks response failed.",
-			" file: ", file,
-			" contentRange: ", contentRange,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
+			zap.String("file", file),
+			zap.String("contentRange", contentRange),
+			zap.Int32("code", resp.Code),
+			zap.String("info", resp.Info))
 		return errors.New(resp.Info), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:UploadChunks finish.")
 	return nil, resp
 }
@@ -405,15 +404,15 @@ func (o *SLClient) List(
 	ctx context.Context,
 	path string) (err error, output *SLListOutput) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:List start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -423,18 +422,18 @@ func (o *SLClient) List(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	url := o.endpoint + StarLightListInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:List request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -445,9 +444,9 @@ func (o *SLClient) List(
 		url+"?"+values.Encode(),
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -455,44 +454,44 @@ func (o *SLClient) List(
 
 	response, err := o.slClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"slClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:List response.",
-		" path: ", path,
-		" response: ", string(respBodyBuf))
+		zap.String("path", path),
+		zap.String("response", string(respBodyBuf)))
 
 	output = new(SLListOutput)
 	err = json.Unmarshal(respBodyBuf, output)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:List finish.")
 	return err, output
 }
@@ -502,16 +501,16 @@ func (o *SLClient) DownloadChunks(
 	file,
 	contentRange string) (err error, output *SLDownloadPartOutput) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:DownloadChunks start.",
-		" file: ", file,
-		" contentRange: ", contentRange)
+		zap.String("file", file),
+		zap.String("contentRange", contentRange))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -520,18 +519,18 @@ func (o *SLClient) DownloadChunks(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	url := o.endpoint + StarLightDownloadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:DownloadChunks request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -543,9 +542,9 @@ func (o *SLClient) DownloadChunks(
 		url+"?"+values.Encode(),
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -553,9 +552,9 @@ func (o *SLClient) DownloadChunks(
 
 	response, err := o.slClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"slClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -565,41 +564,41 @@ func (o *SLClient) DownloadChunks(
 		defer func(body io.ReadCloser) {
 			_err := body.Close()
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"io.ReadCloser failed.",
-					" err: ", _err)
+					zap.Error(_err))
 			}
 		}(response.Body)
 
 		respBodyBuf, err := io.ReadAll(response.Body)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadAll failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"SLClient:DownloadChunks response.",
-			" file: ", file,
-			" contentRange: ", contentRange,
-			" response: ", string(respBodyBuf))
+			zap.String("file", file),
+			zap.String("contentRange", contentRange),
+			zap.String("response", string(respBodyBuf)))
 
 		resp := new(SLBaseResponse)
 		err = json.Unmarshal(respBodyBuf, resp)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"json.Unmarshal failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SLClient:DownloadChunks response failed.",
-			" file: ", file,
-			" contentRange: ", contentRange,
-			" Code: ", resp.Code,
-			" Info: ", resp.Info)
+			zap.String("file", file),
+			zap.String("contentRange", contentRange),
+			zap.Int32("code", resp.Code),
+			zap.String("info", resp.Info))
 
 		return errors.New(resp.Info), output
 	}
@@ -607,7 +606,7 @@ func (o *SLClient) DownloadChunks(
 	output = new(SLDownloadPartOutput)
 	output.Body = response.Body
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SLClient:DownloadChunks finish.")
 	return err, output
 }

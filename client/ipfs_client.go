@@ -12,6 +12,7 @@ import (
 	"github.com/urchinfs/go-urchin2-sdk/ipfs_api"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"io"
 	"net"
 	"net/http"
@@ -38,14 +39,11 @@ func (o *IPFSClient) Init(
 	reqTimeout,
 	maxConnection int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function IPFSClient:Init start.",
-		" user: ", "***",
-		" pass: ", "***",
-		" passMagic: ", "***",
-		" endPoint: ", endPoint,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endPoint", endPoint),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 	o.user = user
 	o.pass = pass
 	o.passMagic = passMagic
@@ -76,9 +74,8 @@ func (o *IPFSClient) Init(
 	o.ipfsClient.RetryWaitMax = 5 * time.Second
 	o.ipfsClient.HTTPClient.Timeout = timeout
 	o.ipfsClient.HTTPClient.Transport = transport
-	o.ipfsClient.Logger = Logger
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Function IPFSClient:Init finish.")
 	return nil
 }
@@ -87,12 +84,16 @@ func (o *IPFSClient) GetToken(
 	ctx context.Context) (
 	err error, token string) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Func: GetToken start.")
 	t := time.Now()
 	timeStamp := fmt.Sprintf("%d%d%d", t.Year(), t.Month(), t.Day())
 	rawPass := o.pass + ":" + o.passMagic + ":" + timeStamp
-	Logger.Debug("Func: GetToken rawPass: ", rawPass)
+
+	InfoLogger.WithContext(ctx).Debug(
+		"Func: GetToken",
+		zap.String("rawPass", rawPass))
+
 	hash := sha256.Sum256([]byte(rawPass))
 	reqPass := hex.EncodeToString(hash[:])
 
@@ -107,18 +108,19 @@ func (o *IPFSClient) GetToken(
 		"application/json; charset=UTF-8",
 		strings.NewReader(string(reqBody)))
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"GetToken request failed.",
-			" url:", o.endPoint+IPFSAuthInterface,
-			" request: ", string(reqBody),
-			" error: ", err)
+			zap.String("url", o.endPoint+IPFSAuthInterface),
+			zap.String("request", string(reqBody)),
+			zap.Error(err))
 		return err, token
 	}
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
-				"io.ReadCloser.Close failed. error:", _err)
+			ErrorLogger.WithContext(ctx).Error(
+				"io.ReadCloser.Close failed.",
+				zap.Error(_err))
 		}
 	}(resp.Body)
 
@@ -127,20 +129,21 @@ func (o *IPFSClient) GetToken(
 	} else {
 		respBody, _err := io.ReadAll(resp.Body)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"read response body failed.",
-				" url: %s, error: %v", o.endPoint+IPFSAuthInterface, _err)
+				zap.String("url", o.endPoint+IPFSAuthInterface),
+				zap.Error(_err))
 		}
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"GetToken response failed.",
-			" url:", o.endPoint+IPFSAuthInterface,
-			" request: ", string(reqBody),
-			" StatusCode: ", resp.StatusCode,
-			" respBody: ", string(respBody))
+			zap.String("url", o.endPoint+IPFSAuthInterface),
+			zap.String("request", string(reqBody)),
+			zap.Int("statusCode", resp.StatusCode),
+			zap.String("respBody", string(respBody)))
 		return errors.New("ipfs response failed status code"), token
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"Func: GetToken end.")
 	return nil, token
 }
@@ -149,23 +152,25 @@ func (o *IPFSClient) ListObjects(
 	ctx context.Context,
 	path string) (output []*ipfs_api.LsLink, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSClient:ListObjects start.",
-		" path: ", path)
+		zap.String("path", path))
 	err, o.token = o.GetToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"IPFSClient.GetToken failed. error: ", err)
+		ErrorLogger.WithContext(ctx).Error(
+			"IPFSClient.GetToken failed.",
+			zap.Error(err))
 		return output, err
 	}
 	o.ipfsSDK = ipfs_api.NewClient(o.endPoint, o.token)
 	output, err = o.ipfsSDK.List(path)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
-			"ipfsSDK.List failed. error: ", err)
+		ErrorLogger.WithContext(ctx).Error(
+			"ipfsSDK.List failed.",
+			zap.Error(err))
 		return output, err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"IPFSClient:ListObjects finish.")
 	return output, nil
 }

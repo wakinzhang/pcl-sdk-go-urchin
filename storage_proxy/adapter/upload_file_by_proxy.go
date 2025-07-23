@@ -8,6 +8,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"os"
 )
 
@@ -35,23 +36,23 @@ func UploadFileByProxy(
 		objPath = "/" + objPath
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UploadFileByProxy start.",
-		" userId: ", userId,
-		" token: ", "***",
-		" objUuid: ", objUuid,
-		" objPath: ", objPath,
-		" sourcePath: ", sourcePath,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("token", "***"),
+		zap.String("objUuid", objUuid),
+		zap.String("objPath", objPath),
+		zap.String("sourcePath", sourcePath),
+		zap.Bool("needPure", needPure))
 
 	uploadFileResp = new(UploadFileResp)
 
 	_, err = os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err, uploadFileResp
 	}
 
@@ -71,9 +72,9 @@ func UploadFileByProxy(
 
 	err, uploadFileResp = UClient.UploadFile(ctx, uploadFileReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.UploadFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, uploadFileResp
 	}
 
@@ -89,12 +90,12 @@ func UploadFileByProxy(
 		uploadFileResp.NodeType,
 		needPure)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessUploadFileByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, uploadFileResp
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UploadFileByProxy finish.")
 	return err, uploadFileResp
 }
@@ -107,13 +108,13 @@ func ProcessUploadFileByProxy(
 	nodeType int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ProcessUploadFileByProxy start.",
-		" userId: ", userId,
-		" sourcePath: ", sourcePath,
-		" taskId: ", taskId,
-		" nodeType: ", nodeType,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("sourcePath", sourcePath),
+		zap.Int32("taskId", taskId),
+		zap.Int32("nodeType", nodeType),
+		zap.Bool("needPure", needPure))
 
 	defer func() {
 		finishTaskReq := new(FinishTaskReq)
@@ -126,17 +127,17 @@ func ProcessUploadFileByProxy(
 		}
 		_err, _ := UClient.FinishTask(ctx, finishTaskReq)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"UrchinClient.FinishTask failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}()
 
 	err, storage := NewStorageProxy(ctx, nodeType)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"NewStorageProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	err = storage.Upload(
@@ -146,13 +147,13 @@ func ProcessUploadFileByProxy(
 		taskId,
 		needPure)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"storage.Upload failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ProcessUploadFileByProxy finish.")
 	return nil
 }

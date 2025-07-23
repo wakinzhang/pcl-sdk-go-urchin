@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -26,10 +27,10 @@ func RetryV1(
 			return nil
 
 		} else {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"access failed.",
-				" attempt: ", attempt,
-				" err: ", err)
+				zap.Int(" attempt", attempt),
+				zap.Error(err))
 		}
 		time.Sleep(delay)
 		delay *= 2
@@ -50,10 +51,10 @@ func RetryV4(
 			return nil, output
 
 		} else {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"access failed.",
-				" attempt: ", attempt,
-				" err: ", err)
+				zap.Int(" attempt", attempt),
+				zap.Error(err))
 		}
 		time.Sleep(delay)
 		delay *= 2

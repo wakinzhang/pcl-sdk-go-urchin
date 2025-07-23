@@ -7,13 +7,13 @@ import (
 )
 
 var (
-	accessLog         = "./logs/urchin-sdk-access.log"
-	errorLog          = "./logs/urchin-sdk-error.log"
+	infoLog           = "./logs/sdk-info.log"
+	errorLog          = "./logs/sdk-error.log"
 	urchinServiceAddr = "http://127.0.0.1:39256"
 )
 
 func main() {
-	InitLog(accessLog, errorLog, 6)
+	InitLog(infoLog, errorLog, -1)
 
 	/*上传数据对象*/
 	/**/

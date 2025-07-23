@@ -10,6 +10,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"io"
 	"os"
@@ -35,11 +36,9 @@ func (o *ParaCloud) Init(
 	password,
 	endpoint string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Init start.",
-		" username: ", "***",
-		" password: ", "***",
-		" endpoint: ", endpoint)
+		zap.String("endpoint", endpoint))
 
 	o.pcClient = new(ParaCloudClient)
 	o.pcClient.Init(
@@ -56,7 +55,7 @@ func (o *ParaCloud) Init(
 		DefaultParaCloudRateLimit,
 		DefaultParaCloudRateBurst)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Init finish.")
 	return nil
 }
@@ -65,17 +64,17 @@ func (o *ParaCloud) SetConcurrency(
 	ctx context.Context,
 	config *StorageNodeConcurrencyConfig) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:SetConcurrency start.",
-		" UploadFileTaskNum: ", config.UploadFileTaskNum,
-		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
-		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+		zap.Int32("UploadFileTaskNum", config.UploadFileTaskNum),
+		zap.Int32("DownloadFileTaskNum", config.DownloadFileTaskNum),
+		zap.Int32("DownloadMultiTaskNum", config.DownloadMultiTaskNum))
 
 	o.pcUploadFileTaskNum = int(config.UploadFileTaskNum)
 	o.pcDownloadFileTaskNum = int(config.DownloadFileTaskNum)
 	o.pcDownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:SetConcurrency finish.")
 	return nil
 }
@@ -84,12 +83,12 @@ func (o *ParaCloud) SetRate(
 	ctx context.Context,
 	rateLimiter *rate.Limiter) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:SetRate start.")
 
 	o.pcRateLimiter = rateLimiter
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:SetRate finish.")
 	return nil
 }
@@ -103,15 +102,15 @@ func (o *ParaCloud) Mkdir(
 		sourceFolder = paraCloudMkdirInput.SourceFolder
 		targetFolder = paraCloudMkdirInput.TargetFolder
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Mkdir start.",
-		" sourceFolder: ", sourceFolder,
-		" targetFolder: ", targetFolder)
+		zap.String("sourceFolder", sourceFolder),
+		zap.String("targetFolder", targetFolder))
 
 	err = RetryV1(
 		ctx,
@@ -120,24 +119,24 @@ func (o *ParaCloud) Mkdir(
 		func() error {
 			_err := o.pcClient.Mkdir(ctx, sourceFolder, targetFolder)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"pcClient.Mkdir failed.",
-					" sourceFolder: ", sourceFolder,
-					" targetFolder: ", targetFolder,
-					" err: ", _err)
+					zap.String("sourceFolder", sourceFolder),
+					zap.String("targetFolder", targetFolder),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud.Mkdir failed.",
-			" sourceFolder: ", sourceFolder,
-			" targetFolder: ", targetFolder,
-			" err: ", err)
+			zap.String("sourceFolder", sourceFolder),
+			zap.String("targetFolder", targetFolder),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Mkdir finish.")
 	return nil
 }
@@ -147,25 +146,25 @@ func (o *ParaCloud) loadCheckpointFile(
 	checkpointFile string,
 	result interface{}) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:loadCheckpointFile start.",
-		" checkpointFile: ", checkpointFile)
+		zap.String("checkpointFile", checkpointFile))
 
 	ret, err := os.ReadFile(checkpointFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" checkpointFile: ", checkpointFile,
-			" err: ", err)
+			zap.String("checkpointFile", checkpointFile),
+			zap.Error(err))
 		return err
 	}
 	if len(ret) == 0 {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
-			" checkpointFile: ", checkpointFile)
+			zap.String("checkpointFile", checkpointFile))
 		return errors.New("checkpointFile empty")
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
@@ -175,10 +174,10 @@ func (o *ParaCloud) sliceObject(
 	objectSize, partSize int64,
 	dfc *PCDownloadCheckpoint) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:sliceObject start.",
-		" objectSize: ", objectSize,
-		" partSize: ", partSize)
+		zap.Int64("objectSize", objectSize),
+		zap.Int64("partSize", partSize))
 
 	cnt := objectSize / partSize
 	if objectSize%partSize > 0 {
@@ -204,7 +203,7 @@ func (o *ParaCloud) sliceObject(
 			dfc.DownloadParts[cnt-1].Length = value
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:sliceObject finish.")
 }
 
@@ -213,39 +212,39 @@ func (o *ParaCloud) updateCheckpointFile(
 	fc interface{},
 	checkpointFilePath string) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:updateCheckpointFile start.",
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	result, err := xml.Marshal(fc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"xml.Marshal failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	err = os.WriteFile(checkpointFilePath, result, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.WriteFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
 	defer func() {
 		errMsg := file.Close()
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", errMsg)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_ = file.Sync()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:updateCheckpointFile finish.")
 	return err
 }
@@ -261,33 +260,33 @@ func (o *ParaCloud) Upload(
 		targetPath = paraCloudUploadInput.TargetPath
 		needPure = paraCloudUploadInput.NeedPure
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Upload start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 
 	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, targetPath, needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ParaCloud.uploadFolder failed.",
-				" sourcePath: ", sourcePath,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -299,24 +298,24 @@ func (o *ParaCloud) Upload(
 			func() error {
 				_err := o.pcClient.Upload(ctx, sourcePath, objectPath)
 				if nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"pcClient.Upload failed.",
-						" sourcePath: ", sourcePath,
-						" objectPath: ", objectPath,
-						" err: ", _err)
+						zap.String("sourcePath", sourcePath),
+						zap.String("objectPath", objectPath),
+						zap.Error(_err))
 				}
 				return _err
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ParaCloud.Upload failed.",
-				" sourcePath: ", sourcePath,
-				" objectPath: ", objectPath,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("objectPath", objectPath),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Upload finish.")
 	return nil
 }
@@ -327,29 +326,29 @@ func (o *ParaCloud) uploadFolder(
 	targetPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:uploadFolder start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
 		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
-		" uploadFolderRecord: ", uploadFolderRecord)
+		zap.String("uploadFolderRecord", uploadFolderRecord))
 
 	if needPure {
 		err = os.Remove(uploadFolderRecord)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -361,10 +360,10 @@ func (o *ParaCloud) uploadFolder(
 				fileMap[strings.TrimSuffix(line, "\r")] = 0
 			}
 		} else if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.ReadFile failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -374,19 +373,19 @@ func (o *ParaCloud) uploadFolder(
 	paraCloudMkdirInput.TargetFolder = targetPath
 	err = o.Mkdir(ctx, paraCloudMkdirInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud.Mkdir failed.",
-			" sourcePath: ", sourcePath,
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return err
 	}
 
 	pool, err := ants.NewPool(o.pcUploadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -399,38 +398,42 @@ func (o *ParaCloud) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.pcRateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					dirWaitGroup.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"pcClient.Upload failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
@@ -441,18 +444,19 @@ func (o *ParaCloud) uploadFolder(
 						filePath)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"filepath.Rel failed.",
-							" sourcePath: ", sourcePath,
-							" filePath: ", filePath,
-							" relPath: ", relPath,
-							" err: ", _err)
+							zap.String("sourcePath", sourcePath),
+							zap.String("filePath", filePath),
+							zap.String("relPath", relPath),
+							zap.Error(_err))
 						return
 					}
 					objectPath := targetPath + relPath
 					if _, exists := fileMap[objectPath]; exists {
-						Logger.WithContext(ctx).Info(
-							"already finish. objectPath: ", objectPath)
+						InfoLogger.WithContext(ctx).Info(
+							"already finish.",
+							zap.String("objectPath", objectPath))
 						return
 					}
 
@@ -462,11 +466,11 @@ func (o *ParaCloud) uploadFolder(
 					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"ParaCloud.Mkdir failed.",
-							" filePath: ", filePath,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("filePath", filePath),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 
@@ -477,37 +481,39 @@ func (o *ParaCloud) uploadFolder(
 						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.OpenFile failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.Error(_err))
 						return
 					}
 					defer func() {
 						errMsg := f.Close()
 						if errMsg != nil {
-							Logger.WithContext(ctx).Warn(
+							ErrorLogger.WithContext(ctx).Warn(
 								"close file failed.",
-								" err: ", errMsg)
+								zap.Error(errMsg))
 						}
 					}()
 					_, _err = f.Write([]byte(objectPath + "\n"))
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"write file failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -515,16 +521,16 @@ func (o *ParaCloud) uploadFolder(
 	dirWaitGroup.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("uploadFolder not all success")
 	}
 
@@ -534,38 +540,42 @@ func (o *ParaCloud) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.pcRateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					fileWaitGroup.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"pcClient.Upload failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
@@ -576,18 +586,19 @@ func (o *ParaCloud) uploadFolder(
 						filePath)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"filepath.Rel failed.",
-							" sourcePath: ", sourcePath,
-							" filePath: ", filePath,
-							" relPath: ", relPath,
-							" err: ", _err)
+							zap.String("sourcePath", sourcePath),
+							zap.String("filePath", filePath),
+							zap.String("relPath", relPath),
+							zap.Error(_err))
 						return
 					}
 					objectPath := targetPath + relPath
 					if _, exists := fileMap[objectPath]; exists {
-						Logger.WithContext(ctx).Info(
-							"already finish. objectPath: ", objectPath)
+						InfoLogger.WithContext(ctx).Info(
+							"already finish.",
+							zap.String("objectPath", objectPath))
 						return
 					}
 					_err = RetryV1(
@@ -601,21 +612,21 @@ func (o *ParaCloud) uploadFolder(
 								objectPath)
 							if nil != __err {
 								isAllSuccess = false
-								Logger.WithContext(ctx).Error(
+								ErrorLogger.WithContext(ctx).Error(
 									"pcClient.Upload failed.",
-									" filePath: ", filePath,
-									" objectPath: ", objectPath,
-									" err: ", __err)
+									zap.String("filePath", filePath),
+									zap.String("objectPath", objectPath),
+									zap.Error(__err))
 							}
 							return __err
 						})
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"pcClient.Upload failed.",
-							" filePath: ", filePath,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("filePath", filePath),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 					fileMutex.Lock()
@@ -625,37 +636,39 @@ func (o *ParaCloud) uploadFolder(
 						os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.OpenFile failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.Error(_err))
 						return
 					}
 					defer func() {
 						errMsg := f.Close()
 						if errMsg != nil {
-							Logger.WithContext(ctx).Warn(
+							ErrorLogger.WithContext(ctx).Warn(
 								"close file failed.",
-								" err: ", errMsg)
+								zap.Error(errMsg))
 						}
 					}()
 					_, _err = f.Write([]byte(objectPath + "\n"))
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"write file failed.",
-							" uploadFolderRecord: ", uploadFolderRecord,
-							" objectPath: ", objectPath,
-							" err: ", _err)
+							zap.String("uploadFolderRecord",
+								uploadFolderRecord),
+							zap.String("objectPath", objectPath),
+							zap.Error(_err))
 						return
 					}
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -663,31 +676,31 @@ func (o *ParaCloud) uploadFolder(
 	fileWaitGroup.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("uploadFolder not all success")
 	}
 
 	_err := os.Remove(uploadFolderRecord)
 	if nil != _err {
 		if !os.IsNotExist(_err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", _err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(_err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:uploadFolder finish.")
 	return nil
 }
@@ -701,32 +714,32 @@ func (o *ParaCloud) Download(
 		sourcePath = paraCloudDownloadInput.SourcePath
 		targetPath = paraCloudDownloadInput.TargetPath
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
 	targetPath = strings.TrimSuffix(targetPath, "/")
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Download start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath))
 
 	err = os.MkdirAll(targetPath, os.ModePerm)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return
 	}
 
 	downloadFolderRecord :=
 		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	err = o.downloadBatch(
 		ctx,
@@ -734,26 +747,26 @@ func (o *ParaCloud) Download(
 		targetPath,
 		downloadFolderRecord)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:downloadBatch failed.",
-			" sourcePath: ", sourcePath,
-			" targetPath: ", targetPath,
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.String("targetPath", targetPath),
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Remove(downloadFolderRecord)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Download finish.")
 	return nil
 }
@@ -764,11 +777,11 @@ func (o *ParaCloud) downloadBatch(
 	targetPath,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadBatch start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	err, fileInfoListTmp := RetryV4(
 		ctx,
@@ -778,25 +791,25 @@ func (o *ParaCloud) downloadBatch(
 			output := make([]os.FileInfo, 0)
 			_err, output := o.pcClient.List(ctx, sourcePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"pcClient:List start.",
-					" sourcePath: ", sourcePath,
-					" err: ", _err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(_err))
 			}
 			return _err, output
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"pcClient:List failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 
 	fileInfoList := make([]os.FileInfo, 0)
 	isValid := false
 	if fileInfoList, isValid = fileInfoListTmp.([]os.FileInfo); !isValid {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response invalid.")
 		return errors.New("response invalid")
 	}
@@ -819,10 +832,10 @@ func (o *ParaCloud) downloadBatch(
 		itemPath := targetPath + folder.ObjectPath
 		err = os.MkdirAll(itemPath, folder.ObjectFileInfo.Mode())
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" itemPath: ", itemPath,
-				" err: ", err)
+				zap.String("itemPath", itemPath),
+				zap.Error(err))
 			return
 		}
 	}
@@ -834,12 +847,12 @@ func (o *ParaCloud) downloadBatch(
 		objects,
 		downloadFolderRecord)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:downloadObjects failed.",
-			" sourcePath: ", sourcePath,
-			" targetPath: ", targetPath,
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.String("targetPath", targetPath),
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 	for _, folder := range folders {
@@ -853,19 +866,19 @@ func (o *ParaCloud) downloadBatch(
 			targetPath,
 			downloadFolderRecord)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ParaCloud:downloadBatch failed.",
-				" sourcePath: ", folder.ObjectPath,
-				" targetPath: ", targetPath,
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("sourcePath", folder.ObjectPath),
+				zap.String("targetPath", targetPath),
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadBatch finish.",
-		" sourcePath: ", sourcePath)
+		zap.String("sourcePath", sourcePath))
 	return nil
 }
 
@@ -876,11 +889,11 @@ func (o *ParaCloud) downloadObjects(
 	objects []*PCObject,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadObjects start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -892,10 +905,10 @@ func (o *ParaCloud) downloadObjects(
 			fileMap[strings.TrimSuffix(line, "\r")] = 0
 		}
 	} else if !os.IsNotExist(err) {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
@@ -903,45 +916,49 @@ func (o *ParaCloud) downloadObjects(
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(o.pcDownloadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool for download object failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
 	for index, object := range objects {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"object content.",
-			" index: ", index,
-			" Path: ", object.ObjectPath,
-			" size: ", object.ObjectFileInfo.Size())
+			zap.Int("index", index),
+			zap.String("path", object.ObjectPath),
+			zap.Int64("size", object.ObjectFileInfo.Size()))
 		itemObject := object
 		if _, exists := fileMap[itemObject.ObjectPath]; exists {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"file already success.",
-				" objectPath: ", itemObject.ObjectPath)
+				zap.String("objectPath", itemObject.ObjectPath))
 			continue
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.pcRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
 				if _err := recover(); nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", _err)
+						zap.Any("error", _err))
 					isAllSuccess = false
 				}
 			}()
@@ -952,11 +969,11 @@ func (o *ParaCloud) downloadObjects(
 				targetFile)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ParaCloud:downloadPart failed.",
-					" objectPath: ", itemObject.ObjectPath,
-					" targetFile: ", targetFile,
-					" err: ", _err)
+					zap.String("objectPath", itemObject.ObjectPath),
+					zap.String("targetFile", targetFile),
+					zap.Error(_err))
 				return
 			}
 			fileMutex.Lock()
@@ -966,48 +983,51 @@ func (o *ParaCloud) downloadObjects(
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.Error(_err))
 				return
 			}
 			defer func() {
 				errMsg := f.Close()
 				if errMsg != nil {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" downloadFolderRecord: ", downloadFolderRecord,
-						" err: ", errMsg)
+						zap.String("downloadFolderRecord",
+							downloadFolderRecord),
+						zap.Error(errMsg))
 				}
 			}()
 			_, _err = f.Write([]byte(itemObject.ObjectPath + "\n"))
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectPath: ", itemObject.ObjectPath,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.String("objectPath", itemObject.ObjectPath),
+					zap.Error(_err))
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:downloadObjects not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 		return errors.New("downloadObjects not all success")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadObjects finish.")
 	return nil
 }
@@ -1017,10 +1037,10 @@ func (o *ParaCloud) downloadPart(
 	object *PCObject,
 	targetFile string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadPart start.",
-		" Path: ", object.ObjectPath,
-		" targetFile: ", targetFile)
+		zap.String("path", object.ObjectPath),
+		zap.String("targetFile", targetFile))
 
 	downloadFileInput := new(PCDownloadFileInput)
 	downloadFileInput.DownloadFile = targetFile
@@ -1035,12 +1055,12 @@ func (o *ParaCloud) downloadPart(
 		object,
 		downloadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:resumeDownload failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadPart finish.")
 	return
 }
@@ -1050,7 +1070,7 @@ func (o *ParaCloud) resumeDownload(
 	object *PCObject,
 	input *PCDownloadFileInput) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:resumeDownload start.")
 
 	partSize := input.PartSize
@@ -1066,10 +1086,10 @@ func (o *ParaCloud) resumeDownload(
 			input,
 			object)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ParaCloud:getDownloadCheckpointFile failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -1088,28 +1108,29 @@ func (o *ParaCloud) resumeDownload(
 			dfc.TempFileInfo.TempFileUrl,
 			dfc.TempFileInfo.Size)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ParaCloud:prepareTempFile failed.",
-				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-				" Size: ", dfc.TempFileInfo.Size,
-				" err: ", err)
+				zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+				zap.Int64("Size", dfc.TempFileInfo.Size),
+				zap.Error(err))
 			return err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ParaCloud:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
 				if _errMsg != nil {
 					if !os.IsNotExist(_errMsg) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.Remove failed.",
-							" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-							" err: ", _errMsg)
+							zap.String("TempFileUrl",
+								dfc.TempFileInfo.TempFileUrl),
+							zap.Error(_errMsg))
 					}
 				}
 				return err
@@ -1125,34 +1146,34 @@ func (o *ParaCloud) resumeDownload(
 		enableCheckpoint,
 		downloadFileError)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:handleDownloadFileResult failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Error(err))
 		return err
 	}
 
 	err = os.Rename(dfc.TempFileInfo.TempFileUrl, input.DownloadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" DownloadFile: ", input.DownloadFile,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.String("DownloadFile", input.DownloadFile),
+			zap.Error(err))
 		return err
 	}
 	if enableCheckpoint {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:resumeDownload finish.")
 	return nil
 }
@@ -1162,15 +1183,15 @@ func (o *ParaCloud) downloadFileConcurrent(
 	input *PCDownloadFileInput,
 	dfc *PCDownloadCheckpoint) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadFileConcurrent start.")
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1201,24 +1222,28 @@ func (o *ParaCloud) downloadFileConcurrent(
 			TempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			EnableCheckpoint: input.EnableCheckpoint,
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask params.",
-			" Offset: ", downloadPart.Offset,
-			" Length: ", downloadPart.Length,
-			" PartNumber: ", downloadPart.PartNumber,
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" EnableCheckpoint: ", input.EnableCheckpoint)
+			zap.Int64("Offset", downloadPart.Offset),
+			zap.Int64("Length", downloadPart.Length),
+			zap.Int64("PartNumber", downloadPart.PartNumber),
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Bool("EnableCheckpoint", input.EnableCheckpoint))
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.pcRateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1236,10 +1261,11 @@ func (o *ParaCloud) downloadFileConcurrent(
 						dfc,
 						input.CheckpointFile)
 					if nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"ParaCloud:updateCheckpointFile failed.",
-							" checkpointFile: ", input.CheckpointFile,
-							" err: ", _err)
+							zap.String("checkpointFile",
+								input.CheckpointFile),
+							zap.Error(_err))
 						downloadPartError.Store(_err)
 					}
 				}
@@ -1257,31 +1283,31 @@ func (o *ParaCloud) downloadFileConcurrent(
 				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"ParaCloud:handleDownloadTaskResult failed.",
-						" partNumber: ", task.PartNumber,
-						" checkpointFile: ", input.CheckpointFile,
-						" err: ", _err)
+						zap.Int64("partNumber", task.PartNumber),
+						zap.String("checkpointFile", input.CheckpointFile),
+						zap.Error(_err))
 					downloadPartError.Store(_err)
 				}
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if err, ok := downloadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"downloadPartError failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:downloadFileConcurrent finish.")
 	return nil
 }
@@ -1292,65 +1318,67 @@ func (o *ParaCloud) getDownloadCheckpointFile(
 	input *PCDownloadFileInput,
 	object *PCObject) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:getDownloadCheckpointFile start.",
-		" checkpointFile: ", input.CheckpointFile)
+		zap.String("checkpointFile", input.CheckpointFile))
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpointFilePath can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !dfc.IsValid(ctx, input, object) {
 		if dfc.TempFileInfo.TempFileUrl != "" {
 			_err := os.Remove(dfc.TempFileInfo.TempFileUrl)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-						" err: ", _err)
+						zap.String("TempFileUrl",
+							dfc.TempFileInfo.TempFileUrl),
+						zap.Error(_err))
 				}
 			}
 		}
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"no need to check point.")
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"need to check point.")
 	return true, nil
 }
@@ -1360,35 +1388,37 @@ func (o *ParaCloud) prepareTempFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:prepareTempFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	parentDir := filepath.Dir(tempFileURL)
 	stat, err := os.Stat(parentDir)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" parentDir: ", parentDir,
-				" err: ", err)
+				zap.String("parentDir", parentDir),
+				zap.Error(err))
 			return err
 		}
-		Logger.WithContext(ctx).Debug(
-			"parentDir: ", parentDir, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"parentDir not exist.",
+			zap.String("parentDir", parentDir))
 
 		_err := os.MkdirAll(parentDir, os.ModePerm)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" parentDir: ", parentDir,
-				" err: ", _err)
+				zap.String("parentDir", parentDir),
+				zap.Error(_err))
 			return _err
 		}
 	} else if !stat.IsDir() {
-		Logger.WithContext(ctx).Error(
-			"same file exists. parentDir: ", parentDir)
+		ErrorLogger.WithContext(ctx).Error(
+			"same file exists.",
+			zap.String("parentDir", parentDir))
 		return fmt.Errorf(
 			"cannot create folder: %s due to a same file exists",
 			parentDir)
@@ -1396,9 +1426,10 @@ func (o *ParaCloud) prepareTempFile(
 
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"ParaCloud:createFile finish.",
-			" tempFileURL: ", tempFileURL, " fileSize: ", fileSize)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize))
 		return nil
 	}
 	fd, err := os.OpenFile(
@@ -1406,29 +1437,32 @@ func (o *ParaCloud) prepareTempFile(
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" tempFileURL: ", tempFileURL, " err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" tempFileURL: ", tempFileURL, " err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	if fileSize > 0 {
 		_, err = fd.WriteAt([]byte("a"), fileSize-1)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"write file failed.",
-				" tempFileURL: ", tempFileURL, " err: ", err)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:prepareTempFile finish.")
 	return nil
 }
@@ -1438,41 +1472,41 @@ func (o *ParaCloud) createFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:createFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	fd, err := syscall.Open(
 		tempFileURL,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Open failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := syscall.Close(fd)
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"syscall.Close failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	err = syscall.Ftruncate(fd, fileSize)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Ftruncate failed.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:createFile finish.")
 	return nil
 }
@@ -1486,10 +1520,10 @@ func (o *ParaCloud) handleDownloadTaskResult(
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:handleDownloadTaskResult start.",
-		" partNum: ", partNum,
-		" checkpointFile: ", checkpointFile)
+		zap.Int64("partNum", partNum),
+		zap.String("checkpointFile", checkpointFile))
 
 	if _, ok := result.(*PCDownloadPartOutput); ok {
 		lock.Lock()
@@ -1499,10 +1533,10 @@ func (o *ParaCloud) handleDownloadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"ParaCloud:updateCheckpointFile failed.",
-					" checkpointFile: ", checkpointFile,
-					" err: ", _err)
+					zap.String("checkpointFile", checkpointFile),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
@@ -1510,7 +1544,7 @@ func (o *ParaCloud) handleDownloadTaskResult(
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:handleDownloadTaskResult finish.")
 	return
 }
@@ -1521,29 +1555,30 @@ func (o *ParaCloud) handleDownloadFileResult(
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:handleDownloadFileResult start.",
-		" tempFileURL: ", tempFileURL)
+		zap.String("tempFileURL", tempFileURL))
 
 	if downloadFileError != nil {
 		if !enableCheckpoint {
 			_err := os.Remove(tempFileURL)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" tempFileURL: ", tempFileURL, " err: ", _err)
+						zap.String("tempFileURL", tempFileURL),
+						zap.Error(_err))
 				}
 			}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"ParaCloud.handleDownloadFileResult finish.",
-			" tempFileURL: ", tempFileURL,
-			" downloadFileError: ", downloadFileError)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(downloadFileError))
 		return downloadFileError
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud.handleDownloadFileResult finish.")
 	return nil
 }
@@ -1554,34 +1589,35 @@ func (o *ParaCloud) UpdateDownloadFile(
 	offset int64,
 	downloadPartOutput *PCDownloadPartOutput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:UpdateDownloadFile start.",
-		" filePath: ", filePath,
-		" offset: ", offset)
+		zap.String("filePath", filePath),
+		zap.Int64("offset", offset))
 
 	fd, err := os.OpenFile(filePath, os.O_WRONLY, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" filePath: ", filePath,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" filePath: ", filePath, " err: ", errMsg)
+				zap.String("filePath", filePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_, err = fd.Seek(offset, 0)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"seek file failed.",
-			" filePath: ", filePath,
-			" offset: ", offset,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Int64("offset", offset),
+			zap.Error(err))
 		return err
 	}
 	fileWriter := bufio.NewWriterSize(fd, 65536)
@@ -1593,17 +1629,18 @@ func (o *ParaCloud) UpdateDownloadFile(
 		if readCount > 0 {
 			writeCount, writeError := fileWriter.Write(part[0:readCount])
 			if writeError != nil {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" filePath: ", filePath, " err: ", writeError)
+					zap.String("filePath", filePath),
+					zap.Error(writeError))
 				return writeError
 			}
 			if writeCount != readCount {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					" write file failed.",
-					" filePath: ", filePath,
-					" readCount: ", readCount,
-					" writeCount: ", writeCount)
+					zap.String("filePath", filePath),
+					zap.Int("readCount", readCount),
+					zap.Int("writeCount", writeCount))
 				return fmt.Errorf("failed to write to file."+
 					" filePath: %s, expect: %d, actual: %d",
 					filePath, readCount, writeCount)
@@ -1612,9 +1649,9 @@ func (o *ParaCloud) UpdateDownloadFile(
 		}
 		if readErr != nil {
 			if readErr != io.EOF {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"read response body failed.",
-					" err: ", readErr)
+					zap.Error(readErr))
 				return readErr
 			}
 			break
@@ -1622,14 +1659,15 @@ func (o *ParaCloud) UpdateDownloadFile(
 	}
 	err = fileWriter.Flush()
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"flush file failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"ParaCloud:UpdateDownloadFile finish. readTotal: ", readTotal)
+	InfoLogger.WithContext(ctx).Debug(
+		"ParaCloud:UpdateDownloadFile finish.",
+		zap.Int("readTotal", readTotal))
 	return nil
 }
 
@@ -1641,14 +1679,14 @@ func (o *ParaCloud) Delete(
 	if paraCloudDeleteInput, ok := input.(ParaCloudDeleteInput); ok {
 		path = paraCloudDeleteInput.Path
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Delete start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = RetryV1(
 		ctx,
@@ -1657,22 +1695,22 @@ func (o *ParaCloud) Delete(
 		func() error {
 			_err := o.pcClient.Rm(ctx, path)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"pcClient.Rm failed.",
-					" path: ", path,
-					" err: ", _err)
+					zap.String("path", path),
+					zap.Error(_err))
 			}
 			return _err
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloud.Delete failed.",
-			" path: ", path,
-			" err: ", err)
+			zap.String("path", path),
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloud:Delete finish.")
 	return nil
 }
@@ -1693,10 +1731,10 @@ type ParaCloudDownloadPartTask struct {
 func (task *ParaCloudDownloadPartTask) Run(
 	ctx context.Context) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ParaCloudDownloadPartTask:Run start.",
-		" objectPath: ", task.ObjectPath,
-		" partNumber: ", task.PartNumber)
+		zap.String("objectPath", task.ObjectPath),
+		zap.Int64("partNumber", task.PartNumber))
 
 	err, downloadPartOutputTmp := RetryV4(
 		ctx,
@@ -1710,20 +1748,20 @@ func (task *ParaCloudDownloadPartTask) Run(
 				task.Offset,
 				task.Length)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"PCClient:Download failed.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber,
-					" err: ", _err)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber),
+					zap.Error(_err))
 			}
 			return _err, output
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ParaCloudDownloadPartTask:Run failed.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber,
-			" err: ", err)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber),
+			zap.Error(err))
 		return err
 	} else {
 		downloadPartOutput := new(PCDownloadPartOutput)
@@ -1731,19 +1769,19 @@ func (task *ParaCloudDownloadPartTask) Run(
 		if downloadPartOutput, isValid =
 			downloadPartOutputTmp.(*PCDownloadPartOutput); !isValid {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response invalid.")
 			return errors.New("response invalid")
 		}
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"ParaCloudDownloadPartTask.Run finish.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber))
 		defer func() {
 			errMsg := downloadPartOutput.Body.Close()
 			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"close response body failed.")
 			}
 		}()
@@ -1754,22 +1792,22 @@ func (task *ParaCloudDownloadPartTask) Run(
 			downloadPartOutput)
 		if nil != _err {
 			if !task.EnableCheckpoint {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
-					" objectPath: ", task.ObjectPath,
-					" partNumber: ", task.PartNumber)
+					zap.String("objectPath", task.ObjectPath),
+					zap.Int64("partNumber", task.PartNumber))
 			}
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ParaCloud.updateDownloadFile failed.",
-				" objectPath: ", task.ObjectPath,
-				" partNumber: ", task.PartNumber,
-				" err: ", _err)
+				zap.String("objectPath", task.ObjectPath),
+				zap.Int64("partNumber", task.PartNumber),
+				zap.Error(_err))
 			return _err
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask.Run finish.",
-			" objectPath: ", task.ObjectPath,
-			" partNumber: ", task.PartNumber)
+			zap.String("objectPath", task.ObjectPath),
+			zap.Int64("partNumber", task.PartNumber))
 		return downloadPartOutput
 	}
 }

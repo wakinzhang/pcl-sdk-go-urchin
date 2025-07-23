@@ -5,13 +5,41 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9f917e8e-4140-4485-89fc-7c2a6f9a585f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/codeStyles/codeStyleConfig.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/ipfs_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/ipfs_client.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/jcs_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/jcs_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/paracloud_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/paracloud_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/scow_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/scow_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/starlight_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/starlight_client.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/client/sugon_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/sugon_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/client/urchin_client.go" beforeDir="false" afterPath="$PROJECT_DIR$/client/urchin_client.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/http.go" beforeDir="false" afterPath="$PROJECT_DIR$/common/http.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/log.go" beforeDir="false" afterPath="$PROJECT_DIR$/common/log.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/static.go" beforeDir="false" afterPath="$PROJECT_DIR$/common/static.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/common/util.go" beforeDir="false" afterPath="$PROJECT_DIR$/common/util.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/examples/simples.go" beforeDir="false" afterPath="$PROJECT_DIR$/examples/simples.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module/jcs.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/jcs.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module/paracloud.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/paracloud.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module/scow.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/scow.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module/starlight.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/starlight.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/module/sugon.go" beforeDir="false" afterPath="$PROJECT_DIR$/module/sugon.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/operation/retry_task.go" beforeDir="false" afterPath="$PROJECT_DIR$/operation/retry_task.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/adaptee/jcs.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adaptee/jcs.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/adaptee/paracloud.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adaptee/paracloud.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/storage/adaptee/s3.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adaptee/s3.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/adaptee/scow.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adaptee/scow.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/adaptee/starlight.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adaptee/starlight.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/adaptee/sugon.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adaptee/sugon.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage/adapter/storage.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage/adapter/storage.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adaptee/ipfs_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adaptee/ipfs_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adaptee/jcs_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adaptee/jcs_proxy.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/storage_proxy/adaptee/s3_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adaptee/s3_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/download_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/download_by_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/download_file_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/download_file_by_proxy.go" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/load_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/load_by_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/storage_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/storage_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/upload_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/upload_by_proxy.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/storage_proxy/adapter/upload_file_by_proxy.go" beforeDir="false" afterPath="$PROJECT_DIR$/storage_proxy/adapter/upload_file_by_proxy.go" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -28,39 +56,40 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 6
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 6
+}</component>
   <component name="ProjectId" id="2o37ecAfroYmCF1xj9TIvyxbEkf" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "RunOnceActivity.GoLinterPluginOnboarding": "true",
-    "RunOnceActivity.GoLinterPluginStorageMigration": "true",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.go.format.on.save.advertiser.fired": "true",
-    "RunOnceActivity.go.formatter.settings.were.checked": "true",
-    "RunOnceActivity.go.migrated.go.modules.settings": "true",
-    "RunOnceActivity.go.modules.go.list.on.any.changes.was.set": "true",
-    "RunOnceActivity.go.watchers.conflict.with.on.save.actions.check.performed": "true",
-    "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "git-widget-placeholder": "main",
-    "go.import.settings.migrated": "true",
-    "go.sdk.automatically.set": "true",
-    "last_opened_file_path": "/Users/zhangjiayuan/project/github/pcl-sdk-go-urchin",
-    "node.js.detected.package.eslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.sourceCode.Go"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.GoLinterPluginOnboarding&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.GoLinterPluginStorageMigration&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.format.on.save.advertiser.fired&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.formatter.settings.were.checked&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.migrated.go.modules.settings&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.modules.go.list.on.any.changes.was.set&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.go.watchers.conflict.with.on.save.actions.check.performed&quot;: &quot;true&quot;,
+    &quot;SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;go.import.settings.migrated&quot;: &quot;true&quot;,
+    &quot;go.sdk.automatically.set&quot;: &quot;true&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/zhangjiayuan/project/github/pcl-sdk-go-urchin&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.sourceCode.Go&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration default="true" type="GoApplicationRunConfiguration" factoryName="Go Application">
       <module name="pcl-sdk-go-urchin" />

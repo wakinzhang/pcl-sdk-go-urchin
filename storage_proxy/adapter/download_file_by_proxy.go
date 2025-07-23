@@ -8,6 +8,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 )
 
 func DownloadFileByProxy(
@@ -29,13 +30,13 @@ func DownloadFileByProxy(
 		targetPath = targetPath + "/"
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"DownloadFileByProxy start.",
-		" userId: ", userId,
-		" token: ", "***",
-		" objUuid: ", objUuid,
-		" source: ", source,
-		" targetPath: ", targetPath)
+		zap.String("userId", userId),
+		zap.String("token", "***"),
+		zap.String("objUuid", objUuid),
+		zap.String("source", source),
+		zap.String("targetPath", targetPath))
 
 	downloadFileResp = new(DownloadFileResp)
 
@@ -55,9 +56,9 @@ func DownloadFileByProxy(
 
 	err, downloadFileResp = UClient.DownloadFile(ctx, downloadFileReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.DownloadFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, downloadFileResp
 	}
 
@@ -73,12 +74,12 @@ func DownloadFileByProxy(
 		downloadFileResp.TaskId,
 		downloadFileResp.NodeType)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessDownloadFileByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, downloadFileResp
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"DownloadFileByProxy finish.")
 	return err, downloadFileResp
 }
@@ -91,13 +92,13 @@ func ProcessDownloadFileByProxy(
 	taskId,
 	nodeType int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ProcessDownloadFileByProxy start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" bucketName: ", bucketName,
-		" taskId: ", taskId,
-		" nodeType: ", nodeType)
+		zap.String("userId", userId),
+		zap.String("targetPath", targetPath),
+		zap.String("bucketName", bucketName),
+		zap.Int32("taskId", taskId),
+		zap.Int32("nodeType", nodeType))
 
 	if '/' != targetPath[len(targetPath)-1] {
 		targetPath = targetPath + "/"
@@ -114,17 +115,17 @@ func ProcessDownloadFileByProxy(
 		}
 		_err, _ := UClient.FinishTask(ctx, finishTaskReq)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"UrchinClient.FinishTask failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}()
 
 	err, storage := NewStorageProxy(ctx, nodeType)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"NewStorageProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	err = storage.Download(
@@ -135,13 +136,13 @@ func ProcessDownloadFileByProxy(
 		bucketName)
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"storage.Download failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ProcessDownloadFileByProxy finish.")
 	return nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/xml"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
+	"go.uber.org/zap"
 	"io"
 	"os"
 )
@@ -215,28 +216,27 @@ func (ufc *SugonUploadCheckpoint) IsValid(
 	uploadFile string,
 	fileStat os.FileInfo) bool {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowUploadCheckpoint:isValid start.",
-		" uploadFile: ", uploadFile,
-		" ufc.UploadFile: ", ufc.UploadFile,
-		" fileStat.Size: ", fileStat.Size(),
-		" ufc.FileInfo.Size: ", ufc.FileInfo.Size)
+		zap.String("uploadFile", uploadFile),
+		zap.String("ufcUploadFile", ufc.UploadFile),
+		zap.Int64("fileStatSize", fileStat.Size()),
+		zap.Int64("ufcFileInfoSize", ufc.FileInfo.Size))
 
 	if ufc.UploadFile != uploadFile {
-		Logger.WithContext(ctx).Error(
-			"Checkpoint file is invalid.",
-			" bucketName or objectKey or uploadFile was changed.")
+		ErrorLogger.WithContext(ctx).Error(
+			"Checkpoint file is invalid." +
+				" bucketName or objectKey or uploadFile was changed.")
 		return false
 	}
 	if ufc.FileInfo.Size != fileStat.Size() ||
 		ufc.FileInfo.LastModified != fileStat.ModTime().Unix() {
-		Logger.WithContext(ctx).Error(
-			"Checkpoint file is invalid.",
-			" uploadFile was changed.")
+		ErrorLogger.WithContext(ctx).Error(
+			"Checkpoint file is invalid. uploadFile was changed.")
 		return false
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"ScowUploadCheckpoint:isValid finish.")
 	return true
 }
@@ -277,44 +277,40 @@ func (dfc *SugonDownloadCheckpoint) IsValid(
 	input *SugonDownloadFileInput,
 	object *SugonFileInfo) bool {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonDownloadCheckpoint:IsValid start.",
-		" dfc.DownloadFile: ", dfc.DownloadFile,
-		" input.DownloadFile: ", input.DownloadFile,
-		" dfc.ObjectInfo.Size: ", dfc.ObjectInfo.Size,
-		" object.Size: ", object.Size,
-		" dfc.TempFileInfo.Size: ", dfc.TempFileInfo.Size)
+		zap.String("dfcDownloadFile", dfc.DownloadFile),
+		zap.String("input.DownloadFile", input.DownloadFile),
+		zap.Int64("dfcObjectInfoSize", dfc.ObjectInfo.Size),
+		zap.Int64("objectSize", object.Size),
+		zap.Int64("dfcTempFileInfoSize: ", dfc.TempFileInfo.Size))
 
 	if dfc.DownloadFile != input.DownloadFile {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" downloadFile was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid." +
+				" downloadFile was changed. clear the record.")
 		return false
 	}
 	if dfc.ObjectInfo.Size != object.Size {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" the object info was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid." +
+				" the object info was changed. clear the record.")
 		return false
 	}
 	if dfc.TempFileInfo.Size != object.Size {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" size was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid. size was changed." +
+				" clear the record.")
 		return false
 	}
 	stat, err := os.Stat(dfc.TempFileInfo.TempFileUrl)
 	if nil != err || stat.Size() != dfc.ObjectInfo.Size {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" the temp download file was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid." +
+				" the temp download file was changed. clear the record.")
 		return false
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonDownloadCheckpoint:IsValid finish.")
 	return true
 }

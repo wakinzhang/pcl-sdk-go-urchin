@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"net"
 	"net/http"
 	"time"
@@ -30,13 +31,13 @@ func (u *UrchinClient) Init(
 	reqTimeout int64,
 	maxConnection int) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:Init start.",
-		" userId: ", userId,
-		" token: ", "***",
-		" address: ", address,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("userId", userId),
+		zap.String("token", "***"),
+		zap.String("address", address),
+		zap.Int64("reqTimeout", reqTimeout),
+		zap.Int("maxConnection", maxConnection))
 
 	u.addr = address
 
@@ -66,7 +67,6 @@ func (u *UrchinClient) Init(
 	u.urchinClient.RetryWaitMax = 5 * time.Second
 	u.urchinClient.HTTPClient.Transport = transport
 	u.urchinClient.HTTPClient.Timeout = timeout
-	u.urchinClient.Logger = Logger
 
 	requestId := ctx.Value("X-Request-Id").(string)
 	u.header = make(http.Header)
@@ -74,7 +74,7 @@ func (u *UrchinClient) Init(
 	u.header.Add(UrchinClientHeaderToken, token)
 	u.header.Add(UrchinClientHeaderRequestId, requestId)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:Init finish.")
 }
 
@@ -83,19 +83,20 @@ func (u *UrchinClient) CreateInitiateMultipartUploadSignedUrl(
 	req *CreateInitiateMultipartUploadSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateInitiateMultipartUploadSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -105,33 +106,34 @@ func (u *UrchinClient) CreateInitiateMultipartUploadSignedUrl(
 		u.header,
 		reqBody, u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateInitiateMultipartUploadSignedUrl finish.")
 	return nil, resp
 }
@@ -141,18 +143,19 @@ func (u *UrchinClient) CreateUploadPartSignedUrl(
 	req *CreateUploadPartSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateUploadPartSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -163,33 +166,34 @@ func (u *UrchinClient) CreateUploadPartSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateUploadPartSignedUrl finish.")
 	return nil, resp
 }
@@ -199,18 +203,19 @@ func (u *UrchinClient) CreateListPartsSignedUrl(
 	req *CreateListPartsSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateListPartsSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -221,33 +226,34 @@ func (u *UrchinClient) CreateListPartsSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateListPartsSignedUrl finish.")
 	return nil, resp
 }
@@ -257,18 +263,19 @@ func (u *UrchinClient) CreateCompleteMultipartUploadSignedUrl(
 	req *CreateCompleteMultipartUploadSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateCompleteMultipartUploadSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -279,33 +286,34 @@ func (u *UrchinClient) CreateCompleteMultipartUploadSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateCompleteMultipartUploadSignedUrl finish.")
 	return nil, resp
 }
@@ -315,18 +323,19 @@ func (u *UrchinClient) CreateAbortMultipartUploadSignedUrl(
 	req *CreateAbortMultipartUploadSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateAbortMultipartUploadSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -337,33 +346,34 @@ func (u *UrchinClient) CreateAbortMultipartUploadSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateAbortMultipartUploadSignedUrl finish.")
 	return nil, resp
 }
@@ -373,18 +383,19 @@ func (u *UrchinClient) CreatePutObjectSignedUrl(
 	req *CreatePutObjectSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreatePutObjectSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -395,33 +406,34 @@ func (u *UrchinClient) CreatePutObjectSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreatePutObjectSignedUrl finish.")
 	return nil, resp
 }
@@ -431,18 +443,19 @@ func (u *UrchinClient) CreateGetObjectMetadataSignedUrl(
 	req *CreateGetObjectMetadataSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateGetObjectMetadataSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -453,33 +466,34 @@ func (u *UrchinClient) CreateGetObjectMetadataSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateGetObjectMetadataSignedUrl finish.")
 	return nil, resp
 }
@@ -489,18 +503,19 @@ func (u *UrchinClient) CreateGetObjectSignedUrl(
 	req *CreateGetObjectSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateGetObjectSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -511,33 +526,34 @@ func (u *UrchinClient) CreateGetObjectSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateGetObjectSignedUrl finish.")
 	return nil, resp
 }
@@ -547,18 +563,19 @@ func (u *UrchinClient) CreateListObjectsSignedUrl(
 	req *CreateListObjectsSignedUrlReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateListObjectsSignedUrl start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -569,33 +586,34 @@ func (u *UrchinClient) CreateListObjectsSignedUrl(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateListObjectsSignedUrl finish.")
 	return nil, resp
 }
@@ -605,18 +623,19 @@ func (u *UrchinClient) GetIpfsToken(
 	req *GetIpfsTokenReq) (
 	err error, resp *GetIpfsTokenResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:GetIpfsToken start.")
 
 	values, err := query.Values(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", values.Encode())
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", values.Encode()))
 
 	resp = new(GetIpfsTokenResp)
 	err, respBody := Do(
@@ -627,33 +646,34 @@ func (u *UrchinClient) GetIpfsToken(
 		nil,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:GetIpfsToken finish.")
 	return nil, resp
 }
@@ -663,20 +683,21 @@ func (u *UrchinClient) CreateJCSPreSignedObjectUpload(
 	req *CreateJCSPreSignedObjectUploadReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectUpload" +
 			" start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -686,33 +707,34 @@ func (u *UrchinClient) CreateJCSPreSignedObjectUpload(
 		u.header,
 		reqBody, u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectUpload" +
 			" finish.")
 	return nil, resp
@@ -723,20 +745,21 @@ func (u *UrchinClient) CreateJCSPreSignedObjectNewMultipartUpload(
 	req *CreateJCSPreSignedObjectNewMultipartUploadReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectNewMultipartUpload" +
 			" start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -746,33 +769,34 @@ func (u *UrchinClient) CreateJCSPreSignedObjectNewMultipartUpload(
 		u.header,
 		reqBody, u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectNewMultipartUpload" +
 			" finish.")
 	return nil, resp
@@ -783,19 +807,20 @@ func (u *UrchinClient) CreateJCSPreSignedObjectUploadPart(
 	req *CreateJCSPreSignedObjectUploadPartReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectUploadPart start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -805,33 +830,34 @@ func (u *UrchinClient) CreateJCSPreSignedObjectUploadPart(
 		u.header,
 		reqBody, u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectUploadPart finish.")
 	return nil, resp
 }
@@ -841,20 +867,21 @@ func (u *UrchinClient) CreateJCSPreSignedObjectCompleteMultipartUpload(
 	req *CreateJCSPreSignedObjectCompleteMultipartUploadReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectCompleteMultipartUpload" +
 			" start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -864,33 +891,34 @@ func (u *UrchinClient) CreateJCSPreSignedObjectCompleteMultipartUpload(
 		u.header,
 		reqBody, u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectCompleteMultipartUpload" +
 			" finish.")
 	return nil, resp
@@ -901,18 +929,19 @@ func (u *UrchinClient) CreateJCSPreSignedObjectDownload(
 	req *CreateJCSPreSignedObjectDownloadReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectDownload start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -923,33 +952,34 @@ func (u *UrchinClient) CreateJCSPreSignedObjectDownload(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectDownload finish.")
 	return nil, resp
 }
@@ -959,18 +989,19 @@ func (u *UrchinClient) CreateJCSPreSignedObjectList(
 	req *CreateJCSPreSignedObjectListReq) (
 	err error, resp *CreateSignedUrlResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectList start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateSignedUrlResp)
 	err, respBody := Do(
@@ -981,33 +1012,34 @@ func (u *UrchinClient) CreateJCSPreSignedObjectList(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateJCSPreSignedObjectList finish.")
 	return nil, resp
 }
@@ -1017,18 +1049,19 @@ func (u *UrchinClient) UploadObject(
 	req *UploadObjectReq) (
 	err error, resp *UploadObjectResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:UploadObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(UploadObjectResp)
 	err, respBody := Do(
@@ -1039,33 +1072,34 @@ func (u *UrchinClient) UploadObject(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:UploadObject finish.")
 	return nil, resp
 }
@@ -1075,18 +1109,19 @@ func (u *UrchinClient) UploadFile(
 	req *UploadFileReq) (
 	err error, resp *UploadFileResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:UploadFile start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(UploadFileResp)
 	err, respBody := Do(
@@ -1097,33 +1132,34 @@ func (u *UrchinClient) UploadFile(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:UploadFile finish.")
 	return nil, resp
 }
@@ -1133,18 +1169,19 @@ func (u *UrchinClient) DownloadObject(
 	req *DownloadObjectReq) (
 	err error, resp *DownloadObjectResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DownloadObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(DownloadObjectResp)
 	err, respBody := Do(
@@ -1155,33 +1192,34 @@ func (u *UrchinClient) DownloadObject(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DownloadObject finish.")
 	return nil, resp
 }
@@ -1191,18 +1229,19 @@ func (u *UrchinClient) DownloadFile(
 	req *DownloadFileReq) (
 	err error, resp *DownloadFileResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DownloadFile start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(DownloadFileResp)
 	err, respBody := Do(
@@ -1213,33 +1252,34 @@ func (u *UrchinClient) DownloadFile(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DownloadFile finish.")
 	return nil, resp
 }
@@ -1249,18 +1289,19 @@ func (u *UrchinClient) LoadObject(
 	req *LoadObjectReq) (
 	err error, resp *LoadObjectResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:LoadObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(LoadObjectResp)
 	err, respBody := Do(
@@ -1271,33 +1312,34 @@ func (u *UrchinClient) LoadObject(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:LoadObject finish.")
 	return nil, resp
 }
@@ -1307,18 +1349,19 @@ func (u *UrchinClient) MigrateObject(
 	req *MigrateObjectReq) (
 	err error, resp *MigrateObjectResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:MigrateObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(MigrateObjectResp)
 	err, respBody := Do(
@@ -1329,33 +1372,34 @@ func (u *UrchinClient) MigrateObject(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:MigrateObject finish.")
 	return nil, resp
 }
@@ -1365,18 +1409,19 @@ func (u *UrchinClient) CopyObject(
 	req *CopyObjectReq) (
 	err error, resp *CopyObjectResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CopyObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CopyObjectResp)
 	err, respBody := Do(
@@ -1387,33 +1432,34 @@ func (u *UrchinClient) CopyObject(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CopyObject finish.")
 	return nil, resp
 }
@@ -1423,18 +1469,19 @@ func (u *UrchinClient) GetObject(
 	req *GetObjectReq) (
 	err error, resp *GetObjectResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:GetObject start.")
 
 	values, err := query.Values(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", values.Encode())
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", values.Encode()))
 
 	resp = new(GetObjectResp)
 	err, respBody := Do(
@@ -1445,33 +1492,34 @@ func (u *UrchinClient) GetObject(
 		nil,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:GetObject finish.")
 	return nil, resp
 }
@@ -1481,18 +1529,19 @@ func (u *UrchinClient) DeleteObject(
 	req *DeleteObjectReq) (
 	err error, resp *BaseResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DeleteObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(BaseResp)
 	err, respBody := Do(
@@ -1503,33 +1552,34 @@ func (u *UrchinClient) DeleteObject(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DeleteObject finish.")
 	return nil, resp
 }
@@ -1539,18 +1589,19 @@ func (u *UrchinClient) DeleteObjectDeployment(
 	req *DeleteObjectDeploymentReq) (
 	err error, resp *BaseResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DeleteObjectDeployment start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(BaseResp)
 	err, respBody := Do(
@@ -1561,33 +1612,34 @@ func (u *UrchinClient) DeleteObjectDeployment(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DeleteObjectDeployment finish.")
 	return nil, resp
 }
@@ -1597,18 +1649,19 @@ func (u *UrchinClient) DeleteFile(
 	req *DeleteFileReq) (
 	err error, resp *BaseResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DeleteFile start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(BaseResp)
 	err, respBody := Do(
@@ -1619,33 +1672,34 @@ func (u *UrchinClient) DeleteFile(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:DeleteFile finish.")
 	return nil, resp
 }
@@ -1655,18 +1709,19 @@ func (u *UrchinClient) CreateObject(
 	req *CreateObjectReq) (
 	err error, resp *CreateObjectResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateObject start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(CreateObjectResp)
 	err, respBody := Do(
@@ -1677,33 +1732,34 @@ func (u *UrchinClient) CreateObject(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:CreateObject finish.")
 	return nil, resp
 }
@@ -1713,18 +1769,19 @@ func (u *UrchinClient) PutObjectDeployment(
 	req *PutObjectDeploymentReq) (
 	err error, resp *BaseResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:PutObjectDeployment start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(BaseResp)
 	err, respBody := Do(
@@ -1735,33 +1792,34 @@ func (u *UrchinClient) PutObjectDeployment(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:PutObjectDeployment finish.")
 	return nil, resp
 }
@@ -1771,18 +1829,19 @@ func (u *UrchinClient) ListObjects(
 	req *ListObjectsReq) (
 	err error, resp *ListObjectsResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:ListObjects start.")
 
 	values, err := query.Values(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", values.Encode())
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", values.Encode()))
 
 	resp = new(ListObjectsResp)
 	err, respBody := Do(
@@ -1793,33 +1852,34 @@ func (u *UrchinClient) ListObjects(
 		nil,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:ListObjects finish.")
 	return nil, resp
 }
@@ -1829,18 +1889,19 @@ func (u *UrchinClient) ListParts(
 	req *ListPartsReq) (
 	err error, resp *ListPartsResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:ListParts start.")
 
 	values, err := query.Values(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", values.Encode())
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", values.Encode()))
 
 	resp = new(ListPartsResp)
 	err, respBody := Do(
@@ -1851,33 +1912,34 @@ func (u *UrchinClient) ListParts(
 		nil,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:ListParts finish.")
 	return nil, resp
 }
@@ -1887,18 +1949,19 @@ func (u *UrchinClient) GetTask(
 	req *GetTaskReq) (
 	err error, resp *GetTaskResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:GetTask start.")
 
 	values, err := query.Values(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", values.Encode())
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", values.Encode()))
 
 	resp = new(GetTaskResp)
 	err, respBody := Do(
@@ -1909,33 +1972,34 @@ func (u *UrchinClient) GetTask(
 		nil,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:GetTask finish.")
 	return nil, resp
 }
@@ -1945,18 +2009,19 @@ func (u *UrchinClient) FinishTask(
 	req *FinishTaskReq) (
 	err error, resp *BaseResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:FinishTask start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(BaseResp)
 	err, respBody := Do(
@@ -1967,33 +2032,34 @@ func (u *UrchinClient) FinishTask(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:FinishTask finish.")
 	return nil, resp
 }
@@ -2003,18 +2069,19 @@ func (u *UrchinClient) RetryTask(
 	req *RetryTaskReq) (
 	err error, resp *BaseResp) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:RetryTask start.")
 
 	reqBody, err := json.Marshal(req)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Marshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
-	Logger.WithContext(ctx).Debug(
-		"request: ", string(reqBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"request info.",
+		zap.String("request", string(reqBody)))
 
 	resp = new(BaseResp)
 	err, respBody := Do(
@@ -2025,33 +2092,34 @@ func (u *UrchinClient) RetryTask(
 		reqBody,
 		u.urchinClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" errCode: ", resp.Code,
-			" errMessage: ", resp.Message,
-			" requestId: ", resp.RequestId)
+			zap.Int32("errCode", resp.Code),
+			zap.String("errMessage", resp.Message),
+			zap.String("requestId", resp.RequestId))
 		return errors.New(resp.Message), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UrchinClient:RetryTask finish.")
 	return nil, resp
 }

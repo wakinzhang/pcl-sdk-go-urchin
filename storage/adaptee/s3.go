@@ -7,6 +7,7 @@ import (
 	"github.com/panjf2000/ants/v2"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"os"
 	"path/filepath"
@@ -35,15 +36,13 @@ func (o *S3) Init(
 	reqTimeout,
 	maxConnection int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Init start.",
-		" ak: ", "***",
-		" sk: ", "***",
-		" endpoint: ", endpoint,
-		" bucket: ", bucket,
-		" nodeType: ", nodeType,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endpoint", endpoint),
+		zap.String("bucket", bucket),
+		zap.Int32("nodeType", nodeType),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	o.bucket = bucket
 
@@ -67,9 +66,9 @@ func (o *S3) Init(
 			obs.WithMaxRetryCount(DefaultSeMaxRetryCount))
 	}
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"obs.New failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -82,7 +81,7 @@ func (o *S3) Init(
 		DefaultS3RateLimit,
 		DefaultS3RateBurst)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Init finish.")
 	return nil
 }
@@ -91,19 +90,19 @@ func (o *S3) SetConcurrency(
 	ctx context.Context,
 	config *StorageNodeConcurrencyConfig) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:SetConcurrency start.",
-		" UploadFileTaskNum: ", config.UploadFileTaskNum,
-		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
-		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
-		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+		zap.Int32("UploadFileTaskNum", config.UploadFileTaskNum),
+		zap.Int32("UploadMultiTaskNum", config.UploadMultiTaskNum),
+		zap.Int32("DownloadFileTaskNum", config.DownloadFileTaskNum),
+		zap.Int32("DownloadMultiTaskNum", config.DownloadMultiTaskNum))
 
 	o.s3UploadFileTaskNum = int(config.UploadFileTaskNum)
 	o.s3UploadMultiTaskNum = int(config.UploadMultiTaskNum)
 	o.s3DownloadFileTaskNum = int(config.DownloadFileTaskNum)
 	o.s3DownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:SetConcurrency finish.")
 	return nil
 }
@@ -112,12 +111,12 @@ func (o *S3) SetRate(
 	ctx context.Context,
 	rateLimiter *rate.Limiter) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:SetRate start.")
 
 	o.s3RateLimiter = rateLimiter
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:SetRate finish.")
 	return nil
 }
@@ -130,7 +129,7 @@ func (o *S3) Mkdir(
 	if s3MkdirInput, ok := input.(S3MkdirInput); ok {
 		objectKey = s3MkdirInput.ObjectKey
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
@@ -138,9 +137,9 @@ func (o *S3) Mkdir(
 		objectKey = objectKey + "/"
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Mkdir start.",
-		" objectKey: ", objectKey)
+		zap.String("objectKey", objectKey))
 
 	putObjectInput := new(obs.PutObjectInput)
 	putObjectInput.Bucket = o.bucket
@@ -155,24 +154,24 @@ func (o *S3) Mkdir(
 			if nil != _err {
 				var obsError obs.ObsError
 				if errors.As(_err, &obsError) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"obsClient.PutObject failed.",
-						" objectKey: ", putObjectInput.Key,
-						" obsCode: ", obsError.Code,
-						" obsMessage: ", obsError.Message)
+						zap.String("objectKey", putObjectInput.Key),
+						zap.String("obsCode", obsError.Code),
+						zap.String("obsMessage", obsError.Message))
 					return _err
 				}
 			}
 			return nil
 		})
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3:Mkdir failed.",
-			" objectKey: ", putObjectInput.Key,
-			" err: ", err)
+			zap.String("objectKey", putObjectInput.Key),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Mkdir finish.")
 	return nil
 }
@@ -188,23 +187,23 @@ func (o *S3) Upload(
 		targetPath = s3UploadInput.TargetPath
 		needPure = s3UploadInput.NeedPure
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Upload start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if stat.IsDir() {
@@ -214,11 +213,11 @@ func (o *S3) Upload(
 			targetPath,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3.uploadFolder failed.",
-				" sourcePath: ", sourcePath,
-				" targetPath: ", targetPath,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("targetPath", targetPath),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -229,17 +228,17 @@ func (o *S3) Upload(
 			objectKey,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3.uploadFile failed.",
-				" sourcePath: ", sourcePath,
-				" objectKey: ", objectKey,
-				" needPure: ", needPure,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("objectKey", objectKey),
+				zap.Bool("needPure", needPure),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Upload finish.")
 	return nil
 }
@@ -250,29 +249,29 @@ func (o *S3) uploadFolder(
 	targetPath string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:uploadFolder start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.Bool("needPure", needPure))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
 
 	uploadFolderRecord :=
 		strings.TrimSuffix(sourcePath, "/") + UploadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
-		" uploadFolderRecord: ", uploadFolderRecord)
+		zap.String("uploadFolderRecord", uploadFolderRecord))
 
 	if needPure {
 		err = os.Remove(uploadFolderRecord)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -284,10 +283,10 @@ func (o *S3) uploadFolder(
 				fileMap[strings.TrimSuffix(line, "\r")] = 0
 			}
 		} else if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.ReadFile failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 	}
@@ -296,18 +295,18 @@ func (o *S3) uploadFolder(
 	s3MkdirInput.ObjectKey = targetPath
 	err = o.Mkdir(ctx, s3MkdirInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3:Mkdir failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return err
 	}
 
 	pool, err := ants.NewPool(o.s3UploadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -319,62 +318,67 @@ func (o *S3) uploadFolder(
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.s3RateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"S3:uploadFileResume failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
 				relPath, _err := filepath.Rel(sourcePath, filePath)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
-						" sourcePath: ", sourcePath,
-						" filePath: ", filePath,
-						" relPath: ", relPath,
-						" err: ", _err)
+						zap.String("sourcePath", sourcePath),
+						zap.String("filePath", filePath),
+						zap.String("relPath", relPath),
+						zap.Error(_err))
 					return
 				}
 				objectKey := targetPath + relPath
 				if strings.HasSuffix(objectKey, UploadFileRecordSuffix) {
-					Logger.WithContext(ctx).Info(
+					InfoLogger.WithContext(ctx).Info(
 						"upload record file.",
-						" objectKey: ", objectKey)
+						zap.String("objectKey", objectKey))
 					return
 				}
 				if _, exists := fileMap[objectKey]; exists {
-					Logger.WithContext(ctx).Info(
-						"already finish. objectKey: ", objectKey)
+					InfoLogger.WithContext(ctx).Info(
+						"already finish.",
+						zap.String("objectKey", objectKey))
 					return
 				}
 				if fileInfo.IsDir() {
@@ -383,10 +387,10 @@ func (o *S3) uploadFolder(
 					_err = o.Mkdir(ctx, input)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"S3:Mkdir failed.",
-							" objectKey: ", objectKey,
-							" err: ", _err)
+							zap.String("objectKey", objectKey),
+							zap.Error(_err))
 						return
 					}
 				} else {
@@ -397,12 +401,12 @@ func (o *S3) uploadFolder(
 						needPure)
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"S3:uploadFile failed.",
-							" filePath: ", filePath,
-							" objectKey: ", objectKey,
-							" needPure: ", needPure,
-							" err: ", _err)
+							zap.String("filePath", filePath),
+							zap.String("objectKey", objectKey),
+							zap.Bool("needPure", needPure),
+							zap.Error(_err))
 						return
 					}
 				}
@@ -413,36 +417,38 @@ func (o *S3) uploadFolder(
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", _err)
+						zap.String("uploadFolderRecord",
+							uploadFolderRecord),
+						zap.Error(_err))
 					return
 				}
 				defer func() {
 					errMsg := f.Close()
 					if errMsg != nil {
-						Logger.WithContext(ctx).Warn(
+						ErrorLogger.WithContext(ctx).Warn(
 							"close file failed.",
-							" err: ", errMsg)
+							zap.Error(errMsg))
 					}
 				}()
 				_, _err = f.Write([]byte(objectKey + "\n"))
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"write file failed.",
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" objectKey: ", objectKey,
-						" err: ", _err)
+						zap.String("uploadFolderRecord",
+							uploadFolderRecord),
+						zap.String("objectKey", objectKey),
+						zap.Error(_err))
 					return
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -450,30 +456,31 @@ func (o *S3) uploadFolder(
 	wg.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" sourcePath: ", sourcePath, " err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3:uploadFolder not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 
 		return errors.New("uploadFolder not all success")
 	} else {
 		_err := os.Remove(uploadFolderRecord)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", _err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(_err))
 			}
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:uploadFolder finish.")
 	return nil
 }
@@ -484,18 +491,18 @@ func (o *S3) uploadFile(
 	objectKey string,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:uploadFile start.",
-		" sourceFile: ", sourceFile,
-		" objectKey: ", objectKey,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectKey", objectKey),
+		zap.Bool("needPure", needPure))
 
 	sourceFileStat, err := os.Stat(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
@@ -518,10 +525,10 @@ func (o *S3) uploadFile(
 			err = os.Remove(input.CheckpointFile)
 			if nil != err {
 				if !os.IsNotExist(err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" CheckpointFile: ", input.CheckpointFile,
-						" err: ", err)
+						zap.String("checkpointFile", input.CheckpointFile),
+						zap.Error(err))
 					return err
 				}
 			}
@@ -536,21 +543,21 @@ func (o *S3) uploadFile(
 				if nil != _err {
 					var obsError obs.ObsError
 					if errors.As(_err, &obsError) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"obsClient.UploadFile failed.",
-							" objectKey: ", input.Key,
-							" obsCode: ", obsError.Code,
-							" obsMessage: ", obsError.Message)
+							zap.String("objectKey", input.Key),
+							zap.String("obsCode", obsError.Code),
+							zap.String("obsMessage", obsError.Message))
 						return _err
 					}
 				}
 				return nil
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3:uploadFile failed.",
-				" objectKey: ", input.Key,
-				" err: ", err)
+				zap.String("objectKey", input.Key),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -561,28 +568,28 @@ func (o *S3) uploadFile(
 			func() error {
 				stat, err := os.Stat(sourceFile)
 				if nil != err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Stat failed.",
-						" sourceFile: ", sourceFile,
-						" err: ", err)
+						zap.String("sourceFile", sourceFile),
+						zap.Error(err))
 					return err
 				}
 
 				fd, err := os.Open(sourceFile)
 				if nil != err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Open failed.",
-						" sourceFile: ", sourceFile,
-						" err: ", err)
+						zap.String("sourceFile", sourceFile),
+						zap.Error(err))
 					return err
 				}
 				defer func() {
 					errMsg := fd.Close()
 					if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-						Logger.WithContext(ctx).Warn(
+						ErrorLogger.WithContext(ctx).Warn(
 							"close file failed.",
-							" sourceFile: ", sourceFile,
-							" err: ", errMsg)
+							zap.String("sourceFile", sourceFile),
+							zap.Error(errMsg))
 					}
 				}()
 
@@ -598,26 +605,26 @@ func (o *S3) uploadFile(
 				if nil != _err {
 					var obsError obs.ObsError
 					if errors.As(_err, &obsError) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"obsClient.PutObject failed.",
-							" objectKey: ", input.Key,
-							" obsCode: ", obsError.Code,
-							" obsMessage: ", obsError.Message)
+							zap.String("objectKey", input.Key),
+							zap.String("obsCode", obsError.Code),
+							zap.String("obsMessage", obsError.Message))
 						return _err
 					}
 				}
 				return nil
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3:uploadFile failed.",
-				" objectKey: ", objectKey,
-				" err: ", err)
+				zap.String("objectKey", objectKey),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:uploadFile finish.")
 	return err
 }
@@ -631,30 +638,30 @@ func (o *S3) Download(
 		sourcePath = s3DownloadInput.SourcePath
 		targetPath = s3DownloadInput.TargetPath
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Download start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath))
 
 	err = os.MkdirAll(targetPath, os.ModePerm)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.MkdirAll failed.",
-			" targetPath: ", targetPath,
-			" err: ", err)
+			zap.String("targetPath", targetPath),
+			zap.Error(err))
 		return
 	}
 
 	downloadFolderRecord :=
 		strings.TrimSuffix(targetPath, "/") + DownloadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"downloadFolderRecord file info.",
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	marker := ""
 	for {
@@ -675,23 +682,23 @@ func (o *S3) Download(
 				if nil != _err {
 					var obsError obs.ObsError
 					if errors.As(_err, &obsError) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"obsClient.ListObjects failed.",
-							" Prefix: ", inputList.Prefix,
-							" Marker: ", inputList.Marker,
-							" obsCode: ", obsError.Code,
-							" obsMessage: ", obsError.Message)
+							zap.String("prefix", inputList.Prefix),
+							zap.String("marker", inputList.Marker),
+							zap.String("obsCode", obsError.Code),
+							zap.String("obsMessage", obsError.Message))
 						return _err, output
 					}
 				}
 				return _err, output
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"list objects failed.",
-				" Prefix: ", inputList.Prefix,
-				" Marker: ", inputList.Marker,
-				" err: ", err)
+				zap.String("prefix", inputList.Prefix),
+				zap.String("marker", inputList.Marker),
+				zap.Error(err))
 			return err
 		}
 
@@ -700,7 +707,7 @@ func (o *S3) Download(
 		if listObjectsOutput, isValid =
 			listObjectsOutputTmp.(*obs.ListObjectsOutput); !isValid {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response invalid.")
 			return errors.New("response invalid")
 		}
@@ -712,12 +719,12 @@ func (o *S3) Download(
 			listObjectsOutput,
 			downloadFolderRecord)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3:downloadObjects failed.",
-				" sourcePath: ", sourcePath,
-				" targetPath: ", targetPath,
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("targetPath", targetPath),
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 		if listObjectsOutput.IsTruncated {
@@ -729,13 +736,13 @@ func (o *S3) Download(
 	err = os.Remove(downloadFolderRecord)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Download finish.")
 	return nil
 }
@@ -747,11 +754,11 @@ func (o *S3) downloadObjects(
 	listObjectsOutput *obs.ListObjectsOutput,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:downloadObjects start.",
-		" sourcePath: ", sourcePath,
-		" targetPath: ", targetPath,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("sourcePath", sourcePath),
+		zap.String("targetPath", targetPath),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -763,10 +770,10 @@ func (o *S3) downloadObjects(
 			fileMap[strings.TrimSuffix(line, "\r")] = 0
 		}
 	} else if !os.IsNotExist(err) {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
@@ -774,46 +781,50 @@ func (o *S3) downloadObjects(
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(o.s3DownloadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool for download Object failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
 	for index, object := range listObjectsOutput.Contents {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"object content.",
-			" index: ", index,
-			" eTag: ", object.ETag,
-			" key: ", object.Key,
-			" size: ", object.Size)
+			zap.Int("index", index),
+			zap.String("eTag", object.ETag),
+			zap.String("key", object.Key),
+			zap.Int64("size", object.Size))
 		itemObject := object
 		if _, exists := fileMap[itemObject.Key]; exists {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"file already success.",
-				" objectKey: ", itemObject.Key)
+				zap.String("objectKey", itemObject.Key))
 			continue
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.s3RateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
 				if _err := recover(); nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", _err)
+						zap.Any("error", _err))
 					isAllSuccess = false
 				}
 			}()
@@ -825,10 +836,10 @@ func (o *S3) downloadObjects(
 				_err := os.MkdirAll(itemPath, os.ModePerm)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.MkdirAll failed.",
-						" itemPath: ", itemPath,
-						" err: ", _err)
+						zap.String("itemPath", itemPath),
+						zap.Error(_err))
 					return
 				}
 			} else {
@@ -851,11 +862,12 @@ func (o *S3) downloadObjects(
 						if nil != __err {
 							var obsError obs.ObsError
 							if errors.As(__err, &obsError) {
-								Logger.WithContext(ctx).Error(
+								ErrorLogger.WithContext(ctx).Error(
 									"obsClient.DownloadFile failed.",
-									" objectKey: ", input.Key,
-									" obsCode: ", obsError.Code,
-									" obsMessage: ", obsError.Message)
+									zap.String("objectKey", input.Key),
+									zap.String("obsCode", obsError.Code),
+									zap.String("obsMessage",
+										obsError.Message))
 								return __err
 							}
 						}
@@ -863,10 +875,10 @@ func (o *S3) downloadObjects(
 					})
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"S3:downloadFile failed.",
-						" objectKey: ", input.Key,
-						" err: ", _err)
+						zap.String("objectKey", input.Key),
+						zap.Error(_err))
 					return
 				}
 			}
@@ -877,49 +889,52 @@ func (o *S3) downloadObjects(
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.Error(_err))
 				return
 			}
 			defer func() {
 				errMsg := f.Close()
 				if errMsg != nil {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" downloadFolderRecord: ", downloadFolderRecord,
-						" err: ", errMsg)
+						zap.String("downloadFolderRecord",
+							downloadFolderRecord),
+						zap.Error(errMsg))
 				}
 			}()
 			_, _err = f.Write([]byte(itemObject.Key + "\n"))
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectKey: ", itemObject.Key,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.String("objectKey", itemObject.Key),
+					zap.Error(_err))
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3:downloadObjects not all success.",
-			" sourcePath: ", sourcePath)
+			zap.String("sourcePath", sourcePath))
 
 		return errors.New("downloadObjects not all success")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:downloadObjects finish.")
 	return nil
 }
@@ -932,14 +947,14 @@ func (o *S3) Delete(
 	if s3DeleteInput, ok := input.(S3DeleteInput); ok {
 		path = s3DeleteInput.Path
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"input param invalid.")
 		return errors.New("input param invalid")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Delete start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	marker := ""
 	for {
@@ -960,23 +975,23 @@ func (o *S3) Delete(
 				if nil != _err {
 					var obsError obs.ObsError
 					if errors.As(_err, &obsError) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"obsClient.ListObjects failed.",
-							" Prefix: ", inputList.Prefix,
-							" Marker: ", inputList.Marker,
-							" obsCode: ", obsError.Code,
-							" obsMessage: ", obsError.Message)
+							zap.String("prefix", inputList.Prefix),
+							zap.String("marker", inputList.Marker),
+							zap.String("obsCode", obsError.Code),
+							zap.String("obsMessage", obsError.Message))
 						return _err, output
 					}
 				}
 				return _err, output
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"list objects failed.",
-				" Prefix: ", inputList.Prefix,
-				" Marker: ", inputList.Marker,
-				" err: ", err)
+				zap.String("prefix", inputList.Prefix),
+				zap.String("marker", inputList.Marker),
+				zap.Error(err))
 			return err
 		}
 
@@ -985,26 +1000,26 @@ func (o *S3) Delete(
 		if listObjectsOutput, isValid =
 			listObjectsOutputTmp.(*obs.ListObjectsOutput); !isValid {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response invalid.")
 			return errors.New("response invalid")
 		}
 
 		objects := make([]obs.ObjectToDelete, 0)
 		for index, object := range listObjectsOutput.Contents {
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"object content.",
-				" index: ", index,
-				" eTag: ", object.ETag,
-				" key: ", object.Key,
-				" size: ", object.Size)
+				zap.Int("index", index),
+				zap.String("eTag", object.ETag),
+				zap.String("key", object.Key),
+				zap.Int64("size", object.Size))
 			objectToDelete := obs.ObjectToDelete{}
 			objectToDelete.Key = object.Key
 			objects = append(objects, objectToDelete)
 		}
 
 		if 0 == len(objects) {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"has no objects, return")
 			return nil
 		}
@@ -1022,19 +1037,19 @@ func (o *S3) Delete(
 				if nil != _err {
 					var obsError obs.ObsError
 					if errors.As(_err, &obsError) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"obsClient.DeleteObjects failed.",
-							" obsCode: ", obsError.Code,
-							" obsMessage: ", obsError.Message)
+							zap.String("obsCode", obsError.Code),
+							zap.String("obsMessage", obsError.Message))
 						return _err
 					}
 				}
 				return _err
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"delete objects failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 
@@ -1045,7 +1060,7 @@ func (o *S3) Delete(
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3:Delete finish.")
 	return nil
 }

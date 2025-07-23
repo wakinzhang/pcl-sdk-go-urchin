@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-retryablehttp"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"io"
 	"mime/multipart"
 	"net"
@@ -42,16 +43,14 @@ func (o *SugonClient) Init(
 	reqTimeout,
 	maxConnection int32) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Init start.",
-		" user: ", "***",
-		" password: ", "***",
-		" endpoint: ", endpoint,
-		" url: ", url,
-		" orgId: ", orgId,
-		" clusterId: ", clusterId,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.String("endpoint", endpoint),
+		zap.String("url", url),
+		zap.String("orgId", orgId),
+		zap.String("clusterId", clusterId),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	o.user = user
 	o.password = password
@@ -85,25 +84,24 @@ func (o *SugonClient) Init(
 	o.sugonClient.RetryWaitMax = 5 * time.Second
 	o.sugonClient.HTTPClient.Timeout = timeout
 	o.sugonClient.HTTPClient.Transport = transport
-	o.sugonClient.Logger = Logger
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Init finish.")
 }
 
 func (o *SugonClient) checkToken(
 	ctx context.Context) (valid bool) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:checkToken start.")
 
 	valid = false
 
 	url := o.url + SugonGetTokenInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:checkToken request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	header := make(http.Header)
 	header.Add(SugonHttpHeaderToken, o.token)
@@ -116,48 +114,49 @@ func (o *SugonClient) checkToken(
 		nil,
 		o.sugonClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return valid
 	}
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	resp := new(SugonBaseResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return valid
 	}
 
 	if SugonSuccessCode == resp.Code {
 		if tokenState, ok := resp.Data.(string); ok {
 			if TokenStateValid == tokenState {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"SugonClient:checkToken token state valid.")
 				valid = true
 			} else {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"SugonClient:checkToken token state invalid.")
 				valid = false
 			}
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"SugonClient:checkToken finish.")
 			return valid
 		} else {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response data invalid.",
-				" response: ", string(respBody))
+				zap.String("response", string(respBody)))
 			return valid
 		}
 	} else {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" Code: ", resp.Code,
-			" Msg: ", resp.Msg)
+			zap.String("code", resp.Code),
+			zap.String("msg", resp.Msg))
 		return valid
 	}
 }
@@ -165,22 +164,22 @@ func (o *SugonClient) checkToken(
 func (o *SugonClient) refreshToken(
 	ctx context.Context) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:refreshToken start.")
 
 	tokenValid := false
 	tokenValid = o.checkToken(ctx)
 	if true == tokenValid {
-		Logger.WithContext(ctx).Info(
+		InfoLogger.WithContext(ctx).Info(
 			"token valid, no need refresh.")
 		return err
 	}
 
 	url := o.url + SugonPostTokenInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:refreshToken request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -196,28 +195,29 @@ func (o *SugonClient) refreshToken(
 		nil,
 		o.sugonClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
-		"response: ", string(respBody))
+	InfoLogger.WithContext(ctx).Debug(
+		"response info.",
+		zap.String("respBody", string(respBody)))
 
 	resp := new(SugonPostTokenResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if SugonSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response failed.",
-			" Code: ", resp.Code,
-			" Msg: ", resp.Msg)
+			zap.String("code", resp.Code),
+			zap.String("msg", resp.Msg))
 		return errors.New(resp.Msg)
 	}
 
@@ -231,13 +231,13 @@ func (o *SugonClient) refreshToken(
 	}
 
 	if true != refresh {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"response data can not refresh token.",
-			" response: ", string(respBody))
+			zap.String("response", string(respBody)))
 		return errors.New("response data can not refresh token")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:refreshToken finish.")
 	return err
 }
@@ -246,15 +246,15 @@ func (o *SugonClient) Mkdir(
 	ctx context.Context,
 	path string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Mkdir start.",
-		" path: ", path)
+		zap.String("path", path))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -264,18 +264,18 @@ func (o *SugonClient) Mkdir(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + SugonMkdirInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Mkdir request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -290,34 +290,34 @@ func (o *SugonClient) Mkdir(
 		nil,
 		o.sugonClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Mkdir response.",
-		" path: ", path,
-		" response: ", string(respBody))
+		zap.String("path", path),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	if SugonSuccessCode != resp.Code &&
 		SugonErrFileExist != resp.Code {
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient:Mkdir failed.",
-			" path: ", path,
-			" Message: ", resp.Msg)
+			zap.String("path", path),
+			zap.String("message", resp.Msg))
 		return errors.New(resp.Msg)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Mkdir finish.")
 	return err
 }
@@ -326,15 +326,15 @@ func (o *SugonClient) Delete(
 	ctx context.Context,
 	paths string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Delete start.",
-		" paths: ", paths)
+		zap.String("paths", paths))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -344,18 +344,18 @@ func (o *SugonClient) Delete(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + SugonDeleteInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Delete request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -370,35 +370,35 @@ func (o *SugonClient) Delete(
 		nil,
 		o.sugonClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Delete response.",
-		" paths: ", paths,
-		" response: ", string(respBody))
+		zap.String("paths", paths),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if SugonSuccessCode != resp.Code &&
 		SugonErrFileNotExist != resp.Code {
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient:Delete failed.",
-			" paths: ", paths,
-			" Message: ", resp.Msg)
+			zap.String("paths", paths),
+			zap.String("message", resp.Msg))
 		return errors.New(resp.Msg)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Delete finish.")
 	return err
 }
@@ -409,24 +409,24 @@ func (o *SugonClient) Upload(
 	path string,
 	data io.Reader) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Upload start.",
-		" fileName: ", fileName,
-		" path: ", path)
+		zap.String("fileName", fileName),
+		zap.String("path", path))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + SugonUploadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Upload request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -434,16 +434,16 @@ func (o *SugonClient) Upload(
 		SugonMultiPartFormFiledFile,
 		fileName)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.Copy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -461,9 +461,9 @@ func (o *SugonClient) Upload(
 
 	err = writer.Close()
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.Close failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -472,9 +472,9 @@ func (o *SugonClient) Upload(
 		url,
 		body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	reqHttp.Header.Set(SugonHttpHeaderToken, o.token)
@@ -482,64 +482,64 @@ func (o *SugonClient) Upload(
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	resp := new(SugonBaseResponse)
 	response, err := o.sugonClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"sugonClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Upload response.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" response: ", string(respBodyBuf))
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("response", string(respBodyBuf)))
 
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if SugonSuccessCode != resp.Code &&
 		SugonErrFileExist != resp.Code {
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient:Upload failed.",
-			" fileName: ", fileName,
-			" path: ", path,
-			" Message: ", resp.Msg)
+			zap.String("fileName", fileName),
+			zap.String("path", path),
+			zap.String("message", resp.Msg))
 		return errors.New(resp.Msg)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:Upload finish.")
 	return err
 }
@@ -557,31 +557,31 @@ func (o *SugonClient) UploadChunks(
 	currentChunkSize int64,
 	data io.Reader) (err error, resp *SugonBaseResponse) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:UploadChunks start.",
-		" file: ", file,
-		" fileName: ", fileName,
-		" path: ", path,
-		" relativePath: ", relativePath,
-		" chunkNumber: ", chunkNumber,
-		" totalChunks: ", totalChunks,
-		" totalSize: ", totalSize,
-		" chunkSize: ", chunkSize,
-		" currentChunkSize: ", currentChunkSize)
+		zap.String("file", file),
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("relativePath", relativePath),
+		zap.Int32("chunkNumber", chunkNumber),
+		zap.Int32("totalChunks", totalChunks),
+		zap.Int64("totalSize", totalSize),
+		zap.Int64("chunkSize", chunkSize),
+		zap.Int64("currentChunkSize", currentChunkSize))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	url := o.endpoint + SugonUploadChunksInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:UploadChunks request.",
-		" url: ", url)
+		zap.String("url", url))
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -589,16 +589,16 @@ func (o *SugonClient) UploadChunks(
 		SugonMultiPartFormFiledFile,
 		file)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.CreateFormFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 	_, err = io.Copy(part, data)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.Copy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -640,9 +640,9 @@ func (o *SugonClient) UploadChunks(
 
 	err = writer.Close()
 	if err != nil {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"writer.Close failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
@@ -651,9 +651,9 @@ func (o *SugonClient) UploadChunks(
 		url,
 		body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 	reqHttp.Header.Set(SugonHttpHeaderToken, o.token)
@@ -661,76 +661,76 @@ func (o *SugonClient) UploadChunks(
 
 	reqRetryableHttp, err := retryablehttp.FromRequest(reqHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.FromRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	response, err := o.sugonClient.Do(reqRetryableHttp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"sugonClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	defer func(body io.ReadCloser) {
 		_err := body.Close()
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadCloser failed.",
-				" err: ", _err)
+				zap.Error(_err))
 		}
 	}(response.Body)
 
 	respBodyBuf, err := io.ReadAll(response.Body)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"io.ReadAll failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:UploadChunks response.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" relativePath: ", relativePath,
-		" chunkNumber: ", chunkNumber,
-		" totalChunks: ", totalChunks,
-		" totalSize: ", totalSize,
-		" chunkSize: ", chunkSize,
-		" currentChunkSize: ", currentChunkSize,
-		"response: ", string(respBodyBuf))
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("relativePath", relativePath),
+		zap.Int32("chunkNumber", chunkNumber),
+		zap.Int32("totalChunks", totalChunks),
+		zap.Int64("totalSize", totalSize),
+		zap.Int64("chunkSize", chunkSize),
+		zap.Int64("currentChunkSize", currentChunkSize),
+		zap.String("response", string(respBodyBuf)))
 
 	resp = new(SugonBaseResponse)
 	err = json.Unmarshal(respBodyBuf, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, resp
 	}
 
 	if SugonSuccessCode != resp.Code &&
 		SugonErrFileExist != resp.Code {
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient:UploadChunks failed.",
-			" fileName: ", fileName,
-			" path: ", path,
-			" relativePath: ", relativePath,
-			" chunkNumber: ", chunkNumber,
-			" totalChunks: ", totalChunks,
-			" totalSize: ", totalSize,
-			" chunkSize: ", chunkSize,
-			" currentChunkSize: ", currentChunkSize,
-			" Message: ", resp.Msg)
+			zap.String("fileName", fileName),
+			zap.String("path", path),
+			zap.String("relativePath", relativePath),
+			zap.Int32("chunkNumber", chunkNumber),
+			zap.Int32("totalChunks", totalChunks),
+			zap.Int64("totalSize", totalSize),
+			zap.Int64("chunkSize", chunkSize),
+			zap.Int64("currentChunkSize", currentChunkSize),
+			zap.String("message", resp.Msg))
 		return errors.New(resp.Msg), resp
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:UploadChunks finish.")
 	return nil, resp
 }
@@ -741,17 +741,17 @@ func (o *SugonClient) MergeChunks(
 	path,
 	relativePath string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:MergeChunks start.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" relativePath: ", relativePath)
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("relativePath", relativePath))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -763,18 +763,18 @@ func (o *SugonClient) MergeChunks(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	url := o.endpoint + SugonMergeChunksInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:MergeChunks request.",
-		" url: ", url,
-		" request: ", values.Encode())
+		zap.String("url", url),
+		zap.String("request", values.Encode()))
 
 	header := make(http.Header)
 	header.Set(HttpHeaderContentType, HttpHeaderContentTypeUrlEncoded)
@@ -789,39 +789,39 @@ func (o *SugonClient) MergeChunks(
 		strings.NewReader(values.Encode()),
 		o.sugonClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:MergeChunks response.",
-		" fileName: ", fileName,
-		" path: ", path,
-		" relativePath: ", relativePath,
-		" response: ", string(respBody))
+		zap.String("fileName", fileName),
+		zap.String("path", path),
+		zap.String("relativePath", relativePath),
+		zap.String("response", string(respBody)))
 
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if SugonSuccessCode != resp.Code &&
 		SugonErrFileExist != resp.Code {
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient:MergeChunks failed.",
-			" fileName: ", fileName,
-			" path: ", path,
-			" relativePath: ", relativePath,
-			" Message: ", resp.Msg)
+			zap.String("fileName", fileName),
+			zap.String("path", path),
+			zap.String("relativePath", relativePath),
+			zap.String("message", resp.Msg))
 		return errors.New(resp.Msg)
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:MergeChunks finish.")
 	return err
 }
@@ -832,17 +832,17 @@ func (o *SugonClient) List(
 	start,
 	limit int32) (err error, output *SugonListResponseData) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:List start.",
-		" path: ", path,
-		" start: ", start,
-		" limit: ", limit)
+		zap.String("path", path),
+		zap.Int32("start", start),
+		zap.Int32("limit", limit))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -853,18 +853,18 @@ func (o *SugonClient) List(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	url := o.endpoint + SugonListInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:List request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(SugonHttpHeaderToken, o.token)
@@ -878,42 +878,42 @@ func (o *SugonClient) List(
 		nil,
 		o.sugonClient)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"http.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:List response.",
-		" path: ", path,
-		" start: ", start,
-		" limit: ", limit,
-		" response: ", string(respBody))
+		zap.String("path", path),
+		zap.Int32("start", start),
+		zap.Int32("limit", limit),
+		zap.String("response", string(respBody)))
 
 	resp := new(SugonListResponse)
 	err = json.Unmarshal(respBody, resp)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"json.Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	if SugonSuccessCode != resp.Code {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient:List response failed.",
-			" path: ", path,
-			" start: ", start,
-			" limit: ", limit,
-			" Code: ", resp.Code,
-			" Msg: ", resp.Msg)
+			zap.String("path", path),
+			zap.Int32("start", start),
+			zap.Int32("limit", limit),
+			zap.String("code", resp.Code),
+			zap.String("msg", resp.Msg))
 		return errors.New(resp.Msg), output
 	}
 
 	output = new(SugonListResponseData)
 	output = resp.Data
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:List finish.")
 	return err, output
 }
@@ -923,16 +923,16 @@ func (o *SugonClient) DownloadChunks(
 	path,
 	contentRange string) (err error, output *SugonDownloadPartOutput) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:DownloadChunks start.",
-		" path: ", path,
-		" contentRange: ", contentRange)
+		zap.String("path", path),
+		zap.String("contentRange", contentRange))
 
 	err = o.refreshToken(ctx)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient.refreshToken failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -941,18 +941,18 @@ func (o *SugonClient) DownloadChunks(
 
 	values, err := query.Values(input)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"query.Values failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
 	url := o.endpoint + SugonDownloadInterface
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:DownloadChunks request.",
-		" url: ", url,
-		" query: ", values.Encode())
+		zap.String("url", url),
+		zap.String("query", values.Encode()))
 
 	header := make(http.Header)
 	header.Add(HttpHeaderContentType, HttpHeaderContentTypeJson)
@@ -964,9 +964,9 @@ func (o *SugonClient) DownloadChunks(
 		url+"?"+values.Encode(),
 		nil)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"retryablehttp.NewRequest failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -974,9 +974,9 @@ func (o *SugonClient) DownloadChunks(
 
 	response, err := o.sugonClient.Do(request)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"sugonClient.Do failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err, output
 	}
 
@@ -986,41 +986,41 @@ func (o *SugonClient) DownloadChunks(
 		defer func(body io.ReadCloser) {
 			_err := body.Close()
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"io.ReadCloser failed.",
-					" err: ", _err)
+					zap.Error(_err))
 			}
 		}(response.Body)
 
 		respBodyBuf, err := io.ReadAll(response.Body)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"io.ReadAll failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"SugonClient:DownloadChunks response.",
-			" path: ", path,
-			" contentRange: ", contentRange,
-			" response: ", string(respBodyBuf))
+			zap.String("path", path),
+			zap.String("contentRange", contentRange),
+			zap.String("response", string(respBodyBuf)))
 
 		var resp = new(SugonBaseResponse)
 		err = json.Unmarshal(respBodyBuf, resp)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"json.Unmarshal failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err, output
 		}
 
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"SugonClient:DownloadChunks response failed.",
-			" path: ", path,
-			" contentRange: ", contentRange,
-			" Code: ", resp.Code,
-			" Msg: ", resp.Msg)
+			zap.String("path", path),
+			zap.String("contentRange", contentRange),
+			zap.String("code", resp.Code),
+			zap.String("msg", resp.Msg))
 
 		return errors.New(resp.Msg), output
 	}
@@ -1028,7 +1028,7 @@ func (o *SugonClient) DownloadChunks(
 	output = new(SugonDownloadPartOutput)
 	output.Body = response.Body
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"SugonClient:DownloadChunks finish.")
 	return err, output
 }

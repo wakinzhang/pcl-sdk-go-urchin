@@ -9,6 +9,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/storage_proxy/adapter"
+	"go.uber.org/zap"
 )
 
 func RetryTask(
@@ -23,12 +24,12 @@ func RetryTask(
 	ctx = context.Background()
 	ctx = context.WithValue(ctx, "X-Request-Id", requestId)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"RetryTask start.",
-		" userId: ", userId,
-		" token: ", "***",
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("token", "***"),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	UClient.Init(
 		ctx,
@@ -46,14 +47,15 @@ func RetryTask(
 
 	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.GetTask failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		Logger.WithContext(ctx).Error(
-			"task not exist. taskId: ", taskId)
+		ErrorLogger.WithContext(ctx).Error(
+			"task not exist.",
+			zap.Int32("taskId", taskId))
 		return errors.New("task not exist")
 	}
 	task := getTaskResp.Data.List[0].Task
@@ -64,17 +66,17 @@ func RetryTask(
 
 	err, _ = UClient.RetryTask(ctx, retryTaskReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.RetryTask failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
 	if _, exists := TaskTypeOnlyServiceRetry[task.Type]; exists {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"RetryTask finish, Only service retry.",
-			" taskId: ", task.Id,
-			" taskType: ", task.Type)
+			zap.Int32("taskId", task.Id),
+			zap.Int32("taskType", task.Type))
 		return err
 	}
 
@@ -87,9 +89,9 @@ func RetryTask(
 			taskId,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"processRetryUploadTask failed.",
-				" err: ", err)
+				zap.Error(err))
 			return
 		}
 	case TaskTypeUploadFile:
@@ -100,9 +102,9 @@ func RetryTask(
 			taskId,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"processRetryUploadFileTask failed.",
-				" err: ", err)
+				zap.Error(err))
 			return
 		}
 	case TaskTypeDownload:
@@ -112,9 +114,9 @@ func RetryTask(
 			task,
 			taskId)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"processRetryDownloadTask failed.",
-				" err: ", err)
+				zap.Error(err))
 			return
 		}
 	case TaskTypeDownloadFile:
@@ -124,9 +126,9 @@ func RetryTask(
 			task,
 			taskId)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"processRetryDownloadFileTask failed.",
-				" err: ", err)
+				zap.Error(err))
 			return
 		}
 	case TaskTypeLoad:
@@ -137,19 +139,19 @@ func RetryTask(
 			taskId,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"processRetryLoadTask failed.",
-				" err: ", err)
+				zap.Error(err))
 			return
 		}
 	default:
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"task type invalid.",
-			" taskId: ", task.Id,
-			" taskType: ", task.Type)
+			zap.Int32("taskId", task.Id),
+			zap.Int32("taskType", task.Type))
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"RetryTask finish.")
 	return err
 }
@@ -161,19 +163,19 @@ func processRetryUploadTask(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryUploadTask start.",
-		" userId: ", userId,
-		" taskId: ", taskId,
-		" needPure: ", needPure,
-		" taskParams: ", task.Params)
+		zap.String("userId", userId),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure),
+		zap.String("taskParams", task.Params))
 
 	uploadObjectTaskParams := new(UploadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), uploadObjectTaskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UploadObjectTaskParams Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -185,13 +187,13 @@ func processRetryUploadTask(
 		uploadObjectTaskParams.NodeType,
 		needPure)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessUploadByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryUploadTask finish.")
 	return err
 }
@@ -203,19 +205,19 @@ func processRetryUploadFileTask(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryUploadFileTask start.",
-		" userId: ", userId,
-		" taskId: ", taskId,
-		" needPure: ", needPure,
-		" taskParams: ", task.Params)
+		zap.String("userId", userId),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure),
+		zap.String("taskParams", task.Params))
 
 	uploadFileTaskParams := new(UploadFileTaskParams)
 	err = json.Unmarshal([]byte(task.Params), uploadFileTaskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UploadFileTaskParams Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -227,13 +229,13 @@ func processRetryUploadFileTask(
 		uploadFileTaskParams.NodeType,
 		needPure)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessUploadFileByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryUploadFileTask finish.")
 	return err
 }
@@ -244,18 +246,18 @@ func processRetryDownloadTask(
 	task *TaskData,
 	taskId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryDownloadTask start.",
-		" userId: ", userId,
-		" taskId: ", taskId,
-		" taskParams: ", task.Params)
+		zap.String("userId", userId),
+		zap.Int32("taskId", taskId),
+		zap.String("taskParams", task.Params))
 
 	downloadObjectTaskParams := new(DownloadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), downloadObjectTaskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"DownloadObjectTaskParams Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -267,13 +269,13 @@ func processRetryDownloadTask(
 		taskId,
 		downloadObjectTaskParams.NodeType)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessDownloadByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryDownloadTask finish.")
 	return err
 }
@@ -284,18 +286,18 @@ func processRetryDownloadFileTask(
 	task *TaskData,
 	taskId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryDownloadFileTask start.",
-		" userId: ", userId,
-		" taskId: ", taskId,
-		" taskParams: ", task.Params)
+		zap.String("userId", userId),
+		zap.Int32("taskId", taskId),
+		zap.String("taskParams", task.Params))
 
 	downloadFileTaskParams := new(DownloadFileTaskParams)
 	err = json.Unmarshal([]byte(task.Params), downloadFileTaskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"DownloadFileTaskParams Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -307,13 +309,13 @@ func processRetryDownloadFileTask(
 		taskId,
 		downloadFileTaskParams.NodeType)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessDownloadByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryDownloadFileTask finish.")
 	return err
 }
@@ -325,19 +327,19 @@ func processRetryLoadTask(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryLoadTask start.",
-		" userId: ", userId,
-		" taskId: ", taskId,
-		" needPure: ", needPure,
-		" taskParams: ", task.Params)
+		zap.String("userId", userId),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure),
+		zap.String("taskParams", task.Params))
 
 	loadObjectTaskParams := new(LoadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), loadObjectTaskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"LoadObjectTaskParams Unmarshal failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -352,13 +354,13 @@ func processRetryLoadTask(
 		loadObjectTaskParams.TargetNodeType,
 		needPure)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ProcessLoadByProxy failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"processRetryLoadTask finish.")
 	return err
 }

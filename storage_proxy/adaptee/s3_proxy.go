@@ -12,6 +12,7 @@ import (
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/client"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/common"
 	. "github.com/wakinzhang/pcl-sdk-go-urchin/module"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 	"io"
 	"net/http"
@@ -41,11 +42,11 @@ func (o *S3Proxy) Init(
 	reqTimeout,
 	maxConnection int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:Init start.",
-		" nodeType: ", nodeType,
-		" reqTimeout: ", reqTimeout,
-		" maxConnection: ", maxConnection)
+		zap.Int32("nodeType", nodeType),
+		zap.Int32("reqTimeout", reqTimeout),
+		zap.Int32("maxConnection", maxConnection))
 
 	switch nodeType {
 	case StorageCategoryEObs:
@@ -68,9 +69,9 @@ func (o *S3Proxy) Init(
 			obs.WithMaxRetryCount(DefaultSeMaxRetryCount))
 	}
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"obs.New failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -83,7 +84,7 @@ func (o *S3Proxy) Init(
 		DefaultS3RateLimit,
 		DefaultS3RateBurst)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:Init finish.")
 	return nil
 }
@@ -92,19 +93,19 @@ func (o *S3Proxy) SetConcurrency(
 	ctx context.Context,
 	config *StorageNodeConcurrencyConfig) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:SetConcurrency start.",
-		" UploadFileTaskNum: ", config.UploadFileTaskNum,
-		" UploadMultiTaskNum: ", config.UploadMultiTaskNum,
-		" DownloadFileTaskNum: ", config.DownloadFileTaskNum,
-		" DownloadMultiTaskNum: ", config.DownloadMultiTaskNum)
+		zap.Int32("UploadFileTaskNum", config.UploadFileTaskNum),
+		zap.Int32("UploadMultiTaskNum", config.UploadMultiTaskNum),
+		zap.Int32("DownloadFileTaskNum", config.DownloadFileTaskNum),
+		zap.Int32("DownloadMultiTaskNum", config.DownloadMultiTaskNum))
 
 	o.s3UploadFileTaskNum = int(config.UploadFileTaskNum)
 	o.s3UploadMultiTaskNum = int(config.UploadMultiTaskNum)
 	o.s3DownloadFileTaskNum = int(config.DownloadFileTaskNum)
 	o.s3DownloadMultiTaskNum = int(config.DownloadMultiTaskNum)
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:SetConcurrency finish.")
 	return nil
 }
@@ -113,12 +114,12 @@ func (o *S3Proxy) SetRate(
 	ctx context.Context,
 	rateLimiter *rate.Limiter) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:SetRate start.")
 
 	o.s3RateLimiter = rateLimiter
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:SetRate finish.")
 	return nil
 }
@@ -128,10 +129,10 @@ func (o *S3Proxy) NewFolderWithSignedUrl(
 	objectKey string,
 	taskId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:NewFolderWithSignedUrl start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	if 0 < len(objectKey) && '/' != objectKey[len(objectKey)-1] {
 		objectKey = objectKey + "/"
@@ -145,10 +146,10 @@ func (o *S3Proxy) NewFolderWithSignedUrl(
 			ctx,
 			createEmptyFileSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreatePutObjectSignedUrl failed.",
-			" objectKey: ", objectKey,
-			" err: ", err)
+			zap.String("objectKey", objectKey),
+			zap.Error(err))
 		return err
 	}
 	var emptyFileWithSignedUrlHeader = http.Header{}
@@ -165,14 +166,14 @@ func (o *S3Proxy) NewFolderWithSignedUrl(
 	if nil != err {
 		var obsError obs.ObsError
 		if errors.As(err, &obsError) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.PutObjectWithSignedUrl failed.",
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:NewFolderWithSignedUrl finish.")
 	return err
 }
@@ -183,10 +184,10 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 	objectKey string,
 	taskId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:PutObjectWithSignedUrl start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	createPutObjectSignedUrlReq := new(CreatePutObjectSignedUrlReq)
 	createPutObjectSignedUrlReq.TaskId = taskId
@@ -197,10 +198,10 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 			ctx,
 			createPutObjectSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreatePutObjectSignedUrl failed.",
-			" objectKey: ", objectKey,
-			" err: ", err)
+			zap.String("objectKey", objectKey),
+			zap.Error(err))
 		return err
 	}
 
@@ -213,10 +214,10 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 
 	stat, err := os.Stat(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 	putObjectWithSignedUrlHeader.Set(
@@ -225,19 +226,19 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
+				zap.String("sourceFile", sourceFile),
+				zap.Error(errMsg))
 		}
 	}()
 
@@ -255,14 +256,14 @@ func (o *S3Proxy) PutObjectWithSignedUrl(
 	if nil != err {
 		var obsError obs.ObsError
 		if errors.As(err, &obsError) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.PutObjectWithSignedUrl failed.",
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:PutObjectWithSignedUrl finish.")
 	return err
 }
@@ -272,10 +273,10 @@ func (o *S3Proxy) InitiateMultipartUploadWithSignedUrl(
 	objectKey string,
 	taskId int32) (output *obs.InitiateMultipartUploadOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:InitiateMultipartUploadWithSignedUrl start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	createInitiateMultipartUploadSignedUrlReq :=
 		new(CreateInitiateMultipartUploadSignedUrlReq)
@@ -287,10 +288,10 @@ func (o *S3Proxy) InitiateMultipartUploadWithSignedUrl(
 			ctx,
 			createInitiateMultipartUploadSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateInitiateMultipartUploadSignedUrl"+
 				" failed.",
-			" err: ", err)
+			zap.Error(err))
 		return output, err
 	}
 	var initiateMultipartUploadWithSignedUrlHeader = http.Header{}
@@ -307,14 +308,14 @@ func (o *S3Proxy) InitiateMultipartUploadWithSignedUrl(
 	if nil != err {
 		var obsError obs.ObsError
 		if errors.As(err, &obsError) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.InitiateMultipartUploadWithSignedUrl failed.",
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 			return output, err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:InitiateMultipartUploadWithSignedUrl finish.")
 
 	return output, err
@@ -329,31 +330,31 @@ func (o *S3Proxy) UploadPartWithSignedUrl(
 	offset,
 	partSize int64) (output *obs.UploadPartOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:UploadPartWithSignedUrl start.",
-		" sourceFile: ", sourceFile,
-		" uploadId: ", uploadId,
-		" taskId: ", taskId,
-		" objectKey: ", objectKey,
-		" partNumber: ", partNumber,
-		" offset: ", offset,
-		" partSize: ", partSize)
+		zap.String("sourceFile", sourceFile),
+		zap.String("uploadId", uploadId),
+		zap.Int32("taskId", taskId),
+		zap.String("objectKey", objectKey),
+		zap.Int32("partNumber", partNumber),
+		zap.Int64("offset", offset),
+		zap.Int64("partSize", partSize))
 
 	fd, err := os.Open(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Open failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return output, err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" sourceFile: ", sourceFile,
-				" err: ", errMsg)
+				zap.String("sourceFile", sourceFile),
+				zap.Error(errMsg))
 		}
 	}()
 
@@ -363,10 +364,10 @@ func (o *S3Proxy) UploadPartWithSignedUrl(
 	readerWrapper.TotalCount = partSize
 	readerWrapper.Mark = offset
 	if _, err = fd.Seek(offset, io.SeekStart); nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"fd.Seek failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return output, err
 	}
 
@@ -380,13 +381,13 @@ func (o *S3Proxy) UploadPartWithSignedUrl(
 			ctx,
 			createUploadPartSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateUploadPartSignedUrl failed.",
-			" uploadId: ", uploadId,
-			" partNumber: ", partNumber,
-			" taskId: ", taskId,
-			" source: ", objectKey,
-			" err: ", err)
+			zap.String("uploadId", uploadId),
+			zap.Int32("partNumber", partNumber),
+			zap.Int32("taskId", taskId),
+			zap.String("source", objectKey),
+			zap.Error(err))
 		return output, err
 	}
 	var uploadPartWithSignedUrlHeader = http.Header{}
@@ -409,19 +410,19 @@ func (o *S3Proxy) UploadPartWithSignedUrl(
 		if errors.As(err, &obsError) &&
 			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.UploadPartWithSignedUrl failed.",
-				" uploadId: ", uploadId,
-				" partNumber: ", partNumber,
-				" taskId: ", taskId,
-				" source: ", objectKey,
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("uploadId", uploadId),
+				zap.Int32("partNumber", partNumber),
+				zap.Int32("taskId", taskId),
+				zap.String("source", objectKey),
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 		}
 		return output, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:UploadPartWithSignedUrl finish.")
 	return output, err
 }
@@ -434,13 +435,13 @@ func (o *S3Proxy) ListPartsWithSignedUrl(
 	partNumberMarker,
 	maxParts int32) (output *obs.ListPartsOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:ListPartsWithSignedUrl start.",
-		" uploadId: ", uploadId,
-		" taskId: ", taskId,
-		" objectKey: ", objectKey,
-		" partNumberMarker: ", partNumberMarker,
-		" maxParts: ", maxParts)
+		zap.String("uploadId", uploadId),
+		zap.Int32("taskId", taskId),
+		zap.String("objectKey", objectKey),
+		zap.Int32("partNumberMarker", partNumberMarker),
+		zap.Int32("maxParts", maxParts))
 
 	createListPartsSignedUrlReq := new(CreateListPartsSignedUrlReq)
 	createListPartsSignedUrlReq.UploadId = uploadId
@@ -454,14 +455,14 @@ func (o *S3Proxy) ListPartsWithSignedUrl(
 			ctx,
 			createListPartsSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateListPartsSignedUrl failed.",
-			" uploadId: ", uploadId,
-			" taskId: ", taskId,
-			" source: ", objectKey,
-			" partNumberMarker: ", partNumberMarker,
-			" maxParts: ", maxParts,
-			" err: ", err)
+			zap.String("uploadId", uploadId),
+			zap.Int32("taskId", taskId),
+			zap.String("source", objectKey),
+			zap.Int32("partNumberMarker", partNumberMarker),
+			zap.Int32("maxParts", maxParts),
+			zap.Error(err))
 		return output, err
 	}
 	var listPartsWithSignedUrlHeader = http.Header{}
@@ -480,19 +481,19 @@ func (o *S3Proxy) ListPartsWithSignedUrl(
 		if errors.As(err, &obsError) &&
 			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.ListPartsWithSignedUrl failed.",
-				" uploadId: ", uploadId,
-				" taskId: ", taskId,
-				" source: ", objectKey,
-				" partNumberMarker: ", partNumberMarker,
-				" maxParts: ", maxParts,
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("uploadId", uploadId),
+				zap.Int32("taskId", taskId),
+				zap.String("source", objectKey),
+				zap.Int32("partNumberMarker", partNumberMarker),
+				zap.Int32("maxParts", maxParts),
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 		}
 		return output, err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:ListPartsWithSignedUrl finish.")
 	return output, err
 }
@@ -506,11 +507,11 @@ func (o *S3Proxy) CompleteMultipartUploadWithSignedUrl(
 	output *obs.CompleteMultipartUploadOutput,
 	err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:CompleteMultipartUploadWithSignedUrl start.",
-		" objectKey: ", objectKey,
-		" uploadId: ", uploadId,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.String("uploadId", uploadId),
+		zap.Int32("taskId", taskId))
 
 	// 合并段
 	createCompleteMultipartUploadSignedUrlReq :=
@@ -524,10 +525,10 @@ func (o *S3Proxy) CompleteMultipartUploadWithSignedUrl(
 			ctx,
 			createCompleteMultipartUploadSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient:CreateCompleteMultipartUploadSignedUrl"+
 				" failed.",
-			" err: ", err)
+			zap.Error(err))
 		return output, err
 	}
 
@@ -539,14 +540,14 @@ func (o *S3Proxy) CompleteMultipartUploadWithSignedUrl(
 		"",
 		"  ")
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"xml.MarshalIndent failed.",
-			" err: ", err)
+			zap.Error(err))
 		return output, err
 	}
-	Logger.WithContext(ctx).Debug(
-		"completeMultipartUploadPartXML content: ",
-		string(completeMultipartUploadPartXML))
+	InfoLogger.WithContext(ctx).Debug(
+		"completeMultipartUploadPartXML info.",
+		zap.String("content", string(completeMultipartUploadPartXML)))
 	var completeMultipartUploadWithSignedUrlHeader = http.Header{}
 	for key, item := range createCompleteMultipartUploadSignedUrlResp.Header {
 		for _, value := range item.Values {
@@ -560,15 +561,15 @@ func (o *S3Proxy) CompleteMultipartUploadWithSignedUrl(
 	if nil != err {
 		var obsError obs.ObsError
 		if errors.As(err, &obsError) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.CompleteMultipartUploadWithSignedUrl failed.",
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 			return output, err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"obsClient.CompleteMultipartUploadWithSignedUrl finish.")
 	return output, nil
 }
@@ -579,11 +580,11 @@ func (o *S3Proxy) AbortMultipartUploadWithSignedUrl(
 	uploadId string,
 	taskId int32) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:AbortMultipartUploadWithSignedUrl start.",
-		" objectKey: ", objectKey,
-		" uploadId: ", uploadId,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.String("uploadId", uploadId),
+		zap.Int32("taskId", taskId))
 
 	createAbortMultipartUploadSignedUrlReq :=
 		new(CreateAbortMultipartUploadSignedUrlReq)
@@ -596,9 +597,9 @@ func (o *S3Proxy) AbortMultipartUploadWithSignedUrl(
 			ctx,
 			createAbortMultipartUploadSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateAbortMultipartUploadSignedUrl failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
@@ -615,15 +616,15 @@ func (o *S3Proxy) AbortMultipartUploadWithSignedUrl(
 	if nil != err {
 		var obsError obs.ObsError
 		if errors.As(err, &obsError) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.AbortMultipartUploadWithSignedUrl failed.",
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy.AbortMultipartUploadWithSignedUrl finish.")
 	return
 }
@@ -634,10 +635,10 @@ func (o *S3Proxy) GetObjectInfoWithSignedUrl(
 	taskId int32) (
 	getObjectMetaOutput *obs.GetObjectMetadataOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:GetObjectInfoWithSignedUrl start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	createGetObjectMetadataSignedUrlReq :=
 		new(CreateGetObjectMetadataSignedUrlReq)
@@ -649,9 +650,9 @@ func (o *S3Proxy) GetObjectInfoWithSignedUrl(
 			ctx,
 			createGetObjectMetadataSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateGetObjectMetadataSignedUrl failed.",
-			" err: ", err)
+			zap.Error(err))
 		return
 	}
 	var getObjectMetadataWithSignedUrlHeader = http.Header{}
@@ -668,15 +669,16 @@ func (o *S3Proxy) GetObjectInfoWithSignedUrl(
 	if nil != err {
 		var obsError obs.ObsError
 		if errors.As(err, &obsError) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.GetObjectMetadataWithSignedUrl failed.",
-				" signedUrl: ", createGetObjectMetadataSignedUrlResp.SignedUrl,
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("signedUrl",
+					createGetObjectMetadataSignedUrlResp.SignedUrl),
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 			return
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy.GetObjectInfoWithSignedUrl success.")
 	return
 }
@@ -686,10 +688,10 @@ func (o *S3Proxy) ListObjectsWithSignedUrl(
 	taskId int32,
 	marker string) (listObjectsOutput *obs.ListObjectsOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:ListObjectsWithSignedUrl start.",
-		" taskId: ", taskId,
-		" marker: ", marker)
+		zap.Int32("taskId", taskId),
+		zap.String("marker", marker))
 
 	createListObjectsSignedUrlReq := new(CreateListObjectsSignedUrlReq)
 	createListObjectsSignedUrlReq.TaskId = taskId
@@ -702,9 +704,9 @@ func (o *S3Proxy) ListObjectsWithSignedUrl(
 			ctx,
 			createListObjectsSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateListObjectsSignedUrl failed.",
-			" err: ", err)
+			zap.Error(err))
 		return listObjectsOutput, err
 	}
 
@@ -722,14 +724,14 @@ func (o *S3Proxy) ListObjectsWithSignedUrl(
 	if nil != err {
 		var obsError obs.ObsError
 		if errors.As(err, &obsError) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.ListObjectsWithSignedUrl failed.",
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 			return listObjectsOutput, err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:ListObjectsWithSignedUrl finish.")
 	return listObjectsOutput, nil
 }
@@ -742,13 +744,13 @@ func (o *S3Proxy) GetObjectWithSignedUrl(
 	rangeStart,
 	rangeEnd int64) (output *obs.GetObjectOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:GetObjectWithSignedUrl start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId,
-		" partNumber: ", partNumber,
-		" rangeStart: ", rangeStart,
-		" rangeEnd: ", rangeEnd)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId),
+		zap.Int64("partNumber", partNumber),
+		zap.Int64("rangeStart", rangeStart),
+		zap.Int64("rangeEnd", rangeEnd))
 
 	createGetObjectSignedUrlReq := new(CreateGetObjectSignedUrlReq)
 	createGetObjectSignedUrlReq.TaskId = taskId
@@ -761,9 +763,9 @@ func (o *S3Proxy) GetObjectWithSignedUrl(
 			ctx,
 			createGetObjectSignedUrlReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.CreateGetObjectSignedUrl failed.",
-			" err: ", err)
+			zap.Error(err))
 		return output, err
 	}
 	var getObjectWithSignedUrlHeader = http.Header{}
@@ -783,20 +785,20 @@ func (o *S3Proxy) GetObjectWithSignedUrl(
 		if errors.As(err, &obsError) &&
 			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.GetObjectWithSignedUrl failed.",
-				" source: ", objectKey,
-				" taskId: ", taskId,
-				" partNumber: ", partNumber,
-				" rangeStart: ", rangeStart,
-				" rangeEnd: ", rangeEnd,
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("source", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Int64("partNumber", partNumber),
+				zap.Int64("rangeStart", rangeStart),
+				zap.Int64("rangeEnd", rangeEnd),
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 		}
 		return output, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:GetObjectWithSignedUrl finish.")
 	return output, err
 }
@@ -806,24 +808,24 @@ func (o *S3Proxy) loadCheckpointFile(
 	checkpointFile string,
 	result interface{}) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:loadCheckpointFile start.",
-		" checkpointFile: ", checkpointFile)
+		zap.String("checkpointFile", checkpointFile))
 	ret, err := os.ReadFile(checkpointFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" checkpointFile: ", checkpointFile,
-			" err: ", err)
+			zap.String("checkpointFile", checkpointFile),
+			zap.Error(err))
 		return err
 	}
 	if len(ret) == 0 {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"checkpointFile empty.",
-			" checkpointFile: ", checkpointFile)
+			zap.String("checkpointFile", checkpointFile))
 		return errors.New("checkpointFile empty")
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:loadCheckpointFile finish.")
 	return xml.Unmarshal(ret, result)
 }
@@ -833,10 +835,10 @@ func (o *S3Proxy) sliceObject(
 	objectSize, partSize int64,
 	dfc *DownloadCheckpoint) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:sliceObject start.",
-		" objectSize: ", objectSize,
-		" partSize: ", partSize)
+		zap.Int64("objectSize", objectSize),
+		zap.Int64("partSize", partSize))
 
 	cnt := objectSize / partSize
 	if objectSize%partSize > 0 {
@@ -862,7 +864,7 @@ func (o *S3Proxy) sliceObject(
 			dfc.DownloadParts[cnt-1].RangeEnd = dfc.ObjectInfo.Size - 1
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:sliceObject finish.")
 }
 
@@ -871,39 +873,39 @@ func (o *S3Proxy) updateCheckpointFile(
 	fc interface{},
 	checkpointFilePath string) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:updateCheckpointFile start.",
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	result, err := xml.Marshal(fc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"xml.Marshal failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	err = os.WriteFile(checkpointFilePath, result, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.WriteFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return err
 	}
 	file, _ := os.OpenFile(checkpointFilePath, os.O_WRONLY, 0)
 	defer func() {
 		errMsg := file.Close()
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", errMsg)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_ = file.Sync()
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"updateCheckpointFile finish.")
 	return err
 }
@@ -915,29 +917,29 @@ func (o *S3Proxy) Upload(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:Upload start.",
-		" userId: ", userId,
-		" sourcePath: ", sourcePath,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("userId", userId),
+		zap.String("sourcePath", sourcePath),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	stat, err := os.Stat(sourcePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if stat.IsDir() {
 		err = o.uploadFolder(ctx, sourcePath, taskId, needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy.uploadFolder failed.",
-				" sourcePath: ", sourcePath,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -949,18 +951,18 @@ func (o *S3Proxy) Upload(
 			taskId,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy.uploadFile failed.",
-				" sourcePath: ", sourcePath,
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" needPure: ", needPure,
-				" err: ", err)
+				zap.String("sourcePath", sourcePath),
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Bool("needPure", needPure),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:Upload finish.")
 	return nil
 }
@@ -971,11 +973,11 @@ func (o *S3Proxy) uploadFolder(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadFolder start.",
-		" sourcePath: ", sourcePath,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("sourcePath", sourcePath),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -985,18 +987,18 @@ func (o *S3Proxy) uploadFolder(
 			"_" +
 			strconv.FormatInt(int64(taskId), 10) +
 			UploadFolderRecordSuffix
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"uploadFolderRecord file info.",
-		" uploadFolderRecord: ", uploadFolderRecord)
+		zap.String("uploadFolderRecord", uploadFolderRecord))
 
 	if needPure {
 		err = os.Remove(uploadFolderRecord)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(err))
 				return err
 			}
 		}
@@ -1008,19 +1010,19 @@ func (o *S3Proxy) uploadFolder(
 				fileMap[strings.TrimSuffix(line, "\r")] = 0
 			}
 		} else if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.ReadFile failed.",
-				" uploadFolderRecord: ", uploadFolderRecord,
-				" err: ", err)
+				zap.String("uploadFolderRecord", uploadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 	}
 
 	pool, err := ants.NewPool(o.s3UploadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1031,62 +1033,67 @@ func (o *S3Proxy) uploadFolder(
 		sourcePath,
 		func(filePath string, fileInfo os.FileInfo, err error) error {
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"filepath.Walk failed.",
-					" sourcePath: ", sourcePath,
-					" err: ", err)
+					zap.String("sourcePath", sourcePath),
+					zap.Error(err))
 				return err
 			}
 			if sourcePath == filePath {
-				Logger.WithContext(ctx).Debug(
+				InfoLogger.WithContext(ctx).Debug(
 					"root dir no need todo.")
 				return nil
 			}
 
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait start.")
 			ctxRate, cancel := context.WithCancel(context.Background())
 			err = o.s3RateLimiter.Wait(ctxRate)
 			if nil != err {
 				cancel()
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"RateLimiter.Wait failed.",
-					" err: ", err)
+					zap.Error(err))
 				return err
 			}
 			cancel()
+			InfoLogger.WithContext(ctx).Debug(
+				"RateLimiter.Wait end.")
 
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
 					wg.Done()
 					if _err := recover(); nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"S3Proxy:uploadFileResume failed.",
-							" err: ", _err)
+							zap.Any("error", _err))
 						isAllSuccess = false
 					}
 				}()
 				objectKey, _err := filepath.Rel(sourcePath, filePath)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"filepath.Rel failed.",
-						" sourcePath: ", sourcePath,
-						" filePath: ", filePath,
-						" objectKey: ", objectKey,
-						" err: ", _err)
+						zap.String("sourcePath", sourcePath),
+						zap.String("filePath", filePath),
+						zap.String("objectKey", objectKey),
+						zap.Error(_err))
 					return
 				}
 				// 统一linux目录风格
 				objectKey = filepath.ToSlash(objectKey)
 				if strings.HasSuffix(objectKey, UploadFileRecordSuffix) {
-					Logger.WithContext(ctx).Info(
+					InfoLogger.WithContext(ctx).Info(
 						"upload record file.",
-						" objectKey: ", objectKey)
+						zap.String("objectKey", objectKey))
 					return
 				}
 				if _, exists := fileMap[objectKey]; exists {
-					Logger.WithContext(ctx).Info(
-						"already finish. objectKey: ", objectKey)
+					InfoLogger.WithContext(ctx).Info(
+						"already finish.",
+						zap.String("objectKey", objectKey))
 					return
 				}
 				if fileInfo.IsDir() {
@@ -1100,23 +1107,23 @@ func (o *S3Proxy) uploadFolder(
 								objectKey,
 								taskId)
 							if nil != __err {
-								Logger.WithContext(ctx).Error(
+								ErrorLogger.WithContext(ctx).Error(
 									"S3Proxy:NewFolderWithSignedUrl"+
 										" failed.",
-									" objectKey: ", objectKey,
-									" taskId: ", taskId,
-									" err: ", __err)
+									zap.String("objectKey", objectKey),
+									zap.Int32("taskId", taskId),
+									zap.Error(__err))
 								return __err
 							}
 							return nil
 						})
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"new folder failed.",
-							" objectKey: ", objectKey,
-							" taskId: ", taskId,
-							" err: ", _err)
+							zap.String("objectKey", objectKey),
+							zap.Int32("taskId", taskId),
+							zap.Error(_err))
 						return
 					}
 				} else {
@@ -1132,22 +1139,22 @@ func (o *S3Proxy) uploadFolder(
 								taskId,
 								needPure)
 							if nil != __err {
-								Logger.WithContext(ctx).Error(
+								ErrorLogger.WithContext(ctx).Error(
 									"S3Proxy:uploadFile failed.",
-									" objectKey: ", objectKey,
-									" taskId: ", taskId,
-									" err: ", __err)
+									zap.String("objectKey", objectKey),
+									zap.Int32("taskId", taskId),
+									zap.Error(__err))
 								return __err
 							}
 							return nil
 						})
 					if nil != _err {
 						isAllSuccess = false
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"upload file failed.",
-							" objectKey: ", objectKey,
-							" taskId: ", taskId,
-							" err: ", _err)
+							zap.String("objectKey", objectKey),
+							zap.Int32("taskId", taskId),
+							zap.Error(_err))
 						return
 					}
 				}
@@ -1158,38 +1165,40 @@ func (o *S3Proxy) uploadFolder(
 					os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.OpenFile failed.",
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" err: ", _err)
+						zap.String("uploadFolderRecord",
+							uploadFolderRecord),
+						zap.Error(_err))
 					return
 				}
 				defer func() {
 					errMsg := f.Close()
 					if errMsg != nil {
-						Logger.WithContext(ctx).Warn(
+						ErrorLogger.WithContext(ctx).Warn(
 							"close file failed.",
-							" err: ", errMsg)
+							zap.Error(errMsg))
 					}
 				}()
 				_, _err = f.Write([]byte(objectKey + "\n"))
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"write file failed.",
-						" taskId: ", taskId,
-						" uploadFolderRecord: ", uploadFolderRecord,
-						" objectKey: ", objectKey,
-						" err: ", _err)
+						zap.Int32("taskId", taskId),
+						zap.String("uploadFolderRecord",
+							uploadFolderRecord),
+						zap.String("objectKey", objectKey),
+						zap.Error(_err))
 					return
 				}
 				return
 			})
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"ants.Submit failed.",
-					" taskId: ", taskId,
-					" err: ", err)
+					zap.Int32("taskId", taskId),
+					zap.Error(err))
 				return err
 			}
 			return nil
@@ -1197,33 +1206,33 @@ func (o *S3Proxy) uploadFolder(
 	wg.Wait()
 
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"filepath.Walk failed.",
-			" taskId: ", taskId,
-			" sourcePath: ", sourcePath,
-			" err: ", err)
+			zap.Int32("taskId", taskId),
+			zap.String("sourcePath", sourcePath),
+			zap.Error(err))
 		return err
 	}
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:uploadFolder not all success.",
-			" taskId: ", taskId,
-			" sourcePath: ", sourcePath)
+			zap.Int32("taskId", taskId),
+			zap.String("sourcePath", sourcePath))
 
 		return errors.New("uploadFolder not all success")
 	} else {
 		_err := os.Remove(uploadFolderRecord)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" uploadFolderRecord: ", uploadFolderRecord,
-					" err: ", _err)
+					zap.String("uploadFolderRecord", uploadFolderRecord),
+					zap.Error(_err))
 			}
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadFolder finish.")
 	return nil
 }
@@ -1235,19 +1244,19 @@ func (o *S3Proxy) uploadFile(
 	taskId int32,
 	needPure bool) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadFile start.",
-		" sourceFile: ", sourceFile,
-		" objectKey: ", objectKey,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	sourceFileStat, err := os.Stat(sourceFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" sourceFile: ", sourceFile,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.Error(err))
 		return err
 	}
 
@@ -1259,13 +1268,13 @@ func (o *S3Proxy) uploadFile(
 			taskId,
 			needPure)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:uploadFileResume failed.",
-				" sourceFile: ", sourceFile,
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" needPure: ", needPure,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Bool("needPure", needPure),
+				zap.Error(err))
 			return err
 		}
 	} else {
@@ -1275,17 +1284,17 @@ func (o *S3Proxy) uploadFile(
 			objectKey,
 			taskId)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:PutObjectWithSignedUrl failed.",
-				" sourceFile: ", sourceFile,
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("sourceFile", sourceFile),
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return err
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadFile finish.")
 	return err
 }
@@ -1298,12 +1307,12 @@ func (o *S3Proxy) uploadFileResume(
 	needPure bool) (
 	output *obs.CompleteMultipartUploadOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadFileResume start.",
-		" sourceFile: ", sourceFile,
-		" objectKey: ", objectKey,
-		" taskId: ", taskId,
-		" needPure: ", needPure)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId),
+		zap.Bool("needPure", needPure))
 
 	uploadFileInput := new(obs.UploadFileInput)
 	uploadFileInput.UploadFile = sourceFile
@@ -1326,10 +1335,11 @@ func (o *S3Proxy) uploadFileResume(
 		err = os.Remove(uploadFileInput.CheckpointFile)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" CheckpointFile: ", uploadFileInput.CheckpointFile,
-					" err: ", err)
+					zap.String("CheckpointFile",
+						uploadFileInput.CheckpointFile),
+					zap.Error(err))
 				return output, err
 			}
 		}
@@ -1342,16 +1352,16 @@ func (o *S3Proxy) uploadFileResume(
 		taskId,
 		uploadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:resumeUpload failed.",
-			" sourceFile: ", sourceFile,
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("sourceFile", sourceFile),
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return output, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadFileResume finish.")
 	return output, err
 }
@@ -1363,24 +1373,24 @@ func (o *S3Proxy) resumeUpload(
 	input *obs.UploadFileInput) (
 	output *obs.CompleteMultipartUploadOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:resumeUpload start.",
-		" sourceFile: ", sourceFile,
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("sourceFile", sourceFile),
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	uploadFileStat, err := os.Stat(input.UploadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Stat failed.",
-			" uploadFile: ", input.UploadFile,
-			" err: ", err)
+			zap.String("uploadFile", input.UploadFile),
+			zap.Error(err))
 		return nil, err
 	}
 	if uploadFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadFile can not be a folder.",
-			" uploadFile: ", input.UploadFile)
+			zap.String("uploadFile", input.UploadFile))
 		return nil, errors.New("uploadFile can not be a folder")
 	}
 
@@ -1398,11 +1408,11 @@ func (o *S3Proxy) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:getUploadCheckpointFile failed.",
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return nil, err
 		}
 	}
@@ -1415,33 +1425,34 @@ func (o *S3Proxy) resumeUpload(
 			uploadFileStat,
 			input)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:prepareUpload failed.",
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" err: ", err)
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Error(err))
 			return nil, err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"S3Proxy:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				_err := o.AbortMultipartUploadWithSignedUrl(
 					ctx,
 					objectKey,
 					ufc.UploadId,
 					taskId)
 				if nil != _err {
-					Logger.WithContext(ctx).Error(
-						"S3Proxy:AbortMultipartUploadWithSignedUrl failed.",
-						" objectKey: ", objectKey,
-						" uploadId: ", ufc.UploadId,
-						" taskId: ", taskId,
-						" err: ", _err)
+					ErrorLogger.WithContext(ctx).Error(
+						"S3Proxy:AbortMultipartUploadWithSignedUrl"+
+							" failed.",
+						zap.String("objectKey", objectKey),
+						zap.String("uploadId", ufc.UploadId),
+						zap.Int32("taskId", taskId),
+						zap.Error(_err))
 				}
 				return nil, err
 			}
@@ -1462,11 +1473,11 @@ func (o *S3Proxy) resumeUpload(
 		ufc,
 		enableCheckpoint)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:handleUploadFileResult failed.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -1478,16 +1489,16 @@ func (o *S3Proxy) resumeUpload(
 		enableCheckpoint,
 		checkpointFilePath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:completeParts failed.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return completeOutput, err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:resumeUpload finish.")
 	return completeOutput, err
 }
@@ -1499,17 +1510,17 @@ func (o *S3Proxy) uploadPartConcurrent(
 	ufc *UploadCheckpoint,
 	input *obs.UploadFileInput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadPartConcurrent start.",
-		" sourceFile: ", sourceFile,
-		" taskId: ", taskId)
+		zap.String("sourceFile", sourceFile),
+		zap.Int32("taskId", taskId))
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -1542,16 +1553,20 @@ func (o *S3Proxy) uploadPartConcurrent(
 			enableCheckpoint: input.EnableCheckpoint,
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.s3RateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -1570,26 +1585,26 @@ func (o *S3Proxy) uploadPartConcurrent(
 			if nil != _err &&
 				atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"S3Proxy:handleUploadTaskResult failed.",
-					" partNumber: ", task.PartNumber,
-					" checkpointFile: ", input.CheckpointFile,
-					" err: ", _err)
+					zap.Int("partNumber", task.PartNumber),
+					zap.String("checkpointFile", input.CheckpointFile),
+					zap.Error(_err))
 				uploadPartError.Store(_err)
 			}
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"S3Proxy:handleUploadTaskResult finish.")
 			return
 		})
 	}
 	wg.Wait()
 	if err, ok := uploadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"uploadPartError load failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:uploadPartConcurrent finish.")
 	return nil
 }
@@ -1602,38 +1617,39 @@ func (o *S3Proxy) getUploadCheckpointFile(
 	uploadFileStat os.FileInfo,
 	input *obs.UploadFileInput) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:getUploadCheckpointFile start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpoint file can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !ufc.isValid(ctx, input.Key, input.UploadFile, uploadFileStat) {
 		if ufc.Key != "" && ufc.UploadId != "" {
@@ -1643,30 +1659,30 @@ func (o *S3Proxy) getUploadCheckpointFile(
 				ufc.UploadId,
 				taskId)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"S3Proxy:AbortMultipartUploadWithSignedUrl failed.",
-					" objectKey: ", objectKey,
-					" uploadId: ", ufc.UploadId,
-					" taskId: ", taskId,
-					" err: ", _err)
+					zap.String("objectKey", objectKey),
+					zap.String("uploadId", ufc.UploadId),
+					zap.Int32("taskId", taskId),
+					zap.Error(_err))
 			}
 		}
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"S3Proxy:loadCheckpointFile finish.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:getUploadCheckpointFile finish.")
 	return true, nil
 }
@@ -1679,10 +1695,10 @@ func (o *S3Proxy) prepareUpload(
 	uploadFileStat os.FileInfo,
 	input *obs.UploadFileInput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:prepareUpload start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	initiateMultipartUploadOutput, err :=
 		o.InitiateMultipartUploadWithSignedUrl(
@@ -1690,11 +1706,11 @@ func (o *S3Proxy) prepareUpload(
 			objectKey,
 			taskId)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:InitiateMultipartUploadWithSignedUrl failed.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 
@@ -1707,12 +1723,12 @@ func (o *S3Proxy) prepareUpload(
 
 	err = o.sliceFile(ctx, input.PartSize, ufc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:sliceFile failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:prepareUpload finish.")
 	return err
 }
@@ -1722,10 +1738,10 @@ func (o *S3Proxy) sliceFile(
 	partSize int64,
 	ufc *UploadCheckpoint) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:sliceFile start.",
-		" partSize: ", partSize,
-		" fileSize: ", ufc.FileInfo.Size)
+		zap.Int64("partSize", partSize),
+		zap.Int64("fileSize", ufc.FileInfo.Size))
 	fileSize := ufc.FileInfo.Size
 	cnt := fileSize / partSize
 	if cnt >= 10000 {
@@ -1740,10 +1756,10 @@ func (o *S3Proxy) sliceFile(
 	}
 
 	if partSize > obs.MAX_PART_SIZE {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"upload file part too large.",
-			" partSize: ", partSize,
-			" maxPartSize: ", obs.MAX_PART_SIZE)
+			zap.Int64("partSize", partSize),
+			zap.Int("maxPartSize", obs.MAX_PART_SIZE))
 
 		return fmt.Errorf("upload file part too large")
 	}
@@ -1767,7 +1783,7 @@ func (o *S3Proxy) sliceFile(
 		}
 		ufc.UploadParts = uploadParts
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:sliceFile finish.")
 	return nil
 }
@@ -1781,10 +1797,10 @@ func (o *S3Proxy) handleUploadTaskResult(
 	checkpointFilePath string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:handleUploadTaskResult start.",
-		" checkpointFilePath: ", checkpointFilePath,
-		" partNum: ", partNum)
+		zap.String("checkpointFilePath", checkpointFilePath),
+		zap.Int("partNum", partNum))
 
 	if uploadPartOutput, ok := result.(*obs.UploadPartOutput); ok {
 		lock.Lock()
@@ -1795,24 +1811,24 @@ func (o *S3Proxy) handleUploadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, ufc, checkpointFilePath)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"S3Proxy:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" partNum: ", partNum,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Int("partNum", partNum),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
 		if _err, ok := result.(error); ok {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"upload task result failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" partNum: ", partNum,
-				" err: ", _err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Int("partNum", partNum),
+				zap.Error(_err))
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:handleUploadTaskResult finish.")
 	return
 }
@@ -1825,18 +1841,18 @@ func (o *S3Proxy) handleUploadFileResult(
 	ufc *UploadCheckpoint,
 	enableCheckpoint bool) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:handleUploadFileResult start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId,
-		" uploadId: ", ufc.UploadId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId),
+		zap.String("uploadId", ufc.UploadId))
 
 	if uploadPartError != nil {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"uploadPartError not nil.",
-			" uploadPartError: ", uploadPartError)
+			zap.Error(uploadPartError))
 		if enableCheckpoint {
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"enableCheckpoint return uploadPartError.")
 			return uploadPartError
 		}
@@ -1846,16 +1862,16 @@ func (o *S3Proxy) handleUploadFileResult(
 			ufc.UploadId,
 			taskId)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:AbortMultipartUploadWithSignedUrl start.",
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" uploadId: ", ufc.UploadId,
-				" err: ", _err)
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.String("uploadId", ufc.UploadId),
+				zap.Error(_err))
 		}
 		return uploadPartError
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:handleUploadFileResult finish.")
 	return nil
 }
@@ -1869,12 +1885,12 @@ func (o *S3Proxy) completeParts(
 	checkpointFilePath string) (
 	output *obs.CompleteMultipartUploadOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:completeParts start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId,
-		" uploadId: ", ufc.UploadId,
-		" checkpointFilePath: ", checkpointFilePath)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId),
+		zap.String("uploadId", ufc.UploadId),
+		zap.String("checkpointFilePath", checkpointFilePath))
 
 	parts := make([]XPart, 0, len(ufc.UploadParts))
 	for _, uploadPart := range ufc.UploadParts {
@@ -1896,14 +1912,15 @@ func (o *S3Proxy) completeParts(
 			_err := os.Remove(checkpointFilePath)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" checkpointFilePath: ", checkpointFilePath,
-						" err: ", _err)
+						zap.String("checkpointFilePath",
+							checkpointFilePath),
+						zap.Error(_err))
 				}
 			}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"S3Proxy:completeParts finish.")
 		return output, err
 	}
@@ -1914,20 +1931,20 @@ func (o *S3Proxy) completeParts(
 			ufc.UploadId,
 			taskId)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy.AbortMultipartUploadWithSignedUrl failed.",
-				" objectKey: ", objectKey,
-				" uploadId: ", ufc.UploadId,
-				" taskId: ", taskId,
-				" err: ", _err)
+				zap.String("objectKey", objectKey),
+				zap.String("uploadId", ufc.UploadId),
+				zap.Int32("taskId", taskId),
+				zap.Error(_err))
 		}
 	}
-	Logger.WithContext(ctx).Error(
+	ErrorLogger.WithContext(ctx).Error(
 		"S3Proxy.CompleteMultipartUploadWithSignedUrl failed.",
-		" objectKey: ", objectKey,
-		" uploadId: ", ufc.UploadId,
-		" taskId: ", taskId,
-		" err: ", err)
+		zap.String("objectKey", objectKey),
+		zap.String("uploadId", ufc.UploadId),
+		zap.Int32("taskId", taskId),
+		zap.Error(err))
 	return output, err
 }
 
@@ -1946,36 +1963,35 @@ func (ufc *UploadCheckpoint) isValid(
 	key, uploadFile string,
 	fileStat os.FileInfo) bool {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UploadCheckpoint:isValid start.",
-		" key: ", key,
-		" ufc.Key: ", ufc.Key,
-		" uploadFile: ", uploadFile,
-		" ufc.UploadFile: ", ufc.UploadFile,
-		" fileStat.Size: ", fileStat.Size(),
-		" ufc.FileInfo.Size: ", ufc.FileInfo.Size,
-		" uploadId: ", ufc.UploadId)
+		zap.String("key", key),
+		zap.String("ufcKey", ufc.Key),
+		zap.String("uploadFile", uploadFile),
+		zap.String("ufcUploadFile", ufc.UploadFile),
+		zap.Int64("fileStatSize", fileStat.Size()),
+		zap.Int64("ufcFileInfoSize", ufc.FileInfo.Size),
+		zap.String("uploadId", ufc.UploadId))
 
 	if ufc.Key != key ||
 		ufc.UploadFile != uploadFile {
-		Logger.WithContext(ctx).Error(
-			"Checkpoint file is invalid.",
-			" bucketName or objectKey or uploadFile was changed.")
+		ErrorLogger.WithContext(ctx).Error(
+			"Checkpoint file is invalid." +
+				" bucketName or objectKey or uploadFile was changed.")
 		return false
 	}
 	if ufc.FileInfo.Size != fileStat.Size() ||
 		ufc.FileInfo.LastModified != fileStat.ModTime().Unix() {
-		Logger.WithContext(ctx).Error(
-			"Checkpoint file is invalid.",
-			" uploadFile was changed.")
+		ErrorLogger.WithContext(ctx).Error(
+			"Checkpoint file is invalid. uploadFile was changed.")
 		return false
 	}
 	if ufc.UploadId == "" {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UploadId is invalid.")
 		return false
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UploadCheckpoint:isValid finish.")
 	return true
 }
@@ -1992,16 +2008,16 @@ func (task *UploadPartTask) Run(
 	sourceFile, uploadId string,
 	taskId int32) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"UploadPartTask:Run start.",
-		" sourceFile: ", sourceFile,
-		" uploadId: ", uploadId,
-		" taskId: ", taskId,
-		" partNumber: ", int32(task.PartNumber),
-		" source: ", task.Key)
+		zap.String("sourceFile", sourceFile),
+		zap.String("uploadId", uploadId),
+		zap.Int32("taskId", taskId),
+		zap.Int32("partNumber", int32(task.PartNumber)),
+		zap.String("source", task.Key))
 
 	if atomic.LoadInt32(task.abort) == 1 {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"task abort.")
 		return ErrAbort
 	}
@@ -2018,32 +2034,31 @@ func (task *UploadPartTask) Run(
 
 	if nil == err {
 		if uploadPartOutput.ETag == "" {
-			Logger.WithContext(ctx).Error(
-				"obsClient.UploadPartWithSignedUrl failed.",
-				" invalid etag value.",
-				" uploadId: ", uploadId,
-				" partNumber: ", int32(task.PartNumber),
-				" taskId: ", taskId,
-				" source: ", task.Key)
+			ErrorLogger.WithContext(ctx).Error(
+				"obsClient.UploadPartWithSignedUrl failed."+
+					" invalid etag value.",
+				zap.String("uploadId", uploadId),
+				zap.Int32("partNumber", int32(task.PartNumber)),
+				zap.Int32("taskId", taskId),
+				zap.String("source", task.Key))
 			if !task.enableCheckpoint {
 				atomic.CompareAndSwapInt32(task.abort, 0, 1)
-				Logger.WithContext(ctx).Error(
-					"obsClient.UploadPartWithSignedUrl failed.",
-					" invalid etag value.",
-					" aborted task.",
-					" uploadId: ", uploadId,
-					" partNumber: ", int32(task.PartNumber),
-					" taskId: ", taskId,
-					" source: ", task.Key)
+				ErrorLogger.WithContext(ctx).Error(
+					"obsClient.UploadPartWithSignedUrl failed."+
+						" invalid etag value. aborted task.",
+					zap.String("uploadId", uploadId),
+					zap.Int32("partNumber", int32(task.PartNumber)),
+					zap.Int32("taskId", taskId),
+					zap.String("source", task.Key))
 			}
 			return errors.New("invalid etag value")
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"UploadPartTask:Run finish.",
-			" uploadId: ", uploadId,
-			" partNumber: ", int32(task.PartNumber),
-			" taskId: ", taskId,
-			" source: ", task.Key)
+			zap.String("uploadId", uploadId),
+			zap.Int32("partNumber", int32(task.PartNumber)),
+			zap.Int32("taskId", taskId),
+			zap.String("source", task.Key))
 		return uploadPartOutput
 	} else {
 		var obsError obs.ObsError
@@ -2051,24 +2066,24 @@ func (task *UploadPartTask) Run(
 			obsError.StatusCode >= 400 && obsError.StatusCode < 500 {
 
 			atomic.CompareAndSwapInt32(task.abort, 0, 1)
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"obsClient.UploadPartWithSignedUrl failed.",
-				" uploadId: ", uploadId,
-				" partNumber: ", int32(task.PartNumber),
-				" taskId: ", taskId,
-				" source: ", task.Key,
-				" obsCode: ", obsError.Code,
-				" obsMessage: ", obsError.Message)
+				zap.String("uploadId", uploadId),
+				zap.Int32("partNumber", int32(task.PartNumber)),
+				zap.Int32("taskId", taskId),
+				zap.String("source", task.Key),
+				zap.String("obsCode", obsError.Code),
+				zap.String("obsMessage", obsError.Message))
 		}
 	}
 
-	Logger.WithContext(ctx).Error(
+	ErrorLogger.WithContext(ctx).Error(
 		"obsClient.UploadPartWithSignedUrl failed.",
-		" uploadId: ", uploadId,
-		" partNumber: ", int32(task.PartNumber),
-		" taskId: ", taskId,
-		" source: ", task.Key,
-		" err: ", err)
+		zap.String("uploadId", uploadId),
+		zap.Int32("partNumber", int32(task.PartNumber)),
+		zap.Int32("taskId", taskId),
+		zap.String("source", task.Key),
+		zap.Error(err))
 	return err
 }
 
@@ -2083,12 +2098,12 @@ func (o *S3Proxy) Download(
 		targetPath = targetPath + "/"
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:Download start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" taskId: ", taskId,
-		" bucketName: ", bucketName)
+		zap.String("userId", userId),
+		zap.String("targetPath", targetPath),
+		zap.Int32("taskId", taskId),
+		zap.String("bucketName", bucketName))
 
 	getTaskReq := new(GetTaskReq)
 	getTaskReq.UserId = userId
@@ -2098,15 +2113,16 @@ func (o *S3Proxy) Download(
 
 	err, getTaskResp := UClient.GetTask(ctx, getTaskReq)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"UrchinClient.GetTask failed.",
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return err
 	}
 	if len(getTaskResp.Data.List) == 0 {
-		Logger.WithContext(ctx).Error(
-			"task not exist. taskId: ", taskId)
+		ErrorLogger.WithContext(ctx).Error(
+			"task not exist.",
+			zap.Int32("taskId", taskId))
 		return errors.New("task not exist")
 	}
 	task := getTaskResp.Data.List[0].Task
@@ -2118,10 +2134,10 @@ func (o *S3Proxy) Download(
 			[]byte(getTaskResp.Data.List[0].Task.Params),
 			taskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"DownloadObjectTaskParams Unmarshal failed.",
-				" params: ", getTaskResp.Data.List[0].Task.Params,
-				" err: ", err)
+				zap.String("params", getTaskResp.Data.List[0].Task.Params),
+				zap.Error(err))
 			return err
 		}
 		uuid = taskParams.Request.ObjUuid
@@ -2132,10 +2148,10 @@ func (o *S3Proxy) Download(
 			[]byte(getTaskResp.Data.List[0].Task.Params),
 			taskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"DownloadFileTaskParams Unmarshal failed.",
-				" params: ", getTaskResp.Data.List[0].Task.Params,
-				" err: ", err)
+				zap.String("params", getTaskResp.Data.List[0].Task.Params),
+				zap.Error(err))
 			return err
 		}
 		uuid = taskParams.Request.ObjUuid
@@ -2146,28 +2162,29 @@ func (o *S3Proxy) Download(
 			[]byte(getTaskResp.Data.List[0].Task.Params),
 			taskParams)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"DownloadFileTaskParams Unmarshal failed.",
-				" params: ", getTaskResp.Data.List[0].Task.Params,
-				" err: ", err)
+				zap.String("params", getTaskResp.Data.List[0].Task.Params),
+				zap.Error(err))
 			return err
 		}
 		uuid = taskParams.Request.ObjUuid
 		location = taskParams.SourceLocation
 	} else {
-		Logger.WithContext(ctx).Error(
-			"task type invalid. taskId: ", taskId)
+		ErrorLogger.WithContext(ctx).Error(
+			"task type invalid.",
+			zap.Int32("taskId", taskId))
 		return errors.New("task type invalid")
 	}
 
 	downloadObjectTaskParams := new(DownloadObjectTaskParams)
 	err = json.Unmarshal([]byte(task.Params), downloadObjectTaskParams)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"DownloadObjectTaskParams Unmarshal failed.",
-			" taskId: ", taskId,
-			" params: ", task.Params,
-			" err: ", err)
+			zap.Int32("taskId", taskId),
+			zap.String("params", task.Params),
+			zap.Error(err))
 		return err
 	}
 
@@ -2190,20 +2207,20 @@ func (o *S3Proxy) Download(
 					taskId,
 					marker)
 				if nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"S3Proxy:ListObjectsWithSignedUrl start.",
-						" taskId: ", taskId,
-						" err: ", _err)
+						zap.Int32("taskId", taskId),
+						zap.Error(_err))
 					return _err, output
 				}
 				return _err, output
 			})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"list objects failed.",
-				" taskId: ", taskId,
-				" marker: ", marker,
-				" err: ", err)
+				zap.Int32("taskId", taskId),
+				zap.String("marker", marker),
+				zap.Error(err))
 			return err
 		}
 
@@ -2212,7 +2229,7 @@ func (o *S3Proxy) Download(
 		if listObjectsOutput, isValid =
 			listObjectsOutputTmp.(*obs.ListObjectsOutput); !isValid {
 
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"response invalid.")
 			return errors.New("response invalid")
 		}
@@ -2226,14 +2243,14 @@ func (o *S3Proxy) Download(
 			listObjectsOutput,
 			downloadFolderRecord)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:downloadObjects failed.",
-				" userId: ", userId,
-				" tmpTargetPath: ", tmpTargetPath,
-				" taskId: ", taskId,
-				" bucketName: ", bucketName,
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("userId", userId),
+				zap.String("tmpTargetPath", tmpTargetPath),
+				zap.Int32("taskId", taskId),
+				zap.String("bucketName", bucketName),
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 			return err
 		}
 		if listObjectsOutput.IsTruncated {
@@ -2246,33 +2263,33 @@ func (o *S3Proxy) Download(
 	toPath := targetPath + uuid + fmt.Sprintf("_%d", taskId)
 	err = os.Rename(fromPath, toPath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" fromPath: ", fromPath,
-			" postPath: ", toPath,
-			" err: ", err)
+			zap.String("fromPath", fromPath),
+			zap.String("toPath", toPath),
+			zap.Error(err))
 		return err
 	}
 	tmpPath := targetPath + uuid + fmt.Sprintf("_%d_tmp", taskId)
 	err = os.RemoveAll(tmpPath)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.RemoveAll failed.",
-			" tmpPath: ", tmpPath,
-			" err: ", err)
+			zap.String("tmpPath", tmpPath),
+			zap.Error(err))
 		return err
 	}
 	err = os.Remove(downloadFolderRecord)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Remove failed.",
-				" downloadFolderRecord: ", downloadFolderRecord,
-				" err: ", err)
+				zap.String("downloadFolderRecord", downloadFolderRecord),
+				zap.Error(err))
 		}
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:Download finish.")
 	return nil
 }
@@ -2286,13 +2303,13 @@ func (o *S3Proxy) downloadObjects(
 	listObjectsOutput *obs.ListObjectsOutput,
 	downloadFolderRecord string) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:downloadObjects start.",
-		" userId: ", userId,
-		" targetPath: ", targetPath,
-		" taskId: ", taskId,
-		" bucketName: ", bucketName,
-		" downloadFolderRecord: ", downloadFolderRecord)
+		zap.String("userId", userId),
+		zap.String("targetPath", targetPath),
+		zap.Int32("taskId", taskId),
+		zap.String("bucketName", bucketName),
+		zap.String("downloadFolderRecord", downloadFolderRecord))
 
 	var fileMutex sync.Mutex
 	fileMap := make(map[string]int)
@@ -2304,10 +2321,10 @@ func (o *S3Proxy) downloadObjects(
 			fileMap[strings.TrimSuffix(line, "\r")] = 0
 		}
 	} else if !os.IsNotExist(err) {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.ReadFile failed.",
-			" downloadFolderRecord: ", downloadFolderRecord,
-			" err: ", err)
+			zap.String("downloadFolderRecord", downloadFolderRecord),
+			zap.Error(err))
 		return err
 	}
 
@@ -2315,46 +2332,50 @@ func (o *S3Proxy) downloadObjects(
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(o.s3DownloadFileTaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool for download Object failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
 	for index, object := range listObjectsOutput.Contents {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"object content.",
-			" index: ", index,
-			" eTag: ", object.ETag,
-			" key: ", object.Key,
-			" size: ", object.Size)
+			zap.Int("index", index),
+			zap.String("eTag", object.ETag),
+			zap.String("key", object.Key),
+			zap.Int64("size", object.Size))
 		itemObject := object
 		if _, exists := fileMap[itemObject.Key]; exists {
-			Logger.WithContext(ctx).Info(
+			InfoLogger.WithContext(ctx).Info(
 				"file already success.",
-				" objectKey: ", itemObject.Key)
+				zap.String("objectKey", itemObject.Key))
 			continue
 		}
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.s3RateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
 			defer func() {
 				wg.Done()
 				if _err := recover(); nil != _err {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"downloadFile failed.",
-						" err: ", _err)
+						zap.Any("error", _err))
 					isAllSuccess = false
 				}
 			}()
@@ -2365,10 +2386,10 @@ func (o *S3Proxy) downloadObjects(
 				_err := os.MkdirAll(itemPath, os.ModePerm)
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.MkdirAll failed.",
-						" itemPath: ", itemPath,
-						" err: ", _err)
+						zap.String("itemPath", itemPath),
+						zap.Error(_err))
 					return
 				}
 			} else {
@@ -2384,26 +2405,28 @@ func (o *S3Proxy) downloadObjects(
 							targetPath+itemObject.Key,
 							taskId)
 						if nil != __err {
-							Logger.WithContext(ctx).Error(
+							ErrorLogger.WithContext(ctx).Error(
 								"S3Proxy:downloadPartWithSignedUrl failed.",
-								" bucketName: ", bucketName,
-								" objectKey: ", itemObject.Key,
-								" targetFile: ", targetPath+itemObject.Key,
-								" taskId: ", taskId,
-								" err: ", __err)
+								zap.String("bucketName", bucketName),
+								zap.String("objectKey", itemObject.Key),
+								zap.String("targetFile",
+									targetPath+itemObject.Key),
+								zap.Int32("taskId", taskId),
+								zap.Error(__err))
 							return __err
 						}
 						return __err
 					})
 				if nil != _err {
 					isAllSuccess = false
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"S3Proxy:downloadObjects failed.",
-						" bucketName: ", bucketName,
-						" objectKey: ", itemObject.Key,
-						" targetFile: ", targetPath+itemObject.Key,
-						" taskId: ", taskId,
-						" err: ", _err)
+						zap.String("bucketName", bucketName),
+						zap.String("objectKey", itemObject.Key),
+						zap.String("targetFile",
+							targetPath+itemObject.Key),
+						zap.Int32("taskId", taskId),
+						zap.Error(_err))
 					return
 				}
 			}
@@ -2414,47 +2437,50 @@ func (o *S3Proxy) downloadObjects(
 				os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.OpenFile failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.Error(_err))
 				return
 			}
 			defer func() {
 				errMsg := f.Close()
 				if errMsg != nil {
-					Logger.WithContext(ctx).Warn(
+					ErrorLogger.WithContext(ctx).Warn(
 						"close file failed.",
-						" downloadFolderRecord: ", downloadFolderRecord,
-						" err: ", errMsg)
+						zap.String("downloadFolderRecord",
+							downloadFolderRecord),
+						zap.Error(errMsg))
 				}
 			}()
 			_, _err = f.Write([]byte(itemObject.Key + "\n"))
 			if nil != _err {
 				isAllSuccess = false
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" downloadFolderRecord: ", downloadFolderRecord,
-					" objectKey: ", itemObject.Key,
-					" err: ", _err)
+					zap.String("downloadFolderRecord",
+						downloadFolderRecord),
+					zap.String("objectKey", itemObject.Key),
+					zap.Error(_err))
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if !isAllSuccess {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:downloadObjects not all success.")
 		return errors.New("downloadObjects not all success")
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:downloadObjects finish.")
 	return nil
 }
@@ -2464,46 +2490,47 @@ func (o *S3Proxy) downloadPartWithSignedUrl(
 	bucketName, objectKey, targetFile string,
 	taskId int32) (output *obs.GetObjectMetadataOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:downloadPartWithSignedUrl start.",
-		" bucketName: ", bucketName,
-		" objectKey: ", objectKey,
-		" targetFile: ", targetFile,
-		" taskId: ", taskId)
+		zap.String("bucketName", bucketName),
+		zap.String("objectKey", objectKey),
+		zap.String("targetFile", targetFile),
+		zap.Int32("taskId", taskId))
 
 	if '/' == objectKey[len(objectKey)-1] {
 		parentDir := filepath.Dir(targetFile)
 		stat, err := os.Stat(parentDir)
 		if nil != err {
 			if !os.IsNotExist(err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Stat failed.",
-					" parentDir: ", parentDir,
-					" err: ", err)
+					zap.String("parentDir", parentDir),
+					zap.Error(err))
 				return output, err
 			}
-			Logger.WithContext(ctx).Debug(
-				"parentDir: ", parentDir, " not exist.")
+			InfoLogger.WithContext(ctx).Debug(
+				"parentDir not exist.",
+				zap.String("parentDir", parentDir))
 
 			_err := os.MkdirAll(parentDir, os.ModePerm)
 			if nil != _err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.MkdirAll failed.",
-					" parentDir: ", parentDir,
-					" err: ", _err)
+					zap.String("parentDir", parentDir),
+					zap.Error(_err))
 				return output, _err
 			}
 			return output, nil
 		} else if !stat.IsDir() {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"same file exists.",
-				" parentDir: ", parentDir)
+				zap.String("parentDir", parentDir))
 			return output,
 				fmt.Errorf(
 					"cannot create folder: %s same file exists",
 					parentDir)
 		} else {
-			Logger.WithContext(ctx).Debug(
+			InfoLogger.WithContext(ctx).Debug(
 				"no need download.")
 			return output, nil
 		}
@@ -2525,14 +2552,14 @@ func (o *S3Proxy) downloadPartWithSignedUrl(
 		taskId,
 		downloadFileInput)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:resumeDownload failed.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return output, err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:downloadPartWithSignedUrl finish.")
 	return
 }
@@ -2544,21 +2571,21 @@ func (o *S3Proxy) resumeDownload(
 	input *obs.DownloadFileInput) (
 	output *obs.GetObjectMetadataOutput, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:resumeDownload start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	getObjectMetaOutput, err := o.GetObjectInfoWithSignedUrl(
 		ctx,
 		objectKey,
 		taskId)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:GetObjectInfoWithSignedUrl failed.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" err: ", err)
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.Error(err))
 		return nil, err
 	}
 
@@ -2576,10 +2603,10 @@ func (o *S3Proxy) resumeDownload(
 			input,
 			getObjectMetaOutput)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:getDownloadCheckpointFile failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return nil, err
 		}
 	}
@@ -2602,28 +2629,29 @@ func (o *S3Proxy) resumeDownload(
 			dfc.TempFileInfo.TempFileUrl,
 			dfc.TempFileInfo.Size)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy:prepareTempFile failed.",
-				" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-				" Size: ", dfc.TempFileInfo.Size,
-				" err: ", err)
+				zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+				zap.Int64("Size", dfc.TempFileInfo.Size),
+				zap.Error(err))
 			return nil, err
 		}
 
 		if enableCheckpoint {
 			err = o.updateCheckpointFile(ctx, dfc, checkpointFilePath)
 			if nil != err {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"S3Proxy:updateCheckpointFile failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(err))
 				_errMsg := os.Remove(dfc.TempFileInfo.TempFileUrl)
 				if _errMsg != nil {
 					if !os.IsNotExist(_errMsg) {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"os.Remove failed.",
-							" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-							" err: ", _errMsg)
+							zap.String("TempFileUrl",
+								dfc.TempFileInfo.TempFileUrl),
+							zap.Error(_errMsg))
 					}
 				}
 				return nil, err
@@ -2639,34 +2667,34 @@ func (o *S3Proxy) resumeDownload(
 		enableCheckpoint,
 		downloadFileError)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:handleDownloadFileResult failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.Error(err))
 		return nil, err
 	}
 
 	err = os.Rename(dfc.TempFileInfo.TempFileUrl, input.DownloadFile)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.Rename failed.",
-			" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-			" DownloadFile: ", input.DownloadFile,
-			" err: ", err)
+			zap.String("TempFileUrl", dfc.TempFileInfo.TempFileUrl),
+			zap.String("DownloadFile", input.DownloadFile),
+			zap.Error(err))
 		return nil, err
 	}
 	if enableCheckpoint {
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:resumeDownload finish.")
 	return getObjectMetaOutput, nil
 }
@@ -2678,17 +2706,17 @@ func (o *S3Proxy) downloadFileConcurrent(
 	input *obs.DownloadFileInput,
 	dfc *DownloadCheckpoint) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:downloadFileConcurrent start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId))
 
 	var wg sync.WaitGroup
 	pool, err := ants.NewPool(input.TaskNum)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"ants.NewPool failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 	defer pool.Release()
@@ -2721,24 +2749,28 @@ func (o *S3Proxy) downloadFileConcurrent(
 			tempFileURL:      dfc.TempFileInfo.TempFileUrl,
 			enableCheckpoint: input.EnableCheckpoint,
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask params.",
-			" rangeStart: ", downloadPart.Offset,
-			" rangeEnd: ", downloadPart.RangeEnd,
-			" partNumber: ", downloadPart.PartNumber,
-			" tempFileURL: ", dfc.TempFileInfo.TempFileUrl,
-			" enableCheckpoint: ", input.EnableCheckpoint)
+			zap.Int64("rangeStart", downloadPart.Offset),
+			zap.Int64("rangeEnd", downloadPart.RangeEnd),
+			zap.Int64("partNumber", downloadPart.PartNumber),
+			zap.String("tempFileURL", dfc.TempFileInfo.TempFileUrl),
+			zap.Bool("enableCheckpoint", input.EnableCheckpoint))
 
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait start.")
 		ctxRate, cancel := context.WithCancel(context.Background())
 		err = o.s3RateLimiter.Wait(ctxRate)
 		if nil != err {
 			cancel()
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"RateLimiter.Wait failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 		cancel()
+		InfoLogger.WithContext(ctx).Debug(
+			"RateLimiter.Wait end.")
 
 		wg.Add(1)
 		err = pool.Submit(func() {
@@ -2756,10 +2788,11 @@ func (o *S3Proxy) downloadFileConcurrent(
 						dfc,
 						input.CheckpointFile)
 					if nil != _err {
-						Logger.WithContext(ctx).Error(
+						ErrorLogger.WithContext(ctx).Error(
 							"S3Proxy:updateCheckpointFile failed.",
-							" checkpointFile: ", input.CheckpointFile,
-							" err: ", _err)
+							zap.String("checkpointFile",
+								input.CheckpointFile),
+							zap.Error(_err))
 						downloadPartError.Store(_err)
 					}
 				}
@@ -2777,31 +2810,31 @@ func (o *S3Proxy) downloadFileConcurrent(
 				if nil != _err &&
 					atomic.CompareAndSwapInt32(&errFlag, 0, 1) {
 
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"S3Proxy:handleDownloadTaskResult failed.",
-						" partNumber: ", task.partNumber,
-						" checkpointFile: ", input.CheckpointFile,
-						" err: ", _err)
+						zap.Int64("partNumber", task.partNumber),
+						zap.String("checkpointFile", input.CheckpointFile),
+						zap.Error(_err))
 					downloadPartError.Store(_err)
 				}
 				return
 			}
 		})
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"ants.Submit failed.",
-				" err: ", err)
+				zap.Error(err))
 			return err
 		}
 	}
 	wg.Wait()
 	if err, ok := downloadPartError.Load().(error); ok {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"downloadPartError failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:downloadFileConcurrent finish.")
 	return nil
 }
@@ -2812,65 +2845,67 @@ func (o *S3Proxy) getDownloadCheckpointFile(
 	input *obs.DownloadFileInput,
 	output *obs.GetObjectMetadataOutput) (needCheckpoint bool, err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:getDownloadCheckpointFile start.",
-		" checkpointFile: ", input.CheckpointFile)
+		zap.String("checkpointFile", input.CheckpointFile))
 
 	checkpointFilePath := input.CheckpointFile
 	checkpointFileStat, err := os.Stat(checkpointFilePath)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" checkpointFilePath: ", checkpointFilePath,
-				" err: ", err)
+				zap.String("checkpointFilePath", checkpointFilePath),
+				zap.Error(err))
 			return false, err
 		}
-		Logger.WithContext(ctx).Debug(
-			"checkpointFilePath: ", checkpointFilePath, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"checkpointFilePath not exist.",
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return true, nil
 	}
 	if checkpointFileStat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"checkpointFilePath can not be a folder.",
-			" checkpointFilePath: ", checkpointFilePath)
+			zap.String("checkpointFilePath", checkpointFilePath))
 		return false,
 			errors.New("checkpoint file can not be a folder")
 	}
 	err = o.loadCheckpointFile(ctx, checkpointFilePath, dfc)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"S3Proxy:loadCheckpointFile failed.",
-			" checkpointFilePath: ", checkpointFilePath,
-			" err: ", err)
+			zap.String("checkpointFilePath", checkpointFilePath),
+			zap.Error(err))
 		return true, nil
 	} else if !dfc.IsValid(ctx, input, output) {
 		if dfc.TempFileInfo.TempFileUrl != "" {
 			_err := os.Remove(dfc.TempFileInfo.TempFileUrl)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" TempFileUrl: ", dfc.TempFileInfo.TempFileUrl,
-						" err: ", _err)
+						zap.String("TempFileUrl",
+							dfc.TempFileInfo.TempFileUrl),
+						zap.Error(_err))
 				}
 			}
 		}
 		_err := os.Remove(checkpointFilePath)
 		if nil != _err {
 			if !os.IsNotExist(_err) {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"os.Remove failed.",
-					" checkpointFilePath: ", checkpointFilePath,
-					" err: ", _err)
+					zap.String("checkpointFilePath", checkpointFilePath),
+					zap.Error(_err))
 			}
 		}
 	} else {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"no need to check point.")
 		return false, nil
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"need to check point.")
 	return true, nil
 }
@@ -2880,36 +2915,37 @@ func (o *S3Proxy) prepareTempFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:prepareTempFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	parentDir := filepath.Dir(tempFileURL)
 	stat, err := os.Stat(parentDir)
 	if nil != err {
 		if !os.IsNotExist(err) {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.Stat failed.",
-				" parentDir: ", parentDir,
-				" err: ", err)
+				zap.String("parentDir", parentDir),
+				zap.Error(err))
 			return err
 		}
-		Logger.WithContext(ctx).Debug(
-			"parentDir: ", parentDir, " not exist.")
+		InfoLogger.WithContext(ctx).Debug(
+			"parentDir not exist.",
+			zap.String("parentDir", parentDir))
 
 		_err := os.MkdirAll(parentDir, os.ModePerm)
 		if nil != _err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"os.MkdirAll failed.",
-				" parentDir: ", parentDir,
-				" err: ", _err)
+				zap.String("parentDir", parentDir),
+				zap.Error(_err))
 			return _err
 		}
 	} else if !stat.IsDir() {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"same file exists.",
-			" parentDir: ", parentDir)
+			zap.String("parentDir", parentDir))
 		return fmt.Errorf(
 			"cannot create folder: %s due to a same file exists",
 			parentDir)
@@ -2917,10 +2953,10 @@ func (o *S3Proxy) prepareTempFile(
 
 	err = o.createFile(ctx, tempFileURL, fileSize)
 	if nil == err {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"S3Proxy:createFile finish.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize))
 		return nil
 	}
 	fd, err := os.OpenFile(
@@ -2928,32 +2964,32 @@ func (o *S3Proxy) prepareTempFile(
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	if fileSize > 0 {
 		_, err = fd.WriteAt([]byte("a"), fileSize-1)
 		if nil != err {
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"write file failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", err)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(err))
 			return err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:prepareTempFile finish.")
 	return nil
 }
@@ -2963,41 +2999,41 @@ func (o *S3Proxy) createFile(
 	tempFileURL string,
 	fileSize int64) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:createFile start.",
-		" tempFileURL: ", tempFileURL,
-		" fileSize: ", fileSize)
+		zap.String("tempFileURL", tempFileURL),
+		zap.Int64("fileSize", fileSize))
 
 	fd, err := syscall.Open(
 		tempFileURL,
 		os.O_WRONLY|os.O_CREATE|os.O_TRUNC,
 		0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Open failed.",
-			" tempFileURL: ", tempFileURL,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := syscall.Close(fd)
 		if errMsg != nil {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"syscall.Close failed.",
-				" tempFileURL: ", tempFileURL,
-				" err: ", errMsg)
+				zap.String("tempFileURL", tempFileURL),
+				zap.Error(errMsg))
 		}
 	}()
 	err = syscall.Ftruncate(fd, fileSize)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"syscall.Ftruncate failed.",
-			" tempFileURL: ", tempFileURL,
-			" fileSize: ", fileSize,
-			" err: ", err)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Int64("fileSize", fileSize),
+			zap.Error(err))
 		return err
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:createFile finish.")
 	return nil
 }
@@ -3011,10 +3047,10 @@ func (o *S3Proxy) handleDownloadTaskResult(
 	checkpointFile string,
 	lock *sync.Mutex) (err error) {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:handleDownloadTaskResult start.",
-		" partNum: ", partNum,
-		" checkpointFile: ", checkpointFile)
+		zap.Int64("partNum", partNum),
+		zap.String("checkpointFile", checkpointFile))
 
 	if _, ok := result.(*obs.GetObjectOutput); ok {
 		lock.Lock()
@@ -3024,10 +3060,10 @@ func (o *S3Proxy) handleDownloadTaskResult(
 		if enableCheckpoint {
 			_err := o.updateCheckpointFile(ctx, dfc, checkpointFile)
 			if nil != _err {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"S3Proxy:updateCheckpointFile failed.",
-					" checkpointFile: ", checkpointFile,
-					" err: ", _err)
+					zap.String("checkpointFile", checkpointFile),
+					zap.Error(_err))
 			}
 		}
 	} else if result != ErrAbort {
@@ -3035,7 +3071,7 @@ func (o *S3Proxy) handleDownloadTaskResult(
 			err = _err
 		}
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:handleDownloadTaskResult finish.")
 	return
 }
@@ -3046,30 +3082,30 @@ func (o *S3Proxy) handleDownloadFileResult(
 	enableCheckpoint bool,
 	downloadFileError error) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:handleDownloadFileResult start.",
-		" tempFileURL: ", tempFileURL)
+		zap.String("tempFileURL", tempFileURL))
 
 	if downloadFileError != nil {
 		if !enableCheckpoint {
 			_err := os.Remove(tempFileURL)
 			if nil != _err {
 				if !os.IsNotExist(_err) {
-					Logger.WithContext(ctx).Error(
+					ErrorLogger.WithContext(ctx).Error(
 						"os.Remove failed.",
-						" tempFileURL: ", tempFileURL,
-						" err: ", _err)
+						zap.String("tempFileURL", tempFileURL),
+						zap.Error(_err))
 				}
 			}
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"S3Proxy.handleDownloadFileResult finish.",
-			" tempFileURL: ", tempFileURL,
-			" downloadFileError: ", downloadFileError)
+			zap.String("tempFileURL", tempFileURL),
+			zap.Error(downloadFileError))
 		return downloadFileError
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy.handleDownloadFileResult finish.")
 	return nil
 }
@@ -3080,35 +3116,35 @@ func (o *S3Proxy) updateDownloadFile(
 	rangeStart int64,
 	output *obs.GetObjectOutput) error {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:updateDownloadFile start.",
-		" filePath: ", filePath,
-		" rangeStart: ", rangeStart)
+		zap.String("filePath", filePath),
+		zap.Int64("rangeStart", rangeStart))
 
 	fd, err := os.OpenFile(filePath, os.O_WRONLY, 0640)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"os.OpenFile failed.",
-			" filePath: ", filePath,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Error(err))
 		return err
 	}
 	defer func() {
 		errMsg := fd.Close()
 		if errMsg != nil && !errors.Is(errMsg, os.ErrClosed) {
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"close file failed.",
-				" filePath: ", filePath,
-				" err: ", errMsg)
+				zap.String("filePath", filePath),
+				zap.Error(errMsg))
 		}
 	}()
 	_, err = fd.Seek(rangeStart, 0)
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"seek file failed.",
-			" filePath: ", filePath,
-			" rangeStart: ", rangeStart,
-			" err: ", err)
+			zap.String("filePath", filePath),
+			zap.Int64("rangeStart", rangeStart),
+			zap.Error(err))
 		return err
 	}
 	fileWriter := bufio.NewWriterSize(fd, 65536)
@@ -3120,18 +3156,18 @@ func (o *S3Proxy) updateDownloadFile(
 		if readCount > 0 {
 			writeCount, writeError := fileWriter.Write(part[0:readCount])
 			if writeError != nil {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"write file failed.",
-					" filePath: ", filePath,
-					" err: ", writeError)
+					zap.String("filePath", filePath),
+					zap.Error(writeError))
 				return writeError
 			}
 			if writeCount != readCount {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					" write file failed.",
-					" filePath: ", filePath,
-					" readCount: ", readCount,
-					" writeCount: ", writeCount)
+					zap.String("filePath", filePath),
+					zap.Int("readCount", readCount),
+					zap.Int("writeCount", writeCount))
 				return fmt.Errorf("failed to write to file."+
 					" filePath: %s, expect: %d, actual: %d",
 					filePath, readCount, writeCount)
@@ -3140,9 +3176,9 @@ func (o *S3Proxy) updateDownloadFile(
 		}
 		if readErr != nil {
 			if readErr != io.EOF {
-				Logger.WithContext(ctx).Error(
+				ErrorLogger.WithContext(ctx).Error(
 					"read response body failed.",
-					" err: ", readErr)
+					zap.Error(readErr))
 				return readErr
 			}
 			break
@@ -3150,15 +3186,15 @@ func (o *S3Proxy) updateDownloadFile(
 	}
 	err = fileWriter.Flush()
 	if nil != err {
-		Logger.WithContext(ctx).Error(
+		ErrorLogger.WithContext(ctx).Error(
 			"flush file failed.",
-			" err: ", err)
+			zap.Error(err))
 		return err
 	}
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"S3Proxy:updateDownloadFile finish.",
-		" readTotal: ", readTotal)
+		zap.Int("readTotal", readTotal))
 	return nil
 }
 
@@ -3178,62 +3214,59 @@ func (dfc *DownloadCheckpoint) IsValid(
 	input *obs.DownloadFileInput,
 	output *obs.GetObjectMetadataOutput) bool {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"DownloadCheckpoint:IsValid start.",
-		" dfc.Bucket: ", dfc.Bucket,
-		" input.Bucket: ", input.Bucket,
-		" dfc.Key: ", dfc.Key,
-		" input.Key: ", input.Key,
-		" dfc.VersionId: ", dfc.VersionId,
-		" input.VersionId: ", input.VersionId,
-		" dfc.DownloadFile: ", dfc.DownloadFile,
-		" input.DownloadFile: ", input.DownloadFile,
-		" dfc.ObjectInfo.LastModified: ", dfc.ObjectInfo.LastModified,
-		" output.LastModified.Unix(): ", output.LastModified.Unix(),
-		" dfc.ObjectInfo.ETag: ", dfc.ObjectInfo.ETag,
-		" output.ETag: ", output.ETag,
-		" dfc.ObjectInfo.Size: ", dfc.ObjectInfo.Size,
-		" output.ContentLength: ", output.ContentLength,
-		" dfc.TempFileInfo.Size: ", dfc.TempFileInfo.Size,
-		" output.ContentLength: ", output.ContentLength)
+		zap.String("dfcBucket", dfc.Bucket),
+		zap.String("inputBucket", input.Bucket),
+		zap.String("dfcKey", dfc.Key),
+		zap.String("inputKey", input.Key),
+		zap.String("dfcVersionId", dfc.VersionId),
+		zap.String("inputVersionId", input.VersionId),
+		zap.String("dfcDownloadFile", dfc.DownloadFile),
+		zap.String("inputDownloadFile", input.DownloadFile),
+		zap.Int64("dfcObjectInfoLastModified", dfc.ObjectInfo.LastModified),
+		zap.Int64("outputLastModifiedUnix", output.LastModified.Unix()),
+		zap.String("dfcObjectInfoETag", dfc.ObjectInfo.ETag),
+		zap.String("outputETag", output.ETag),
+		zap.Int64("dfcObjectInfoSize", dfc.ObjectInfo.Size),
+		zap.Int64("outputContentLength", output.ContentLength),
+		zap.Int64("dfcTempFileInfoSize", dfc.TempFileInfo.Size),
+		zap.Int64("outputContentLength", output.ContentLength))
 
 	if dfc.Bucket != input.Bucket ||
 		dfc.Key != input.Key ||
 		dfc.VersionId != input.VersionId ||
 		dfc.DownloadFile != input.DownloadFile {
 
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" the bucketName or objectKey or downloadFile was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid." +
+				" the bucketName or objectKey or downloadFile was changed." +
+				" clear the record.")
 		return false
 	}
 	if dfc.ObjectInfo.LastModified != output.LastModified.Unix() ||
 		dfc.ObjectInfo.ETag != output.ETag ||
 		dfc.ObjectInfo.Size != output.ContentLength {
 
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" the object info was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid. the object info was changed." +
+				" clear the record.")
 		return false
 	}
 	if dfc.TempFileInfo.Size != output.ContentLength {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" size was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid. size was changed." +
+				" clear the record.")
 		return false
 	}
 	stat, err := os.Stat(dfc.TempFileInfo.TempFileUrl)
 	if nil != err || stat.Size() != dfc.ObjectInfo.Size {
-		Logger.WithContext(ctx).Info(
-			"Checkpoint file is invalid.",
-			" the temp download file was changed.",
-			" clear the record.")
+		InfoLogger.WithContext(ctx).Info(
+			"Checkpoint file is invalid." +
+				" the temp download file was changed. clear the record.")
 		return false
 	}
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"DownloadCheckpoint:IsValid finish.")
 	return true
 }
@@ -3253,14 +3286,14 @@ func (task *DownloadPartTask) Run(
 	objectKey string,
 	taskId int32) interface{} {
 
-	Logger.WithContext(ctx).Debug(
+	InfoLogger.WithContext(ctx).Debug(
 		"DownloadPartTask:Run start.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId,
-		" partNumber: ", task.partNumber)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId),
+		zap.Int64("partNumber", task.partNumber))
 
 	if atomic.LoadInt32(task.abort) == 1 {
-		Logger.WithContext(ctx).Info(
+		InfoLogger.WithContext(ctx).Info(
 			"task abort.")
 		return ErrAbort
 	}
@@ -3275,15 +3308,15 @@ func (task *DownloadPartTask) Run(
 			task.RangeEnd)
 
 	if nil == err {
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"obsClient.GetObjectWithSignedUrl finish.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" partNumber: ", task.partNumber)
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.Int64("partNumber", task.partNumber))
 		defer func() {
 			errMsg := getObjectWithSignedUrlOutput.Body.Close()
 			if errMsg != nil {
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"close response body failed.")
 			}
 		}()
@@ -3295,25 +3328,25 @@ func (task *DownloadPartTask) Run(
 		if nil != _err {
 			if !task.enableCheckpoint {
 				atomic.CompareAndSwapInt32(task.abort, 0, 1)
-				Logger.WithContext(ctx).Warn(
+				ErrorLogger.WithContext(ctx).Warn(
 					"not enableCheckpoint abort task.",
-					" objectKey: ", objectKey,
-					" taskId: ", taskId,
-					" partNumber: ", task.partNumber)
+					zap.String("objectKey", objectKey),
+					zap.Int32("taskId", taskId),
+					zap.Int64("partNumber", task.partNumber))
 			}
-			Logger.WithContext(ctx).Error(
+			ErrorLogger.WithContext(ctx).Error(
 				"S3Proxy.updateDownloadFile failed.",
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" partNumber: ", task.partNumber,
-				" err: ", _err)
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Int64("partNumber", task.partNumber),
+				zap.Error(_err))
 			return _err
 		}
-		Logger.WithContext(ctx).Debug(
+		InfoLogger.WithContext(ctx).Debug(
 			"DownloadPartTask.Run finish.",
-			" objectKey: ", objectKey,
-			" taskId: ", taskId,
-			" partNumber: ", task.partNumber)
+			zap.String("objectKey", objectKey),
+			zap.Int32("taskId", taskId),
+			zap.Int64("partNumber", task.partNumber))
 		return getObjectWithSignedUrlOutput
 	} else {
 		var obsError obs.ObsError
@@ -3322,19 +3355,19 @@ func (task *DownloadPartTask) Run(
 			obsError.StatusCode < 500 {
 
 			atomic.CompareAndSwapInt32(task.abort, 0, 1)
-			Logger.WithContext(ctx).Warn(
+			ErrorLogger.WithContext(ctx).Warn(
 				"4** error abort task.",
-				" objectKey: ", objectKey,
-				" taskId: ", taskId,
-				" partNumber: ", task.partNumber)
+				zap.String("objectKey", objectKey),
+				zap.Int32("taskId", taskId),
+				zap.Int64("partNumber", task.partNumber))
 		}
 	}
 
-	Logger.WithContext(ctx).Error(
+	ErrorLogger.WithContext(ctx).Error(
 		"DownloadPartTask:Run failed.",
-		" objectKey: ", objectKey,
-		" taskId: ", taskId,
-		" partNumber: ", task.partNumber,
-		" err: ", err)
+		zap.String("objectKey", objectKey),
+		zap.Int32("taskId", taskId),
+		zap.Int64("partNumber", task.partNumber),
+		zap.Error(err))
 	return err
 }
