@@ -5,7 +5,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"os"
 )
 
 var (
@@ -62,7 +61,7 @@ func InitLog(infoLog, errorLog string, LogLevel int64) {
 	// 创建核心
 	infoCore := zapcore.NewCore(
 		zapcore.NewJSONEncoder(encoderConfig),
-		zapcore.NewMultiWriteSyncer(infoWriter, zapcore.AddSync(os.Stdout)),
+		zapcore.NewMultiWriteSyncer(infoWriter),
 		zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
 			return lvl >= LogLevelMap[LogLevel]
 		}),
