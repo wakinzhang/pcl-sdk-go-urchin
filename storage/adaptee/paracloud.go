@@ -411,21 +411,6 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.pcRateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -459,6 +444,22 @@ func (o *ParaCloud) uploadFolder(
 							zap.String("objectPath", objectPath))
 						return
 					}
+
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait start.")
+					ctxRate, cancel := context.WithCancel(context.Background())
+					_err = o.pcRateLimiter.Wait(ctxRate)
+					if nil != _err {
+						isAllSuccess = false
+						cancel()
+						ErrorLogger.WithContext(ctx).Error(
+							"RateLimiter.Wait failed.",
+							zap.Error(_err))
+						return
+					}
+					cancel()
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait end.")
 
 					input := ParaCloudMkdirInput{}
 					input.SourceFolder = filePath
@@ -553,21 +554,6 @@ func (o *ParaCloud) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.pcRateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -601,6 +587,23 @@ func (o *ParaCloud) uploadFolder(
 							zap.String("objectPath", objectPath))
 						return
 					}
+
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait start.")
+					ctxRate, cancel := context.WithCancel(context.Background())
+					_err = o.pcRateLimiter.Wait(ctxRate)
+					if nil != _err {
+						isAllSuccess = false
+						cancel()
+						ErrorLogger.WithContext(ctx).Error(
+							"RateLimiter.Wait failed.",
+							zap.Error(_err))
+						return
+					}
+					cancel()
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait end.")
+
 					_err = RetryV1(
 						ctx,
 						ParaCloudAttempts,
@@ -611,7 +614,6 @@ func (o *ParaCloud) uploadFolder(
 								filePath,
 								objectPath)
 							if nil != __err {
-								isAllSuccess = false
 								ErrorLogger.WithContext(ctx).Error(
 									"pcClient.Upload failed.",
 									zap.String("filePath", filePath),

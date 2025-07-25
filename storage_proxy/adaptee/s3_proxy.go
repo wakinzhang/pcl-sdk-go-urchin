@@ -1045,21 +1045,6 @@ func (o *S3Proxy) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.s3RateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -1096,6 +1081,23 @@ func (o *S3Proxy) uploadFolder(
 						zap.String("objectKey", objectKey))
 					return
 				}
+
+				InfoLogger.WithContext(ctx).Debug(
+					"RateLimiter.Wait start.")
+				ctxRate, cancel := context.WithCancel(context.Background())
+				_err = o.s3RateLimiter.Wait(ctxRate)
+				if nil != _err {
+					isAllSuccess = false
+					cancel()
+					ErrorLogger.WithContext(ctx).Error(
+						"RateLimiter.Wait failed.",
+						zap.Error(_err))
+					return
+				}
+				cancel()
+				InfoLogger.WithContext(ctx).Debug(
+					"RateLimiter.Wait end.")
+
 				if fileInfo.IsDir() {
 					_err = RetryV1(
 						ctx,

@@ -403,21 +403,6 @@ func (o *StarLight) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.slRateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -451,6 +436,22 @@ func (o *StarLight) uploadFolder(
 							zap.String("objectPath", objectPath))
 						return
 					}
+
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait start.")
+					ctxRate, cancel := context.WithCancel(context.Background())
+					_err = o.slRateLimiter.Wait(ctxRate)
+					if nil != _err {
+						isAllSuccess = false
+						cancel()
+						ErrorLogger.WithContext(ctx).Error(
+							"RateLimiter.Wait failed.",
+							zap.Error(_err))
+						return
+					}
+					cancel()
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait end.")
 
 					input := StarLightMkdirInput{}
 					input.Target = objectPath
@@ -542,21 +543,6 @@ func (o *StarLight) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.slRateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -596,6 +582,23 @@ func (o *StarLight) uploadFolder(
 							zap.String("objectPath", objectPath))
 						return
 					}
+
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait start.")
+					ctxRate, cancel := context.WithCancel(context.Background())
+					_err = o.slRateLimiter.Wait(ctxRate)
+					if nil != _err {
+						isAllSuccess = false
+						cancel()
+						ErrorLogger.WithContext(ctx).Error(
+							"RateLimiter.Wait failed.",
+							zap.Error(_err))
+						return
+					}
+					cancel()
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait end.")
+
 					_err = o.uploadFileResume(
 						ctx,
 						filePath,

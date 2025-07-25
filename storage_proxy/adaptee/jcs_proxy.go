@@ -597,21 +597,6 @@ func (o *JCSProxy) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.jcsRateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			wg.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -646,6 +631,23 @@ func (o *JCSProxy) uploadFolder(
 						zap.String("objectKey", objectKey))
 					return
 				}
+
+				InfoLogger.WithContext(ctx).Debug(
+					"RateLimiter.Wait start.")
+				ctxRate, cancel := context.WithCancel(context.Background())
+				_err = o.jcsRateLimiter.Wait(ctxRate)
+				if nil != _err {
+					isAllSuccess = false
+					cancel()
+					ErrorLogger.WithContext(ctx).Error(
+						"RateLimiter.Wait failed.",
+						zap.Error(_err))
+					return
+				}
+				cancel()
+				InfoLogger.WithContext(ctx).Debug(
+					"RateLimiter.Wait end.")
+
 				if fileInfo.IsDir() {
 					_err = o.NewFolderWithSignedUrl(
 						ctx,

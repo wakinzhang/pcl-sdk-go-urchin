@@ -434,21 +434,6 @@ func (o *Scow) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.sRateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			dirWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -488,6 +473,22 @@ func (o *Scow) uploadFolder(
 						zap.String("filePath", filePath),
 						zap.String("relPath", relPath),
 						zap.String("objectPath", objectPath))
+
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait start.")
+					ctxRate, cancel := context.WithCancel(context.Background())
+					_err = o.sRateLimiter.Wait(ctxRate)
+					if nil != _err {
+						isAllSuccess = false
+						cancel()
+						ErrorLogger.WithContext(ctx).Error(
+							"RateLimiter.Wait failed.",
+							zap.Error(_err))
+						return
+					}
+					cancel()
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait end.")
 
 					input := ScowMkdirInput{}
 					input.Path = objectPath
@@ -580,21 +581,6 @@ func (o *Scow) uploadFolder(
 				return nil
 			}
 
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait start.")
-			ctxRate, cancel := context.WithCancel(context.Background())
-			err = o.sRateLimiter.Wait(ctxRate)
-			if nil != err {
-				cancel()
-				ErrorLogger.WithContext(ctx).Error(
-					"RateLimiter.Wait failed.",
-					zap.Error(err))
-				return err
-			}
-			cancel()
-			InfoLogger.WithContext(ctx).Debug(
-				"RateLimiter.Wait end.")
-
 			fileWaitGroup.Add(1)
 			err = pool.Submit(func() {
 				defer func() {
@@ -634,6 +620,23 @@ func (o *Scow) uploadFolder(
 							zap.String("objectPath", objectPath))
 						return
 					}
+
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait start.")
+					ctxRate, cancel := context.WithCancel(context.Background())
+					_err = o.sRateLimiter.Wait(ctxRate)
+					if nil != _err {
+						isAllSuccess = false
+						cancel()
+						ErrorLogger.WithContext(ctx).Error(
+							"RateLimiter.Wait failed.",
+							zap.Error(_err))
+						return
+					}
+					cancel()
+					InfoLogger.WithContext(ctx).Debug(
+						"RateLimiter.Wait end.")
+
 					_err = o.uploadFile(
 						ctx,
 						filePath,

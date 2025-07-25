@@ -190,6 +190,14 @@ func (o *IPFSProxy) uploadObject(
 
 	ch := make(chan XIpfsUpload)
 	go func() {
+		defer func() {
+			if e := recover(); e != nil {
+				ErrorLogger.WithContext(ctx).Error(
+					"Recover info.",
+					zap.Any("message", e),
+					zap.Stack("stacktrace"))
+			}
+		}()
 		if stat.IsDir() {
 			InfoLogger.WithContext(ctx).Debug(
 				"IPFSProxy:AddDir start.",
@@ -410,6 +418,14 @@ func (o *IPFSProxy) Download(
 		getIpfsTokenResp.Token)
 	ch := make(chan XIpfsDownload)
 	go func() {
+		defer func() {
+			if e := recover(); e != nil {
+				ErrorLogger.WithContext(ctx).Error(
+					"Recover info.",
+					zap.Any("message", e),
+					zap.Stack("stacktrace"))
+			}
+		}()
 		InfoLogger.WithContext(ctx).Debug(
 			"IPFSProxy:Get start.",
 			zap.String("hash", hash),
