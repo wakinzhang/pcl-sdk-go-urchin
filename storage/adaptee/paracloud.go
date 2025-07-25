@@ -381,14 +381,14 @@ func (o *ParaCloud) uploadFolder(
 		return err
 	}
 
-	pool, err := ants.NewPool(o.pcUploadFileTaskNum)
+	mkdirPool, err := ants.NewPool(DefaultParaCloudMkdirTaskNum)
 	if nil != err {
 		ErrorLogger.WithContext(ctx).Error(
-			"ants.NewPool failed.",
+			"ants.NewPool mkdirPool failed.",
 			zap.Error(err))
 		return err
 	}
-	defer pool.Release()
+	defer mkdirPool.Release()
 
 	var isAllSuccess = true
 
@@ -412,7 +412,7 @@ func (o *ParaCloud) uploadFolder(
 			}
 
 			dirWaitGroup.Add(1)
-			err = pool.Submit(func() {
+			err = mkdirPool.Submit(func() {
 				defer func() {
 					dirWaitGroup.Done()
 					if _err := recover(); nil != _err {
@@ -535,6 +535,15 @@ func (o *ParaCloud) uploadFolder(
 		return errors.New("uploadFolder not all success")
 	}
 
+	uploadFilePool, err := ants.NewPool(o.pcUploadFileTaskNum)
+	if nil != err {
+		ErrorLogger.WithContext(ctx).Error(
+			"ants.NewPool uploadFilePool failed.",
+			zap.Error(err))
+		return err
+	}
+	defer uploadFilePool.Release()
+
 	var fileWaitGroup sync.WaitGroup
 	err = filepath.Walk(
 		sourcePath,
@@ -555,7 +564,7 @@ func (o *ParaCloud) uploadFolder(
 			}
 
 			fileWaitGroup.Add(1)
-			err = pool.Submit(func() {
+			err = uploadFilePool.Submit(func() {
 				defer func() {
 					fileWaitGroup.Done()
 					if _err := recover(); nil != _err {

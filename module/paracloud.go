@@ -19,6 +19,7 @@ const (
 	ParaCloudAttempts = 5
 	ParaCloudDelay    = 3
 
+	DefaultParaCloudMkdirTaskNum         = 1
 	DefaultParaCloudUploadFileTaskNum    = 1
 	DefaultParaCloudDownloadFileTaskNum  = 100
 	DefaultParaCloudDownloadMultiTaskNum = 20
